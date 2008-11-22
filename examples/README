@@ -1,0 +1,12 @@
+2 things need updated with information from the OAuth service provider:
+ * config.inc.php
+ * the URL's of the providers resources (to get tokens, manipulate user info, etc.)
+
+There are several directories here which relate to OAuth service providers
+and their interfaces. The current directory contains generic examples.
+
+Please contribute to example code for new providers as they come along accordingly.
+
+The example code writes token information to /tmp in a static file, this is not
+a good idea for anything beyond tinkering, you should store these tokens
+somewhere safer.

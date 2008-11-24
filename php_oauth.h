@@ -36,6 +36,7 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_ATTR_AUTHMETHOD "oauth_auth_method_zval"
 #define OAUTH_ATTR_OAUTH_VERSION "oauth_version_zval"
 #define OAUTH_ATTR_OAUTH_NONCE "oauth_nonce_zval"
+#define OAUTH_ATTR_OAUTH_USER_NONCE "oauth_user_nonce_zval"
 #define OAUTH_DEFAULT_VERSION "1.0"
 
 /* errors */

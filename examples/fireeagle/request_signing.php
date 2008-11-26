@@ -6,8 +6,8 @@ require("config.inc.php");
 try {
 	$o = new OAuth(OAUTH_CONSUMER_KEY,OAUTH_CONSUMER_SECRET,OAUTH_SIG_METHOD_HMACSHA1,OAUTH_AUTH_TYPE_AUTHORIZATION);
 
-    /* fire eagle uses something called a general purpose token/secret for request signing, a setToken call will suffice to handle it */
-    $o->setToken(GENERAL_PURPOSE_TOKEN,GENERAL_PURPOSE_TOKEN_SECRET);
+	/* fire eagle uses something called a general purpose token/secret for request signing, a setToken call will suffice to handle it */
+	$o->setToken(GENERAL_PURPOSE_TOKEN,GENERAL_PURPOSE_TOKEN_SECRET);
 
 	$o->fetch("https://fireeagle.yahooapis.com/api/0.1/recent.xml");
 

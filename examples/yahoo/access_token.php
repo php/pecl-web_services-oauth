@@ -6,7 +6,7 @@ try {
 	$o->setToken($request_token_info["oauth_token"],$request_token_info["oauth_token_secret"]);
 	$arrayResp = $o->getAccessToken("https://api.login.yahoo.com/oauth/v2/get_token");
 	file_put_contents("/tmp/access_token_resp",serialize($arrayResp));
-	echo "Finished getting the access token!";
+	echo "Finished getting the access token!\n";
 } catch(OAuthException $E) {
 	echo "Response: ". $E->lastResponse . "\n";
 }

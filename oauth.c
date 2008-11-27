@@ -843,7 +843,7 @@ SO_METHOD(getRequestToken) {
 			RETURN_FALSE;
         }
 
-		soo = fetch_so_object(zsoo);
+		soo = fetch_so_object(zsoo TSRMLS_CC);
 
         TSRMLS_FETCH_FROM_CTX(soo->thread_ctx);
 
@@ -909,7 +909,7 @@ SO_METHOD(setVersion) {
 			RETURN_FALSE;
         }
 
-		soo = fetch_so_object(zsoo);
+		soo = fetch_so_object(zsoo TSRMLS_CC);
 
         if(ver_len < 1) {
             soo_handle_error(OAUTH_ERR_INTERNAL_ERROR,"invalid version",NULL TSRMLS_CC);
@@ -945,7 +945,7 @@ SO_METHOD(setAuthType) {
 			RETURN_FALSE;
         }
 
-		soo = fetch_so_object(zsoo);
+		soo = fetch_so_object(zsoo TSRMLS_CC);
 
         /* XXX check to see if we actually support the type rather than just the length */
         if(auth_len < 1) {
@@ -982,7 +982,7 @@ SO_METHOD(setNonce) {
 			RETURN_FALSE;
         }
 
-		soo = fetch_so_object(zsoo);
+		soo = fetch_so_object(zsoo TSRMLS_CC);
 
         if(nonce_len < 1) {
             soo_handle_error(OAUTH_ERR_INTERNAL_ERROR,"invalid nonce",NULL TSRMLS_CC);
@@ -1018,7 +1018,7 @@ SO_METHOD(setToken) {
 			RETURN_FALSE;
         }
 
-		soo = fetch_so_object(zsoo);
+		soo = fetch_so_object(zsoo TSRMLS_CC);
 
         if(token_len < 1) {
             token = "";
@@ -1061,7 +1061,7 @@ SO_METHOD(fetch) {
 			RETURN_FALSE;
         }
 
-		soo = fetch_so_object(zsoo);
+		soo = fetch_so_object(zsoo TSRMLS_CC);
 
         if(fetchurl_len < 1) {
             soo_handle_error(OAUTH_ERR_INTERNAL_ERROR,"invalid protected resource url length",NULL TSRMLS_CC);
@@ -1151,7 +1151,7 @@ SO_METHOD(getAccessToken) {
 			RETURN_FALSE;
         }
 
-		soo = fetch_so_object(zsoo);
+		soo = fetch_so_object(zsoo TSRMLS_CC);
 
         ALLOC_HASHTABLE(args);
         zend_hash_init(args, 0, NULL, php_oauth_args_hash_dtor, 0);

@@ -1206,7 +1206,7 @@ SO_METHOD(getLastResponseInfo) {
     ulong hlen = 0;
     char *hkey = OAUTH_ATTR_LAST_RES_INFO;
     
-	if (zend_parse_parameters_none() == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
 		return;
 	}
 	
@@ -1231,7 +1231,7 @@ SO_METHOD(getLastResponseInfo) {
 SO_METHOD(getLastResponse) {
     php_so_object *soo;
     
-	if (zend_parse_parameters_none() == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
 		return;
 	}
 	

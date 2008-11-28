@@ -38,12 +38,6 @@
 
 #include <curl/curl.h>
 
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 2) || PHP_MAJOR_VERSION > 5
-# define OAUTH_IS_CALLABLE_CC TSRMLS_CC
-#else
-# define OAUTH_IS_CALLABLE_CC
-#endif
-
 #define SO_ME(func, arg_info, flags) PHP_ME(oauth, func, arg_info, flags)
 #define SO_MALIAS(func, alias, arg_info, flags) PHP_MALIAS(oauth, func, alias, arg_info, flags)
 #define SO_METHOD(func) PHP_METHOD(oauth, func)
@@ -513,9 +507,8 @@ PHP_FUNCTION(oauth_urlencode) {
 
 /* only hmac-sha1 is supported at the moment, still need to lay down the ground work for supporting plaintext and others, though this should be relatively straight forward */
 
-/* {{{ proto void __construct(string consumer_key, string consumer_secret [, string signature_method, [, string auth_type ]])
+/* {{{ proto void OAuth::__construct(string consumer_key, string consumer_secret [, string signature_method, [, string auth_type ]])
    Instantiate a new OAuth object */
-
 SO_METHOD(__construct) {
     HashTable *hasht;
     char *ck,*cs,*sig_method = NULL,*auth_method = NULL;
@@ -826,9 +819,8 @@ static void make_standard_query(HashTable *ht,php_so_object *soo TSRMLS_DC) {
     efree(tb);
 }
 
-/* {{{ proto array getRequestToken(string request_token_url)
+/* {{{ proto array OAuth::getRequestToken(string request_token_url)
    Get request token */
-
 SO_METHOD(getRequestToken) {
     php_so_object *soo;
     int url_len = 0;
@@ -892,9 +884,8 @@ SO_METHOD(getRequestToken) {
 
 /* }}} */
 
-/* {{{ proto bool setVersion(string version)
+/* {{{ proto bool OAuth::setVersion(string version)
    Set oauth_version for requests (default 1.0) */
-
 SO_METHOD(setVersion) {
     php_so_object *soo;
     int ver_len = 0;
@@ -928,9 +919,8 @@ SO_METHOD(setVersion) {
 
 /* }}} */
 
-/* {{{ proto bool setAuthType(string auth_type)
+/* {{{ proto bool OAuth::setAuthType(string auth_type)
    Set the manner in which to send oauth parameters */
-
 SO_METHOD(setAuthType) {
     php_so_object *soo;
     int auth_len;
@@ -965,9 +955,8 @@ SO_METHOD(setAuthType) {
 
 /* }}} */
 
-/* {{{ proto bool setNonce(string nonce)
+/* {{{ proto bool OAuth::setNonce(string nonce)
    Set oauth_nonce for subsequent requests, if none is set a random nonce will be generated using uniqid */
-
 SO_METHOD(setNonce) {
     php_so_object *soo;
     int nonce_len;
@@ -1001,9 +990,8 @@ SO_METHOD(setNonce) {
 
 /* }}} */
 
-/* {{{ proto bool setToken(string token, string token_secret)
+/* {{{ proto bool OAuth::setToken(string token, string token_secret)
    Set a request or access token and token secret to be used in subsequent requests */
-
 SO_METHOD(setToken) {
     php_so_object *soo;
     int token_len,token_secret_len;
@@ -1039,9 +1027,8 @@ SO_METHOD(setToken) {
 
 /* }}} */
 
-/* {{{ proto bool fetch(string protected_resource_url [, array extra_parameters])
+/* {{{ proto bool OAuth::fetch(string protected_resource_url [, array extra_parameters])
    fetch a protected resource, pass in extra_parameters (array(name => value)) */
-
 SO_METHOD(fetch) {
     php_so_object *soo;
     int fetchurl_len;
@@ -1082,7 +1069,6 @@ SO_METHOD(fetch) {
         }
         sbs = generate_sig_base(soo,fetchurl,args,rargs TSRMLS_CC);
         if(!sbs) {
-            efree(sbs);
             soo_handle_error(OAUTH_ERR_INTERNAL_ERROR,"invalid protected resource url, unable to generate signature base string",NULL TSRMLS_CC);
             RETURN_FALSE;
         }
@@ -1131,9 +1117,8 @@ SO_METHOD(fetch) {
 
 /* }}} */
 
-/* {{{ proto array getAccessToken(string access_token_url [, string auth_session_handle ])
+/* {{{ proto array OAuth::getAccessToken(string access_token_url [, string auth_session_handle ])
    Get access token, if the server supports Scalable OAuth pass in the auth_session_handle to refresh the token (http://wiki.oauth.net/ScalableOAuth) */
-
 SO_METHOD(getAccessToken) {
     php_so_object *soo;
     int aturi_len = 0,ash_len = 0;
@@ -1171,7 +1156,6 @@ SO_METHOD(getAccessToken) {
         }
         sbs = generate_sig_base(soo,aturi,args,NULL TSRMLS_CC);
         if(!sbs) {
-            efree(sbs);
             FREE_ARGS_HASH(args);
             soo_handle_error(OAUTH_ERR_INTERNAL_ERROR,"unable to generate signature base string, perhaps the access token url is invalid",NULL TSRMLS_CC);
             RETURN_FALSE;
@@ -1212,9 +1196,8 @@ SO_METHOD(getAccessToken) {
 }
 /* }}} */
 
-/* {{{ proto array getLastResponseInfo()
+/* {{{ proto array OAuth::getLastResponseInfo(void)
    Get information about the last response */
-
 SO_METHOD(getLastResponseInfo) {
     php_so_object *soo;
     void *p_data_ptr;
@@ -1222,6 +1205,11 @@ SO_METHOD(getLastResponseInfo) {
     ulong hf = 0;
     ulong hlen = 0;
     char *hkey = OAUTH_ATTR_LAST_RES_INFO;
+    
+	if (zend_parse_parameters_none() == FAILURE) {
+		return;
+	}
+	
     soo = fetch_so_object(getThis() TSRMLS_CC);
 
     hlen = strlen(hkey)+1;
@@ -1238,11 +1226,15 @@ SO_METHOD(getLastResponseInfo) {
 
 /* }}} */
 
-/* {{{ proto array getLastResponse()
+/* {{{ proto array OAuth::getLastResponse(void)
    Get last response */
-
 SO_METHOD(getLastResponse) {
     php_so_object *soo;
+    
+	if (zend_parse_parameters_none() == FAILURE) {
+		return;
+	}
+	
     soo = fetch_so_object(getThis() TSRMLS_CC);
     
     if(soo->lastresponse.c) {
@@ -1267,18 +1259,75 @@ SO_METHOD(getLastResponse) {
 
 /* }}} */
 
+/* {{{ arginfo */
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_urlencode, 0, 0, 1)
+	ZEND_ARG_INFO(0, uri)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth__construct, 0, 0, 2)
+	ZEND_ARG_INFO(0, consumer_key)
+	ZEND_ARG_INFO(0, consumer_secret)
+	ZEND_ARG_INFO(0, signature_method)
+	ZEND_ARG_INFO(0, auth_type)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_getrequesttoken, 0, 0, 1)
+	ZEND_ARG_INFO(0, request_token_url)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setversion, 0, 0, 1)
+	ZEND_ARG_INFO(0, version)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setauthtype, 0, 0, 1)
+	ZEND_ARG_INFO(0, auth_type)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setnonce, 0, 0, 1)
+	ZEND_ARG_INFO(0, nonce)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_settoken, 0, 0, 2)
+	ZEND_ARG_INFO(0, token)
+	ZEND_ARG_INFO(0, token_secret)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_fetch, 0, 0, 1)
+	ZEND_ARG_INFO(0, protected_resource_url)
+	ZEND_ARG_INFO(0, extra_parameters)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_getaccesstoken, 0, 0, 1)
+	ZEND_ARG_INFO(0, access_token_url)
+	ZEND_ARG_INFO(0, auth_session_handle)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO(arginfo_oauth__void, 0)
+ZEND_END_ARG_INFO()
+/* }}} */
+
 static zend_function_entry so_functions[] = {
-SO_ME(__construct,            NULL, ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)
-SO_ME(getRequestToken,                  NULL, ZEND_ACC_PUBLIC)
-SO_ME(getAccessToken,                  NULL, ZEND_ACC_PUBLIC)
-SO_ME(getLastResponse,                  NULL, ZEND_ACC_PUBLIC)
-SO_ME(getLastResponseInfo,                  NULL, ZEND_ACC_PUBLIC)
-SO_ME(setToken,                  NULL, ZEND_ACC_PUBLIC)
-SO_ME(setVersion,                  NULL, ZEND_ACC_PUBLIC)
-SO_ME(setAuthType,                  NULL, ZEND_ACC_PUBLIC)
-SO_ME(setNonce,                  NULL, ZEND_ACC_PUBLIC)
-SO_ME(fetch,                  NULL, ZEND_ACC_PUBLIC)
-{NULL, NULL, NULL}
+	SO_ME(__construct,			arginfo_oauth__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)
+	SO_ME(getRequestToken,		arginfo_oauth_getrequesttoken,	ZEND_ACC_PUBLIC)
+	SO_ME(getAccessToken,		arginfo_oauth_getaccesstoken,	ZEND_ACC_PUBLIC)
+	SO_ME(getLastResponse,		arginfo_oauth__void,			ZEND_ACC_PUBLIC)
+	SO_ME(getLastResponseInfo,	arginfo_oauth__void,			ZEND_ACC_PUBLIC)
+	SO_ME(setToken,				arginfo_oauth_settoken,			ZEND_ACC_PUBLIC)
+	SO_ME(setVersion,			arginfo_oauth_setversion,		ZEND_ACC_PUBLIC)
+	SO_ME(setAuthType,			arginfo_oauth_setauthtype,		ZEND_ACC_PUBLIC)
+	SO_ME(setNonce,				arginfo_oauth_setnonce,			ZEND_ACC_PUBLIC)
+	SO_ME(fetch,				arginfo_oauth_fetch,			ZEND_ACC_PUBLIC)
+	{NULL, NULL, NULL}
 };
 
 PHP_MINIT_FUNCTION(oauth) {
@@ -1314,8 +1363,8 @@ PHP_MINFO_FUNCTION(oauth)
 
 /* TODO expose a function for base sig string */
 zend_function_entry oauth_functions[] = {
-PHP_FE(oauth_urlencode,NULL)
-{ NULL, NULL, NULL }
+	PHP_FE(oauth_urlencode,		arginfo_oauth_urlencode)
+	{ NULL, NULL, NULL }
 };
 
 zend_module_entry oauth_module_entry = {

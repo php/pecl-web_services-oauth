@@ -499,7 +499,7 @@ PHP_FUNCTION(oauth_urlencode) {
 
 /* only hmac-sha1 is supported at the moment, still need to lay down the ground work for supporting plaintext and others */
 
-/* {{{ proto void __construct(string consumer_key, string consumer_secret [, string signature_method, [, string auth_type ]])
+/* {{{ proto void OAuth::__construct(string consumer_key, string consumer_secret [, string signature_method, [, string auth_type ]])
    Instantiate a new OAuth object */
 
 SO_METHOD(__construct) {
@@ -1174,6 +1174,11 @@ SO_METHOD(getLastResponseInfo) {
     ulong hf = 0;
     ulong hlen = 0;
     char *hkey = OAUTH_ATTR_LAST_RES_INFO;
+    
+	if (zend_parse_parameters_none() == FAILURE) {
+		return;
+	}
+	
     soo = fetch_so_object(getThis() TSRMLS_CC);
 
     hlen = strlen(hkey)+1;
@@ -1194,6 +1199,11 @@ SO_METHOD(getLastResponseInfo) {
    Get last response */
 SO_METHOD(getLastResponse) {
     php_so_object *soo;
+    
+	if (zend_parse_parameters_none() == FAILURE) {
+		return;
+	}
+	
     soo = fetch_so_object(getThis() TSRMLS_CC);
     
     if(soo->lastresponse.c) {

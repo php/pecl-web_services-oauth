@@ -11,6 +11,19 @@
 #ifndef PHP_OAUTH_H
 #define PHP_OAUTH_H
 
+#ifndef Z_ADDREF_P
+#define Z_ADDREF_P(pz)		(pz)->refcount++
+#define Z_ADDREF_PP(ppz)	Z_ADDREF_P(*(ppz))
+#endif
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 2) || PHP_MAJOR_VERSION > 5
+# define OAUTH_ARGINFO
+# define OAUTH_IS_CALLABLE_CC TSRMLS_CC
+#else
+# define OAUTH_ARGINFO static
+# define OAUTH_IS_CALLABLE_CC
+#endif
+
 #define OAUTH_EXT_VER "0.99"
 #define OAUTH_HTTP_PORT 80
 #define OAUTH_HTTPS_PORT 443

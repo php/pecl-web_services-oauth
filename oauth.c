@@ -38,14 +38,6 @@
 
 #include <curl/curl.h>
 
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 2) || PHP_MAJOR_VERSION > 5
-# define OAUTH_ARGINFO
-# define OAUTH_IS_CALLABLE_CC TSRMLS_CC
-#else
-# define OAUTH_ARGINFO static
-# define OAUTH_IS_CALLABLE_CC
-#endif
-
 #define SO_ME(func, arg_info, flags) PHP_ME(oauth, func, arg_info, flags)
 #define SO_MALIAS(func, alias, arg_info, flags) PHP_MALIAS(oauth, func, alias, arg_info, flags)
 #define SO_METHOD(func) PHP_METHOD(oauth, func)

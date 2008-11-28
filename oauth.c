@@ -501,7 +501,6 @@ PHP_FUNCTION(oauth_urlencode) {
 
 /* {{{ proto void OAuth::__construct(string consumer_key, string consumer_secret [, string signature_method, [, string auth_type ]])
    Instantiate a new OAuth object */
-
 SO_METHOD(__construct) {
     HashTable *hasht;
     char *ck,*cs,*sig_method = NULL,*auth_method = NULL;
@@ -1175,7 +1174,7 @@ SO_METHOD(getLastResponseInfo) {
     ulong hlen = 0;
     char *hkey = OAUTH_ATTR_LAST_RES_INFO;
     
-	if (zend_parse_parameters_none() == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
 		return;
 	}
 	
@@ -1200,7 +1199,7 @@ SO_METHOD(getLastResponseInfo) {
 SO_METHOD(getLastResponse) {
     php_so_object *soo;
     
-	if (zend_parse_parameters_none() == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
 		return;
 	}
 	

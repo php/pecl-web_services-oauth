@@ -489,10 +489,10 @@ PHP_FUNCTION(oauth_urlencode) {
     }
 
     if(uri_len < 1) {
-        soo_handle_error(OAUTH_ERR_INTERNAL_ERROR,"invalid uri length (0)",NULL TSRMLS_CC);
+    	php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid uri length (0)");
         RETURN_NULL();
     }
-    RETURN_STRING(oauth_url_encode(uri),1);
+    RETURN_STRING(oauth_url_encode(uri), 0);
 }
 
 /* }}} */

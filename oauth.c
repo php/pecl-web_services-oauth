@@ -845,7 +845,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
     return cres;
 }
 
-static int add_arg_for_req(HashTable *ht, const char *arg, char *val TSRMLS_DC)
+static int add_arg_for_req(HashTable *ht, const char *arg, const char *val TSRMLS_DC)
 {
 	zval *varg;
 	ulong h;
@@ -895,56 +895,51 @@ SO_METHOD(getRequestToken)
 	CURLcode retcode;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
-	{
-		TSRMLS_FETCH_FROM_CTX(soo->thread_ctx);
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &url, &url_len) == FAILURE) {
-			return;
-		}
-
-        if (url_len < 1) {
-            soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid access token url length", NULL TSRMLS_CC);
-            RETURN_FALSE;
-        }
-        ALLOC_HASHTABLE(args);
-        zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
-
-        make_standard_query(args, soo TSRMLS_CC);
-		sbs = generate_sig_base(soo, url, args, NULL TSRMLS_CC);
-		if (!sbs) {
-			FREE_ARGS_HASH(args);
-			soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid url, unable to generate signature base string", NULL TSRMLS_CC);
-			RETURN_FALSE;
-		}
-        cs = soo_get_property(soo, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
-        SEPARATE_ZVAL(cs);
-        sig = soo_hmac_sha1(sbs, *cs, NULL TSRMLS_CC);
-        efree(sbs);
-
-        if (!sig) {
-			FREE_ARGS_HASH(args);
-			RETURN_NULL();
-			return;
-        }
-
-        SO_ADD_SIG(args, sig);
-
-        smart_str_free(&soo->lastresponse);
-        retcode = make_req(soo, url, args TSRMLS_CC);
-        FREE_ARGS_HASH(args);
-
-		if (retcode == FAILURE) {
-			RETURN_NULL();
-        } else {
-			if (retcode == CURLE_OK && soo->lastresponse.c) {
-				array_init(return_value);
-				ALLOC_ZVAL(zret);
-				ZVAL_STRING(zret,soo->lastresponse.c,0);
-				so_set_response_args(soo->properties,zret,return_value TSRMLS_CC);
-				efree(zret);
-			}
-		}
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &url, &url_len) == FAILURE) {
+		return;
 	}
+
+	if (url_len < 1) {
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid access token url length", NULL TSRMLS_CC);
+		RETURN_FALSE;
+	}
+	ALLOC_HASHTABLE(args);
+	zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
+
+	make_standard_query(args, soo TSRMLS_CC);
+	sbs = generate_sig_base(soo, url, args, NULL TSRMLS_CC);
+	if (!sbs) {
+		FREE_ARGS_HASH(args);
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid url, unable to generate signature base string", NULL TSRMLS_CC);
+		RETURN_FALSE;
+	}
+	cs = soo_get_property(soo, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
+	SEPARATE_ZVAL(cs);
+	sig = soo_hmac_sha1(sbs, *cs, NULL TSRMLS_CC);
+	efree(sbs);
+
+	if (!sig) {
+		FREE_ARGS_HASH(args);
+		RETURN_NULL();
+	}
+
+	SO_ADD_SIG(args, sig);
+
+	smart_str_free(&soo->lastresponse);
+	retcode = make_req(soo, url, args TSRMLS_CC);
+	FREE_ARGS_HASH(args);
+
+	if (retcode == CURLE_OK && soo->lastresponse.c) {
+		array_init(return_value);
+		ALLOC_ZVAL(zret);
+		ZVAL_STRING(zret, soo->lastresponse.c, 0);
+		so_set_response_args(soo->properties, zret, return_value TSRMLS_CC);
+		FREE_ZVAL(zret);
+		return;
+	}
+
+	RETURN_NULL();
 }
 
 /* }}} */
@@ -959,25 +954,23 @@ SO_METHOD(setVersion)
 	zval *zver;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
-	{
-		TSRMLS_FETCH_FROM_CTX(soo->thread_ctx);
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &vers, &ver_len) == FAILURE) {
-			return;
-		}
-
-		if (ver_len < 1) {
-			soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid version", NULL TSRMLS_CC);
-			RETURN_NULL();
-		}
-
-		MAKE_STD_ZVAL(zver);
-		ZVAL_STRING(zver, vers, 1);
-		if (soo_set_property(soo, zver, OAUTH_ATTR_OAUTH_VERSION)) {
-			RETURN_TRUE;
-		}
-		RETURN_FALSE;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &vers, &ver_len) == FAILURE) {
+		return;
 	}
+
+	if (ver_len < 1) {
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid version", NULL TSRMLS_CC);
+		RETURN_NULL();
+	}
+
+	MAKE_STD_ZVAL(zver);
+	ZVAL_STRING(zver, vers, 1);
+	if (soo_set_property(soo, zver, OAUTH_ATTR_OAUTH_VERSION)) {
+		RETURN_TRUE;
+	}
+
+	RETURN_FALSE;
 }
 
 /* }}} */
@@ -992,26 +985,24 @@ SO_METHOD(setAuthType)
 	zval *zauth;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
-	{
-		TSRMLS_FETCH_FROM_CTX(soo->thread_ctx);
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &auth, &auth_len) == FAILURE) {
-			return;
-		}
-
-		/* XXX check to see if we actually support the type rather than just the length */
-		if (auth_len < 1) {
-			soo_handle_error(OAUTH_ERR_INTERNAL_ERROR,"invalid auth type",NULL TSRMLS_CC);
-			RETURN_NULL();
-		}
-
-		MAKE_STD_ZVAL(zauth);
-		ZVAL_STRING(zauth,auth,1);
-		if (soo_set_property(soo, zauth, OAUTH_ATTR_AUTHMETHOD) == SUCCESS) {
-			RETURN_TRUE;
-		}
-		RETURN_FALSE;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &auth, &auth_len) == FAILURE) {
+		return;
 	}
+
+	/* XXX check to see if we actually support the type rather than just the length */
+	if (auth_len < 1) {
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid auth type", NULL TSRMLS_CC);
+		RETURN_NULL();
+	}
+
+	MAKE_STD_ZVAL(zauth);
+	ZVAL_STRING(zauth, auth, 1);
+	if (soo_set_property(soo, zauth, OAUTH_ATTR_AUTHMETHOD) == SUCCESS) {
+		RETURN_TRUE;
+	}
+
+	RETURN_FALSE;
 }
 
 /* }}} */
@@ -1026,26 +1017,24 @@ SO_METHOD(setNonce)
 	zval *zonce;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
-	{
-		TSRMLS_FETCH_FROM_CTX(soo->thread_ctx);
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &nonce, &nonce_len) == FAILURE) {
-			return;
-		}
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &nonce, &nonce_len) == FAILURE) {
+		return;
+	}
 
-		if (nonce_len < 1) {
-			soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid nonce", NULL TSRMLS_CC);
-			RETURN_NULL();
-		}
+	if (nonce_len < 1) {
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid nonce", NULL TSRMLS_CC);
+		RETURN_NULL();
+	}
 
-		MAKE_STD_ZVAL(zonce);
-		ZVAL_STRING(zonce, nonce, 1);
+	MAKE_STD_ZVAL(zonce);
+	ZVAL_STRING(zonce, nonce, 1);
 
-		if (soo_set_property(soo, zonce, OAUTH_ATTR_OAUTH_USER_NONCE)) {
-			RETURN_TRUE;
-		}
-		RETURN_FALSE;
-    }
+	if (soo_set_property(soo, zonce, OAUTH_ATTR_OAUTH_USER_NONCE)) {
+		RETURN_TRUE;
+	}
+
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -1059,24 +1048,21 @@ SO_METHOD(setToken)
 	zval *t,*ts;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
-	{
-		TSRMLS_FETCH_FROM_CTX(soo->thread_ctx);
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &token, &token_len, &token_secret, &token_secret_len) == FAILURE) {
-			return;
-		}
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &token, &token_len, &token_secret, &token_secret_len) == FAILURE) {
+		return;
+	}
 
-		MAKE_STD_ZVAL(t);
-		ZVAL_STRING(t, token, 1);
-		soo_set_property(soo, t, OAUTH_ATTR_TOKEN);
+	MAKE_STD_ZVAL(t);
+	ZVAL_STRING(t, token, 1);
+	soo_set_property(soo, t, OAUTH_ATTR_TOKEN);
 
-		if (token_secret_len > 1) {
-			MAKE_STD_ZVAL(ts);
-			ZVAL_STRING(ts, token_secret, 1);
-			soo_set_property(soo, ts, OAUTH_ATTR_TOKEN_SECRET);
-		}
-		RETURN_TRUE;
-    }
+	if (token_secret_len > 1) {
+		MAKE_STD_ZVAL(ts);
+		ZVAL_STRING(ts, token_secret, 1);
+		soo_set_property(soo, ts, OAUTH_ATTR_TOKEN_SECRET);
+	}
+	RETURN_TRUE;
 }
 
 /* }}} */
@@ -1096,81 +1082,73 @@ SO_METHOD(fetch)
 	CURLcode retcode;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
-	{
-		TSRMLS_FETCH_FROM_CTX(soo->thread_ctx);
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|z", &fetchurl, &fetchurl_len, &request_args) == FAILURE) {
-            return;
-        }
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|z", &fetchurl, &fetchurl_len, &request_args) == FAILURE) {
+		return;
+	}
 
-		if (fetchurl_len < 1) {
-			soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url length", NULL TSRMLS_CC);
-			RETURN_NULL();
-			return;
-		}
+	if (fetchurl_len < 1) {
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url length", NULL TSRMLS_CC);
+		RETURN_NULL();
+	}
 
-		ALLOC_HASHTABLE(args);
-		zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
+	ALLOC_HASHTABLE(args);
+	zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
 
-		make_standard_query(args, soo TSRMLS_CC);
-		if (request_args) {
-			rargs = HASH_OF(request_args);
-		}
+	make_standard_query(args, soo TSRMLS_CC);
+	if (request_args) {
+		rargs = HASH_OF(request_args);
+	}
 
-		token = soo_get_property(soo, OAUTH_ATTR_TOKEN TSRMLS_CC);
-		if (token) {
-			add_arg_for_req(args, OAUTH_PARAM_TOKEN, Z_STRVAL_PP(token) TSRMLS_CC);
-		}
+	token = soo_get_property(soo, OAUTH_ATTR_TOKEN TSRMLS_CC);
+	if (token) {
+		add_arg_for_req(args, OAUTH_PARAM_TOKEN, Z_STRVAL_PP(token) TSRMLS_CC);
+	}
 
-        sbs = generate_sig_base(soo, fetchurl, args, rargs TSRMLS_CC);
-		if (!sbs) {
-			FREE_ARGS_HASH(args);
-			soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url, unable to generate signature base string", NULL TSRMLS_CC);
-			RETURN_FALSE;
-        }
-
-		cs = soo_get_property(soo, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
-		SEPARATE_ZVAL(cs);
-		token_secret = soo_get_property(soo, OAUTH_ATTR_TOKEN_SECRET TSRMLS_CC);
-		if (token_secret && Z_STRLEN_PP(token_secret) > 0) {
-			ts = *token_secret;
-		}
-
-		sig = soo_hmac_sha1(sbs, *cs, ts TSRMLS_CC);
-		efree(sbs);
-		if (!sig) {
-			FREE_ARGS_HASH(args);
-			RETURN_NULL();
-			return;
-		}
-
-        SO_ADD_SIG(args, sig);
-		if (rargs) {
-			for (zend_hash_internal_pointer_reset(rargs);
-				zend_hash_get_current_key_ex(rargs, &req_cur_key, &req_cur_key_len, &req_num_key, 0, NULL) != HASH_KEY_NON_EXISTANT;
-				zend_hash_move_forward(rargs)) {
-				zend_hash_get_current_data(rargs, (void **)&p_current_req_val);
-				add_arg_for_req(args, req_cur_key, Z_STRVAL_PP(p_current_req_val) TSRMLS_CC);
-			}
-		}
-		smart_str_free(&soo->lastresponse);
-		retcode = make_req(soo, fetchurl, args TSRMLS_CC);
-
-		MAKE_STD_ZVAL(zret);
-		ZVAL_STRING(zret, soo->lastresponse.c ? soo->lastresponse.c : "", 1);
-		so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
+	sbs = generate_sig_base(soo, fetchurl, args, rargs TSRMLS_CC);
+	if (!sbs) {
 		FREE_ARGS_HASH(args);
-		zval_ptr_dtor(&zret);
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url, unable to generate signature base string", NULL TSRMLS_CC);
+		RETURN_FALSE;
+	}
 
-		if (retcode == FAILURE || soo->lastresponse.c == NULL) {
-			RETURN_NULL();
-		} else {
-			if (retcode == CURLE_OK && soo->lastresponse.c) {
-				RETURN_TRUE;
-			}
-			RETURN_FALSE;
+	cs = soo_get_property(soo, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
+	SEPARATE_ZVAL(cs);
+	token_secret = soo_get_property(soo, OAUTH_ATTR_TOKEN_SECRET TSRMLS_CC);
+	if (token_secret && Z_STRLEN_PP(token_secret) > 0) {
+		ts = *token_secret;
+	}
+
+	sig = soo_hmac_sha1(sbs, *cs, ts TSRMLS_CC);
+	efree(sbs);
+	if (!sig) {
+		FREE_ARGS_HASH(args);
+		RETURN_NULL();
+	}
+
+	SO_ADD_SIG(args, sig);
+	if (rargs) {
+		for (zend_hash_internal_pointer_reset(rargs);
+			zend_hash_get_current_key_ex(rargs, &req_cur_key, &req_cur_key_len, &req_num_key, 0, NULL) != HASH_KEY_NON_EXISTANT;
+			zend_hash_move_forward(rargs)) {
+			zend_hash_get_current_data(rargs, (void **)&p_current_req_val);
+			add_arg_for_req(args, req_cur_key, Z_STRVAL_PP(p_current_req_val) TSRMLS_CC);
 		}
 	}
+	smart_str_free(&soo->lastresponse);
+	retcode = make_req(soo, fetchurl, args TSRMLS_CC);
+
+	MAKE_STD_ZVAL(zret);
+	ZVAL_STRING(zret, soo->lastresponse.c ? soo->lastresponse.c : "", 1);
+	so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
+	FREE_ARGS_HASH(args);
+	zval_ptr_dtor(&zret);
+
+	if (retcode == FAILURE || soo->lastresponse.c == NULL) {
+		RETURN_NULL();
+	}
+
+	RETURN_BOOL(retcode == CURLE_OK && soo->lastresponse.c);
 }
 /* }}} */
 
@@ -1187,71 +1165,65 @@ SO_METHOD(getAccessToken)
 	CURLcode retcode;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
-	{
-		TSRMLS_FETCH_FROM_CTX(soo->thread_ctx);
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|s", &aturi, &aturi_len, &ash, &ash_len) == FAILURE) {
-			return;
-        }
-
-		if (aturi_len < 1) {
-			soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid access token url length", NULL TSRMLS_CC);
-			RETURN_FALSE;
-		}
-
-		ALLOC_HASHTABLE(args);
-		zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
-		make_standard_query(args, soo TSRMLS_CC);
-
-		if (ash_len > 0) {
-			add_arg_for_req(args, OAUTH_PARAM_ASH, ash TSRMLS_CC);
-		}
-
-		token = soo_get_property(soo, OAUTH_ATTR_TOKEN TSRMLS_CC);
-		if (token) {
-			add_arg_for_req(args, OAUTH_PARAM_TOKEN, Z_STRVAL_PP(token) TSRMLS_CC);
-		}
-
-		sbs = generate_sig_base(soo, aturi, args, NULL TSRMLS_CC);
-		if (!sbs) {
-			FREE_ARGS_HASH(args);
-			soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Unable to generate signature base string, perhaps the access token url is invalid", NULL TSRMLS_CC);
-			RETURN_FALSE;
-		}
-
-		cs = soo_get_property(soo,OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
-		SEPARATE_ZVAL(cs);
-
-		token_secret = soo_get_property(soo,OAUTH_ATTR_TOKEN_SECRET TSRMLS_CC);
-		if (token_secret && Z_STRLEN_PP(token_secret) > 0) {
-			ts = *token_secret;
-		}
-
-		sig = soo_hmac_sha1(sbs, *cs, ts TSRMLS_CC);
-		efree(sbs);
-		if (!sig) {
-			FREE_ARGS_HASH(args);
-			RETURN_NULL();
-		}
-
-		SO_ADD_SIG(args, sig);
-
-		smart_str_free(&soo->lastresponse);
-		retcode = make_req(soo, aturi, args TSRMLS_CC);
-		FREE_ARGS_HASH(args);
-
-		if (retcode == FAILURE) {
-			RETURN_NULL();
-		} else {
-			if (retcode == CURLE_OK && soo->lastresponse.c) {
-				array_init(return_value);
-				ALLOC_ZVAL(zret);
-				ZVAL_STRING(zret, soo->lastresponse.c, 0);
-				so_set_response_args(soo->properties, zret, return_value TSRMLS_CC);
-				FREE_ZVAL(zret);
-			}
-		}
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|s", &aturi, &aturi_len, &ash, &ash_len) == FAILURE) {
+		return;
 	}
+
+	if (aturi_len < 1) {
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid access token url length", NULL TSRMLS_CC);
+		RETURN_FALSE;
+	}
+
+	ALLOC_HASHTABLE(args);
+	zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
+	make_standard_query(args, soo TSRMLS_CC);
+
+	if (ash_len > 0) {
+		add_arg_for_req(args, OAUTH_PARAM_ASH, ash TSRMLS_CC);
+	}
+
+	token = soo_get_property(soo, OAUTH_ATTR_TOKEN TSRMLS_CC);
+	if (token) {
+		add_arg_for_req(args, OAUTH_PARAM_TOKEN, Z_STRVAL_PP(token) TSRMLS_CC);
+	}
+
+	sbs = generate_sig_base(soo, aturi, args, NULL TSRMLS_CC);
+	if (!sbs) {
+		FREE_ARGS_HASH(args);
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Unable to generate signature base string, perhaps the access token url is invalid", NULL TSRMLS_CC);
+		RETURN_FALSE;
+	}
+
+	cs = soo_get_property(soo,OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
+	SEPARATE_ZVAL(cs);
+
+	token_secret = soo_get_property(soo,OAUTH_ATTR_TOKEN_SECRET TSRMLS_CC);
+	if (token_secret && Z_STRLEN_PP(token_secret) > 0) {
+		ts = *token_secret;
+	}
+
+	sig = soo_hmac_sha1(sbs, *cs, ts TSRMLS_CC);
+	efree(sbs);
+	if (!sig) {
+		FREE_ARGS_HASH(args);
+		RETURN_NULL();
+	}
+
+	SO_ADD_SIG(args, sig);
+
+	smart_str_free(&soo->lastresponse);
+	retcode = make_req(soo, aturi, args TSRMLS_CC);
+	FREE_ARGS_HASH(args);
+
+	if (retcode == CURLE_OK && soo->lastresponse.c) {
+		array_init(return_value);
+		ALLOC_ZVAL(zret);
+		ZVAL_STRING(zret, soo->lastresponse.c, 0);
+		so_set_response_args(soo->properties, zret, return_value TSRMLS_CC);
+		FREE_ZVAL(zret);
+	}
+	RETURN_NULL();
 }
 /* }}} */
 

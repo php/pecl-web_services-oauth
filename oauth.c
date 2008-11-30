@@ -1217,6 +1217,7 @@ SO_METHOD(getAccessToken)
 		MAKE_STD_ZVAL(zret);
 		ZVAL_STRINGL(zret, soo->lastresponse.c, soo->lastresponse.len, 1);
 		so_set_response_args(soo->properties, zret, return_value TSRMLS_CC);
+		return;
 	}
 	RETURN_NULL();
 }

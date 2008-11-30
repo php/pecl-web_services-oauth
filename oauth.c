@@ -47,9 +47,9 @@
 #define CLEANUP_CURL_AND_FORM(f,h)	\
 	curl_easy_cleanup(h);			\
 	curl_formfree(f);
-#define FREE_ARGS_HASH(a) 		\
-	zend_hash_destroy(args);	\
-	FREE_HASHTABLE(args);
+#define FREE_ARGS_HASH(a) 	\
+	zend_hash_destroy(a);	\
+	FREE_HASHTABLE(a);
 
 /* this and code that uses it is from ext/curl/interface.c */
 #define CAAL(s, v) add_assoc_long_ex(info, s, sizeof(s), (long) v);
@@ -85,7 +85,7 @@ static inline php_so_object *fetch_so_object(zval *obj TSRMLS_DC)
 
 static int so_set_response_args(HashTable *hasht, zval *data, zval *retarray TSRMLS_DC)
 {
-	if (Z_STRVAL_P(data) && *Z_STRVAL_P(data)) {
+	if (data && Z_TYPE_P(data) == IS_STRING) {
 		ulong h = zend_hash_func(OAUTH_RAW_LAST_RES, sizeof(OAUTH_RAW_LAST_RES));
 
 #if jawed_0
@@ -106,7 +106,6 @@ static int so_set_response_args(HashTable *hasht, zval *data, zval *retarray TSR
 			res = estrndup(Z_STRVAL_P(data), Z_STRLEN_P(data));
 			sapi_module.treat_data(PARSE_STRING, res, retarray TSRMLS_CC);
 		}
-		Z_ADDREF_P(data);
 
 		return zend_hash_quick_update(hasht, OAUTH_RAW_LAST_RES, sizeof(OAUTH_RAW_LAST_RES), h, &data, sizeof(zval *), NULL);
 	}
@@ -280,9 +279,10 @@ static int soo_set_nonce(php_so_object *soo TSRMLS_DC)
 	char *uniqid;
 	int sec, usec;
 	struct timeval tv;
-
 	ulong h = zend_hash_func(OAUTH_ATTR_OAUTH_NONCE, sizeof(OAUTH_ATTR_OAUTH_NONCE));
+
 	if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_OAUTH_USER_NONCE, sizeof(OAUTH_ATTR_OAUTH_NONCE), h, (void *)&data_ptr) == SUCCESS) {
+		Z_ADDREF_P(data_ptr);
 		return soo_set_property(soo, data_ptr, OAUTH_ATTR_OAUTH_NONCE);
 	}
 
@@ -480,13 +480,13 @@ static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_ar
 							smart_str_appends(&squery, arg_key);
 							smart_str_appendc(&squery, '=');
 							smart_str_appends(&squery, param_value);
-							smart_str_0(&squery);
 
 							efree(arg_key);
 							efree(param_value);
 							prepend_amp = TRUE;
 						}
 					}
+					smart_str_0(&squery);
 				} else {
 					soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Was not able to get oauth parameters!", NULL TSRMLS_CC);
 				}
@@ -604,7 +604,7 @@ SO_METHOD(__construct)
 	}
 
 	MAKE_STD_ZVAL(zam);
-	ZVAL_STRING(zam,auth_method, 1);
+	ZVAL_STRING(zam, auth_method, 1);
 	if (soo_set_property(soo, zam, OAUTH_ATTR_AUTHMETHOD) != SUCCESS) {
 		RETURN_NULL();
 	}
@@ -625,6 +625,7 @@ static size_t soo_read_response(char *ptr, size_t size, size_t nmemb, void *ctx)
 
 	relsize = size * nmemb;
 	smart_str_appendl(&soo->lastresponse, ptr, relsize);
+
 	return relsize;
 }
 
@@ -652,17 +653,17 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 {
 	CURLcode cres, ctres, crres;
 	CURL *curl;
+	struct curl_slist *auth_header = NULL;
 	struct curl_httppost *formdata = NULL;
 	struct curl_httppost *lastptr = NULL;
 	long l_code, response_code;
 	double d_code;
-	zval *info, *zret;
+	zval *info, *zret, **p_cur, **p_kcur;
 	zend_bool prepend_amp = FALSE, prepend_comma = FALSE;
-	char *s_code, *cur_key, *content_type = NULL, *bufz = NULL, *auth_type = NULL, *param_name = NULL, *param_val = NULL;
+	char *s_code, *cur_key, *content_type = NULL, *bufz = NULL;
+	char *auth_type = NULL, *param_name = NULL, *param_val = NULL;
 	uint cur_key_len;
 	ulong num_key;
-	struct curl_slist *auth_header = NULL;
-	zval **p_cur, **p_kcur;
 	smart_str surl = {0}, sheader = {0};
 
 	auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
@@ -675,10 +676,12 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 			zend_hash_get_current_key_ex(ht, &cur_key, &cur_key_len, &num_key, 0, NULL);
 			curl_formadd(&formdata, &lastptr, CURLFORM_COPYNAME, cur_key, CURLFORM_COPYCONTENTS, Z_STRVAL_PP(p_cur), CURLFORM_END);
 		}
+
 		curl_easy_setopt(curl, CURLOPT_HTTPPOST, formdata);
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 	} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_URI)) {
 		smart_str_appends(&surl, url);
+
 		if (strstr(url, "?") == NULL) {
 			smart_str_appendc(&surl, '?');
 		} else {
@@ -688,8 +691,9 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
         for (zend_hash_internal_pointer_reset(ht);
         	zend_hash_get_current_data(ht, (void **)&p_kcur) == SUCCESS;
         	zend_hash_move_forward(ht)) {
-			if(prepend_amp) {
-				smart_str_appendc(&surl,'&');
+
+			if (prepend_amp) {
+				smart_str_appendc(&surl, '&');
 			}
 			zend_hash_get_current_key_ex(ht, &cur_key, &cur_key_len, &num_key, 0, NULL);
 			param_name = oauth_url_encode(cur_key);
@@ -703,6 +707,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 			efree(param_val);
 			prepend_amp = TRUE;
 		}
+
 		smart_str_0(&surl);
 		curl_easy_setopt(curl, CURLOPT_URL, surl.c);
 		smart_str_free(&surl);
@@ -775,16 +780,16 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
                 CAAS("content_type", content_type);
             }
             if (curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &s_code) == CURLE_OK) {
-                CAAS("url",s_code);
+                CAAS("url", s_code);
             }
             if (curl_easy_getinfo(curl, CURLINFO_HEADER_SIZE, &l_code) == CURLE_OK) {
-                CAAL("header_size",l_code);
+                CAAL("header_size", l_code);
             }
             if (curl_easy_getinfo(curl, CURLINFO_REQUEST_SIZE, &l_code) == CURLE_OK) {
-                CAAL("request_size",l_code);
+                CAAL("request_size", l_code);
             }
             if (curl_easy_getinfo(curl, CURLINFO_FILETIME, &l_code) == CURLE_OK) {
-                CAAL("filetime",l_code);
+                CAAL("filetime", l_code);
             }
             if (curl_easy_getinfo(curl, CURLINFO_SSL_VERIFYRESULT, &l_code) == CURLE_OK) {
                 CAAL("ssl_verify_result", l_code);
@@ -829,7 +834,6 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
                 CAAD("redirect_time", d_code);
             }
             so_set_response_info(soo->properties, info);
-            CLEANUP_CURL_AND_FORM(formdata, curl);
 
 			/* XXX maybe we should instead check for specific codes, like 40X */
 			if (response_code != 200) {
@@ -839,12 +843,11 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 				ZVAL_STRING(zret, soo->lastresponse.c, 1);
 				so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
 				soo_handle_error(response_code, bufz, soo->lastresponse.c TSRMLS_CC);
-				/* soo_handle_error(response_code,bufz,NULL TSRMLS_CC); */
 				efree(bufz);
-				zval_ptr_dtor(&zret);
 			}
         }
     }
+    CLEANUP_CURL_AND_FORM(formdata, curl);
     return cres;
 }
 
@@ -877,12 +880,11 @@ static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC)
 	now = time(NULL);
 	/* XXX allow caller to set timestamp, if none set, then default to "now" */
 	spprintf(&tb, 0, "%d", (int)now);
-	add_arg_for_req(ht, OAUTH_PARAM_CONSUMER_KEY, Z_STRVAL_PP(soo_get_property(soo,OAUTH_ATTR_CONSUMER_KEY TSRMLS_CC)) TSRMLS_CC);
-	add_arg_for_req(ht, OAUTH_PARAM_SIGNATURE_METHOD, Z_STRVAL_PP(soo_get_property(soo,OAUTH_ATTR_SIGMETHOD TSRMLS_CC)) TSRMLS_CC);
-	add_arg_for_req(ht, OAUTH_PARAM_NONCE, Z_STRVAL_PP(soo_get_property(soo,OAUTH_ATTR_OAUTH_NONCE TSRMLS_CC)) TSRMLS_CC);
+	add_arg_for_req(ht, OAUTH_PARAM_CONSUMER_KEY, Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_CONSUMER_KEY TSRMLS_CC)) TSRMLS_CC);
+	add_arg_for_req(ht, OAUTH_PARAM_SIGNATURE_METHOD, Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_SIGMETHOD TSRMLS_CC)) TSRMLS_CC);
+	add_arg_for_req(ht, OAUTH_PARAM_NONCE, Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_OAUTH_NONCE TSRMLS_CC)) TSRMLS_CC);
 	add_arg_for_req(ht, OAUTH_PARAM_TIMESTAMP, tb TSRMLS_CC);
-	add_arg_for_req(ht, OAUTH_PARAM_VERSION, Z_STRVAL_PP(soo_get_property(soo,OAUTH_ATTR_OAUTH_VERSION TSRMLS_CC)) TSRMLS_CC);
-
+	add_arg_for_req(ht, OAUTH_PARAM_VERSION, Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_OAUTH_VERSION TSRMLS_CC)) TSRMLS_CC);
 	efree(tb);
 }
 
@@ -917,8 +919,8 @@ SO_METHOD(getRequestToken)
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid url, unable to generate signature base string", NULL TSRMLS_CC);
 		RETURN_FALSE;
 	}
+
 	cs = soo_get_property(soo, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
-	SEPARATE_ZVAL(cs);
 	sig = soo_hmac_sha1(sbs, *cs, NULL TSRMLS_CC);
 	efree(sbs);
 
@@ -929,19 +931,16 @@ SO_METHOD(getRequestToken)
 
 	SO_ADD_SIG(args, sig);
 
-	smart_str_free(&soo->lastresponse);
 	retcode = make_req(soo, url, args TSRMLS_CC);
 	FREE_ARGS_HASH(args);
 
 	if (retcode == CURLE_OK && soo->lastresponse.c) {
 		array_init(return_value);
 		MAKE_STD_ZVAL(zret);
-		ZVAL_STRING(zret, soo->lastresponse.c, 1);
+		ZVAL_STRINGL(zret, soo->lastresponse.c, soo->lastresponse.len, 1);
 		so_set_response_args(soo->properties, zret, return_value TSRMLS_CC);
-		zval_ptr_dtor(&zret);
 		return;
 	}
-
 	RETURN_NULL();
 }
 /* }}} */
@@ -1137,10 +1136,10 @@ SO_METHOD(fetch)
 	retcode = make_req(soo, fetchurl, args TSRMLS_CC);
 
 	MAKE_STD_ZVAL(zret);
-	ZVAL_STRING(zret, soo->lastresponse.c, 1);
+	ZVAL_STRINGL(zret, soo->lastresponse.c, soo->lastresponse.len, 1);
 	so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
+
 	FREE_ARGS_HASH(args);
-	zval_ptr_dtor(&zret);
 
 	if (retcode == FAILURE || soo->lastresponse.c == NULL) {
 		RETURN_NULL();
@@ -1155,7 +1154,7 @@ SO_METHOD(fetch)
 SO_METHOD(getAccessToken)
 {
 	php_so_object *soo;
-	int aturi_len = 0,ash_len = 0;
+	int aturi_len = 0, ash_len = 0;
 	char *aturi, *ash, *sbs, *sig = NULL;
 	zval **cs = NULL, **token_secret, *ts = NULL, **token = NULL;
 	zval *zret = NULL;
@@ -1193,10 +1192,10 @@ SO_METHOD(getAccessToken)
 		RETURN_FALSE;
 	}
 
-	cs = soo_get_property(soo,OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
+	cs = soo_get_property(soo, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
 	SEPARATE_ZVAL(cs);
 
-	token_secret = soo_get_property(soo,OAUTH_ATTR_TOKEN_SECRET TSRMLS_CC);
+	token_secret = soo_get_property(soo, OAUTH_ATTR_TOKEN_SECRET TSRMLS_CC);
 	if (token_secret && Z_STRLEN_PP(token_secret) > 0) {
 		ts = *token_secret;
 	}
@@ -1216,9 +1215,8 @@ SO_METHOD(getAccessToken)
 	if (retcode == CURLE_OK && soo->lastresponse.c) {
 		array_init(return_value);
 		MAKE_STD_ZVAL(zret);
-		ZVAL_STRING(zret, soo->lastresponse.c, 1);
+		ZVAL_STRINGL(zret, soo->lastresponse.c, soo->lastresponse.len, 1);
 		so_set_response_args(soo->properties, zret, return_value TSRMLS_CC);
-		zval_ptr_dtor(&zret);
 	}
 	RETURN_NULL();
 }
@@ -1263,7 +1261,7 @@ SO_METHOD(getLastResponse)
     soo = fetch_so_object(getThis() TSRMLS_CC);
 
 	if (soo->lastresponse.c) {
-		RETURN_STRING(soo->lastresponse.c, 1);
+		RETURN_STRINGL(soo->lastresponse.c, soo->lastresponse.len, 1);
 	}
 #if jawed_0
     void *p_data_ptr;

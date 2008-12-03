@@ -2,7 +2,9 @@
   +----------------------------------------------------------------------+
   | See LICENSE file for further copyright information                   |
   +----------------------------------------------------------------------+
-  | Author: John Jawed <jawed@php.net>                                   |
+  | Authors: John Jawed <jawed@php.net>                                  |
+  |          Felipe Pena <felipe@php.net>                                |
+  |          Rasmus Lerdorf <rasmus@php.net>                             |
   +----------------------------------------------------------------------+
 */
 

@@ -75,17 +75,19 @@ static zend_object_handlers so_object_handlers;
 ZEND_GET_MODULE(oauth);
 #endif
 
-static PHP_GINIT_FUNCTION(oauth)
+static PHP_GINIT_FUNCTION(oauth) /* {{{ */
 {
 	oauth_globals->soo_exception_ce = NULL;
 }
+/* }}} */
 
-static inline php_so_object *fetch_so_object(zval *obj TSRMLS_DC)
+static inline php_so_object *fetch_so_object(zval *obj TSRMLS_DC) /* {{{ */
 {
 	return (php_so_object *)zend_object_store_get_object(obj TSRMLS_CC);
 }
+/* }}} */
 
-static int so_set_response_args(HashTable *hasht, zval *data, zval *retarray TSRMLS_DC)
+static int so_set_response_args(HashTable *hasht, zval *data, zval *retarray TSRMLS_DC) /* {{{ */
 {
 	if (data && Z_TYPE_P(data) == IS_STRING) {
 		ulong h = zend_hash_func(OAUTH_RAW_LAST_RES, sizeof(OAUTH_RAW_LAST_RES));
@@ -113,8 +115,9 @@ static int so_set_response_args(HashTable *hasht, zval *data, zval *retarray TSR
 	}
 	return FAILURE;
 }
+/* }}} */
 
-static zval *so_set_response_info(HashTable *hasht, zval *info)
+static zval *so_set_response_info(HashTable *hasht, zval *info) /* {{{ */
 {
 	ulong h = zend_hash_func(OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO));
 
@@ -123,15 +126,14 @@ static zval *so_set_response_info(HashTable *hasht, zval *info)
 	}
 	return info;
 }
+/* }}} */
 
-static void so_object_free_storage(void *obj TSRMLS_DC)
+static void so_object_free_storage(void *obj TSRMLS_DC) /* {{{ */
 {
 	php_so_object *soo;
 
 	soo = (php_so_object *) obj;
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION == 1 && PHP_RELEASE_VERSION > 2) || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 1) || (PHP_MAJOR_VERSION > 5)
 	zend_object_std_dtor(&soo->zo TSRMLS_CC);
-#else
 	if (soo->zo.guards) {
 		zend_hash_destroy(soo->zo.guards);
 		FREE_HASHTABLE(soo->zo.guards);
@@ -140,7 +142,6 @@ static void so_object_free_storage(void *obj TSRMLS_DC)
 		zend_hash_destroy(soo->zo.properties);
 		FREE_HASHTABLE(soo->zo.properties);
 	}
-#endif
 	if (soo->properties) {
 		zend_hash_destroy(soo->properties);
 		FREE_HASHTABLE(soo->properties);
@@ -150,53 +151,45 @@ static void so_object_free_storage(void *obj TSRMLS_DC)
 	}
 	efree(obj);
 }
+/* }}} */
 
-static void so_object_dtor(void *object, zend_object_handle handle TSRMLS_DC)
-{
-	php_so_object *soo;
-
-	soo = (php_so_object *) object;
-	if (soo->tmp) {
-		zval_ptr_dtor(&soo->tmp);
-		soo->tmp = NULL;
-	}
-}
-
-static zend_object_value php_so_register_object(php_so_object *soo TSRMLS_DC)
+static zend_object_value php_so_register_object(php_so_object *soo TSRMLS_DC) /* {{{ */
 {
 	zend_object_value rv;
 
-	rv.handle = zend_objects_store_put(soo, so_object_dtor, (zend_objects_free_object_storage_t) so_object_free_storage, NULL TSRMLS_CC);
+	rv.handle = zend_objects_store_put(soo, (zend_objects_store_dtor_t)zend_objects_destroy_object, so_object_free_storage, NULL TSRMLS_CC);
 	rv.handlers = (zend_object_handlers *) &so_object_handlers;
 	return rv;
 }
+/* }}} */
 
-static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC)
+static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 {
 	php_so_object *nos;
 
 	nos = ecalloc(1, sizeof(php_so_object));
-#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION == 1 && PHP_RELEASE_VERSION > 2) || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 1) || (PHP_MAJOR_VERSION > 5)
+
 	zend_object_std_init(&nos->zo, ce TSRMLS_CC);
-#else
+
 	ALLOC_HASHTABLE(nos->zo.properties);
 	zend_hash_init(nos->zo.properties, 0, NULL, ZVAL_PTR_DTOR, 0);
 
 	nos->zo.ce = ce;
 	nos->zo.guards = NULL;
-#endif
 	return nos;
 }
+/* }}} */
 
-ZEND_API zend_object_value new_so_object(zend_class_entry *ce TSRMLS_DC)
+ZEND_API zend_object_value new_so_object(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 {
 	php_so_object *soo;
 
 	soo = php_so_object_new(ce TSRMLS_CC);
 	return php_so_register_object(soo TSRMLS_CC);
 }
+/* }}} */
 
-void soo_handle_error(long errorCode, char *msg, char *response TSRMLS_DC)
+void soo_handle_error(long errorCode, char *msg, char *response TSRMLS_DC) /* {{{ */
 {
 	zval *ex;
 	zend_class_entry *dex = zend_exception_get_default(TSRMLS_C), *soox = OAUTH(soo_exception_ce);
@@ -216,20 +209,23 @@ void soo_handle_error(long errorCode, char *msg, char *response TSRMLS_DC)
 	zend_update_property_string(dex, ex, "message", sizeof("message")-1, msg TSRMLS_CC);
 	zend_throw_exception_object(ex TSRMLS_CC);
 }
+/* }}} */
 
-static char *soo_hmac_sha1(char *message, zval *cs, zval *ts TSRMLS_DC)
+static char *soo_hmac_sha1(char *message, zval *cs, zval *ts TSRMLS_DC) /* {{{ */
 {
 	zval *args[4],*retval,*func;
 	char *tret;
 	int ret,retlen;
 	unsigned char *result;
 
-	MAKE_STD_ZVAL(retval);
 	MAKE_STD_ZVAL(func);
-	MAKE_STD_ZVAL(args[0]);
-	MAKE_STD_ZVAL(args[1]);
-	MAKE_STD_ZVAL(args[2]);
-	MAKE_STD_ZVAL(args[3]);
+	ZVAL_STRING(func, "hash_hmac", 0);
+
+	if (!zend_is_callable(func, 0, NULL OAUTH_IS_CALLABLE_CC)) {
+		FREE_ZVAL(func);
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "HMAC signature generation failed, is ext/hash installed?", NULL TSRMLS_CC);
+		return NULL;
+	}
 
 	if (ts && Z_STRLEN_P(ts) > 0) {
 		spprintf(&tret, 0, "%s&%s", Z_STRVAL_P(cs), Z_STRVAL_P(ts));
@@ -237,23 +233,22 @@ static char *soo_hmac_sha1(char *message, zval *cs, zval *ts TSRMLS_DC)
 		spprintf(&tret, 0, "%s&", Z_STRVAL_P(cs));
 	}
 
-	ZVAL_STRING(func, "hash_hmac", 0);
+	MAKE_STD_ZVAL(retval);
+	MAKE_STD_ZVAL(args[0]);
+	MAKE_STD_ZVAL(args[1]);
+	MAKE_STD_ZVAL(args[2]);
+	MAKE_STD_ZVAL(args[3]);
+
 	ZVAL_STRING(args[0], "sha1", 0);
 	ZVAL_STRING(args[1], message, 0);
 	ZVAL_STRING(args[2], tret, 0);
 	ZVAL_BOOL(args[3], 1);
 
-	if (!zend_is_callable(func, 0, NULL OAUTH_IS_CALLABLE_CC)) {
-		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "HMAC signature generation failed, is ext/hash installed?", NULL TSRMLS_CC);
-		efree(tret);
-		return NULL;
-	}
-
 	ret = call_user_function(EG(function_table), NULL, func, retval, 4, args TSRMLS_CC);
 	result = php_base64_encode((unsigned char *)Z_STRVAL_P(retval), Z_STRLEN_P(retval), &retlen);
 
 	efree(tret);
-	zval_ptr_dtor(&retval);
+    zval_ptr_dtor(&retval);
 	FREE_ZVAL(func);
 	FREE_ZVAL(args[0]);
 	FREE_ZVAL(args[1]);
@@ -262,9 +257,10 @@ static char *soo_hmac_sha1(char *message, zval *cs, zval *ts TSRMLS_DC)
 
 	return (char *)result;
 }
+/* }}} */
 
 /* XXX for auth type, need to make sure that the auth type is actually supported before setting */
-static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name)
+static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name) /* {{{ */
 {
 	size_t prop_len = 0;
 	ulong h;
@@ -274,8 +270,9 @@ static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_na
 
 	return zend_hash_quick_update(soo->properties, prop_name, prop_len+1, h, (void *)&prop, sizeof(zval *), NULL);
 }
+/* }}} */
 
-static int soo_set_nonce(php_so_object *soo TSRMLS_DC)
+static int soo_set_nonce(php_so_object *soo TSRMLS_DC) /* {{{ */
 {
 	zval *data_ptr, *zonc;
 	char *uniqid;
@@ -301,8 +298,9 @@ static int soo_set_nonce(php_so_object *soo TSRMLS_DC)
 
 	return soo_set_property(soo, zonc, OAUTH_ATTR_OAUTH_NONCE);
 }
+/* }}} */
 
-static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC)
+static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC) /* {{{ */
 {
 	size_t prop_len = 0;
 	void *data_ptr;
@@ -320,8 +318,9 @@ static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS
 	}
 	return NULL;
 }
+/* }}} */
 
-static char *oauth_url_encode(char *url)
+static char *oauth_url_encode(char *url) /* {{{ */
 {
 	char *urlencoded, *ret;
 	int out_len, ret_len;
@@ -335,33 +334,14 @@ static char *oauth_url_encode(char *url)
 	}
 	return NULL;
 }
-
-#ifdef jawed_0
-static int oauth_sort_keys(HashTable *ht)
-{
-	/* zval **old_compare_func;
-	   zend_fcall_info_cache old_user_compare_fci_cache;
-
-	   old_compare_func = BG(user_compare_func_name);
-	   old_user_compare_fci_cache = BG(user_compare_fci_cache);
-	   BG(user_compare_fci_cache) = empty_fcall_info_cache;
-
-	   if(!ht) {
-	   return NULL;
-	   }
-
-	// well we know strnatcmp will always be around, right...??? ;-)
-	if (zend_hash_sort(ht, zend_qsort, array_user_key_compare, 0 TSRMLS_CC) == FAILURE) {
-	PHP_ARRAY_CMP_FUNC_RESTORE();
-	} */
-}
-#endif
+/* }}} */
 
 /*
  * This function does not currently care to respect parameter precedence, in the sense that if a common param is defined
  * in POST/GET or Authorization header, the precendence is defined by: OAuth Core 1.0 section 9.1.1
  */
-static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC)
+
+static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC) /* {{{ */
 {
 	zval *func, *exret2, *exargs2[2];
 	uint cur_key_len, post_cur_key_len;
@@ -522,99 +502,6 @@ static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_ar
 	}
 	return NULL;
 }
-
-/* {{{ proto string oauth_urlencode(string uri)
-   URI encoding according to RFC 3986, note: is not utf8 capable until the underlying phpapi is */
-PHP_FUNCTION(oauth_urlencode)
-{
-	int uri_len;
-	char *uri;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &uri, &uri_len) == FAILURE) {
-		return;
-	}
-
-	if (uri_len < 1) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid uri length (0)");
-		RETURN_NULL();
-	}
-	RETURN_STRING(oauth_url_encode(uri), 0);
-}
-/* }}} */
-
-/* only hmac-sha1 is supported at the moment, still need to lay down the ground work for supporting plaintext and others */
-
-/* {{{ proto void OAuth::__construct(string consumer_key, string consumer_secret [, string signature_method, [, string auth_type ]])
-   Instantiate a new OAuth object */
-SO_METHOD(__construct)
-{
-	HashTable *hasht;
-	char *ck, *cs, *sig_method = NULL,*auth_method = NULL;
-	zval *zck, *zcs, *zsm, *zam, *zver;
-	int ck_len, cs_len, sig_method_len = 0, auth_method_len = 0;
-	php_so_object *soo;
-
-	soo = fetch_so_object(getThis() TSRMLS_CC);
-	TSRMLS_SET_CTX(soo->thread_ctx);
-
-	if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-		RETURN_NULL();
-	}
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|ss", &ck, &ck_len, &cs, &cs_len, &sig_method, &sig_method_len, &auth_method, &auth_method_len) == FAILURE) {
-		return;
-	}
-
-	if (!sig_method_len) {
-		sig_method = OAUTH_AUTH_TYPE_AUTHORIZATION;
-	}
-
-	if (!auth_method_len) {
-		auth_method = OAUTH_SIG_METHOD_HMACSHA1;
-	}
-
-	if (soo->properties) {
-		zend_hash_clean(soo->properties);
-		hasht = soo->properties;
-	} else {
-		ALLOC_HASHTABLE(hasht);
-		zend_hash_init(hasht, 0, NULL, ZVAL_PTR_DTOR, 0);
-		soo->properties = hasht;
-	}
-
-	MAKE_STD_ZVAL(zck);
-	ZVAL_STRING(zck, ck, 1);
-	if (soo_set_property(soo, zck, OAUTH_ATTR_CONSUMER_KEY) != SUCCESS) {
-		RETURN_NULL();
-	}
-
-	if (cs_len > 0) {
-		MAKE_STD_ZVAL(zcs);
-		ZVAL_STRING(zcs, oauth_url_encode(cs), 0);
-
-		if (soo_set_property(soo, zcs, OAUTH_ATTR_CONSUMER_SECRET) != SUCCESS) {
-			RETURN_NULL();
-		}
-	}
-	MAKE_STD_ZVAL(zsm);
-	ZVAL_STRING(zsm, sig_method, 1);
-	if (soo_set_property(soo, zsm, OAUTH_ATTR_SIGMETHOD) != SUCCESS) {
-		RETURN_NULL();
-	}
-
-	MAKE_STD_ZVAL(zam);
-	ZVAL_STRING(zam, auth_method, 1);
-	if (soo_set_property(soo, zam, OAUTH_ATTR_AUTHMETHOD) != SUCCESS) {
-		RETURN_NULL();
-	}
-
-	MAKE_STD_ZVAL(zver);
-	ZVAL_STRING(zver, OAUTH_DEFAULT_VERSION, 1);
-	if (soo_set_property(soo, zver, OAUTH_ATTR_OAUTH_VERSION)) {
-		RETURN_NULL();
-	}
-	soo->lastresponse.c = NULL;
-}
 /* }}} */
 
 static size_t soo_read_response(char *ptr, size_t size, size_t nmemb, void *ctx)
@@ -648,7 +535,7 @@ static size_t read_header(char *ptr, size_t size, size_t nmemb, void *ctx)
 	return nmemb * size;
 }
 
-static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
+static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC) /* {{{ */
 {
 	CURLcode cres, ctres, crres;
 	CURL *curl;
@@ -842,7 +729,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 				cres = FAILURE;
 				spprintf(&bufz, 0, "Invalid auth/bad request (got a %d, expected 200)", (int)response_code);
 				MAKE_STD_ZVAL(zret);
-				ZVAL_STRING(zret, soo->lastresponse.c, 1);
+				ZVAL_STRING(zret, soo->lastresponse.c, 1)
 				so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
 				soo_handle_error(response_code, bufz, soo->lastresponse.c TSRMLS_CC);
 				efree(bufz);
@@ -852,8 +739,9 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 	CLEANUP_CURL_AND_FORM(formdata, curl);
 	return cres;
 }
+/* }}} */
 
-static int add_arg_for_req(HashTable *ht, const char *arg, const char *val TSRMLS_DC)
+static int add_arg_for_req(HashTable *ht, const char *arg, const char *val TSRMLS_DC) /* {{{ */
 {
 	zval *varg;
 	ulong h;
@@ -873,8 +761,9 @@ static int add_arg_for_req(HashTable *ht, const char *arg, const char *val TSRML
 
 	return SUCCESS;
 }
+/* }}} */
 
-static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC)
+static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC) /* {{{ */
 {
 	char *tb;
 	time_t now;
@@ -889,6 +778,97 @@ static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC)
 	add_arg_for_req(ht, OAUTH_PARAM_VERSION, Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_OAUTH_VERSION TSRMLS_CC)) TSRMLS_CC);
 	efree(tb);
 }
+/* }}} */
+
+/* {{{ proto string oauth_urlencode(string uri)
+   URI encoding according to RFC 3986, note: is not utf8 capable until the underlying phpapi is */
+PHP_FUNCTION(oauth_urlencode)
+{
+	int uri_len;
+	char *uri;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &uri, &uri_len) == FAILURE) {
+		return;
+	}
+
+	if (uri_len < 1) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid uri length (0)");
+		RETURN_NULL();
+	}
+	RETURN_STRING(oauth_url_encode(uri), 0);
+}
+/* }}} */
+
+/* only hmac-sha1 is supported at the moment (it is the most common implementation), still need to lay down the ground work for supporting plaintext and others */
+
+/* {{{ proto void OAuth::__construct(string consumer_key, string consumer_secret [, string signature_method, [, string auth_type ]])
+   Instantiate a new OAuth object */
+SO_METHOD(__construct)
+{
+	HashTable *hasht;
+	char *ck, *cs, *sig_method = NULL,*auth_method = NULL;
+	zval *zck, *zcs, *zsm, *zam, *zver;
+	int ck_len, cs_len, sig_method_len = 0, auth_method_len = 0;
+	php_so_object *soo;
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+	TSRMLS_SET_CTX(soo->thread_ctx);
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|ss", &ck, &ck_len, &cs, &cs_len, &sig_method, &sig_method_len, &auth_method, &auth_method_len) == FAILURE) {
+		return;
+	}
+
+	if (!sig_method_len) {
+		sig_method = OAUTH_AUTH_TYPE_AUTHORIZATION;
+	}
+
+	if (!auth_method_len) {
+		auth_method = OAUTH_SIG_METHOD_HMACSHA1;
+	}
+
+	if (soo->properties) {
+		zend_hash_clean(soo->properties);
+		hasht = soo->properties;
+	} else {
+		ALLOC_HASHTABLE(hasht);
+		zend_hash_init(hasht, 0, NULL, ZVAL_PTR_DTOR, 0);
+		soo->properties = hasht;
+	}
+
+	MAKE_STD_ZVAL(zck);
+	ZVAL_STRING(zck, ck, 1);
+	if (soo_set_property(soo, zck, OAUTH_ATTR_CONSUMER_KEY) != SUCCESS) {
+		return;
+	}
+
+	if (cs_len > 0) {
+		MAKE_STD_ZVAL(zcs);
+		ZVAL_STRING(zcs, oauth_url_encode(cs), 0);
+
+		if (soo_set_property(soo, zcs, OAUTH_ATTR_CONSUMER_SECRET) != SUCCESS) {
+			return;
+		}
+	}
+	MAKE_STD_ZVAL(zsm);
+	ZVAL_STRING(zsm, sig_method, 1);
+	if (soo_set_property(soo, zsm, OAUTH_ATTR_SIGMETHOD) != SUCCESS) {
+		return;
+	}
+
+	MAKE_STD_ZVAL(zam);
+	ZVAL_STRING(zam, auth_method, 1);
+	if (soo_set_property(soo, zam, OAUTH_ATTR_AUTHMETHOD) != SUCCESS) {
+		return;
+	}
+
+	MAKE_STD_ZVAL(zver);
+	ZVAL_STRING(zver, OAUTH_DEFAULT_VERSION, 1);
+	if (soo_set_property(soo, zver, OAUTH_ATTR_OAUTH_VERSION)) {
+		return;
+	} 
+	soo->lastresponse.c = NULL;
+}
+/* }}} */
 
 /* {{{ proto array OAuth::getRequestToken(string request_token_url)
    Get request token */
@@ -1328,7 +1308,7 @@ ZEND_END_ARG_INFO()
 OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_fetch, 0, 0, 1)
 	ZEND_ARG_INFO(0, protected_resource_url)
-	ZEND_ARG_INFO(0, extra_parameters)
+    ZEND_ARG_INFO(1, extra_parameters) /* ARRAY_INFO(1, arg, 0) */
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
@@ -1342,7 +1322,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_oauth__void, 0)
 ZEND_END_ARG_INFO()
 /* }}} */
 
-static zend_function_entry so_functions[] = {
+static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(__construct,			arginfo_oauth__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)
 	SO_ME(getRequestToken,		arginfo_oauth_getrequesttoken,	ZEND_ACC_PUBLIC)
 	SO_ME(getAccessToken,		arginfo_oauth_getaccesstoken,	ZEND_ACC_PUBLIC)
@@ -1355,10 +1335,18 @@ static zend_function_entry so_functions[] = {
 	SO_ME(fetch,				arginfo_oauth_fetch,			ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
+/* }}} */
 
+/* {{{ PHP_MINIT_FUNCTION
+ */
 PHP_MINIT_FUNCTION(oauth) 
 {
 	zend_class_entry soce, soo_ex_ce;
+	
+	if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
+		return FAILURE;
+	}
+
 	INIT_CLASS_ENTRY(soce, "OAuth", so_functions);
 	soce.create_object = new_so_object;
 	so_class_entry = zend_register_internal_class(&soce TSRMLS_CC);
@@ -1374,13 +1362,20 @@ PHP_MINIT_FUNCTION(oauth)
 	REGISTER_STRING_CONSTANT("OAUTH_AUTH_TYPE_FORM", OAUTH_AUTH_TYPE_FORM, CONST_CS | CONST_PERSISTENT);
 	return SUCCESS;
 }
+/* }}} */
 
+/* {{{ PHP_MSHUTDOWN_FUNCTION
+ */
 PHP_MSHUTDOWN_FUNCTION(oauth) 
 {
 	so_class_entry = NULL;
+	curl_global_cleanup();
 	return SUCCESS;
 }
+/* }}} */
 
+/* {{{ PHP_MINFO_FUNCTION
+ */
 PHP_MINFO_FUNCTION(oauth) 
 {
 	php_info_print_table_start();
@@ -1392,13 +1387,16 @@ PHP_MINFO_FUNCTION(oauth)
 	php_info_print_table_row(2, "version", OAUTH_EXT_VER);
 	php_info_print_table_end();
 }
+/* }}} */
 
 /* TODO expose a function for base sig string */
-zend_function_entry oauth_functions[] = {
+zend_function_entry oauth_functions[] = { /* {{{ */
 	PHP_FE(oauth_urlencode,		arginfo_oauth_urlencode)
 	{ NULL, NULL, NULL }
 };
+/* }}} */
 
+/* {{{ oauth_module_entry */
 zend_module_entry oauth_module_entry = {
 	STANDARD_MODULE_HEADER_EX, NULL,
 	NULL,
@@ -1416,7 +1414,7 @@ zend_module_entry oauth_module_entry = {
 	NULL,
 	STANDARD_MODULE_PROPERTIES_EX
 };
-
+/* }}} */
 
 /**
  * Local Variables:

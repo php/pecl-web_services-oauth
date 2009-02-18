@@ -818,6 +818,16 @@ SO_METHOD(__construct)
 		return;
 	}
 
+	if(!ck_len) {
+		php_error(E_ERROR, "the consumer key cannot be empty");
+		return;
+	}
+
+	if(!cs_len) {
+		php_error(E_ERROR, "the consumer secret cannot be empty");
+		return;
+	}
+
 	if (!sig_method_len) {
 		sig_method = OAUTH_AUTH_TYPE_AUTHORIZATION;
 	}
@@ -1095,6 +1105,7 @@ SO_METHOD(fetch)
 
 	cs = soo_get_property(soo, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
 	SEPARATE_ZVAL(cs);
+
 	token_secret = soo_get_property(soo, OAUTH_ATTR_TOKEN_SECRET TSRMLS_CC);
 	if (token_secret && Z_STRLEN_PP(token_secret) > 0) {
 		ts = *token_secret;

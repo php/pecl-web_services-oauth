@@ -495,9 +495,10 @@ static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_ar
 		}
 
 		php_url_free(urlparts);
-#ifdef PHP_OAUTH_DEBUG
-		fprintf(stderr, "Signature Base String: %s\n", bufz);
-#endif
+
+        if(Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_DEBUG TSRMLS_CC))) {
+            fprintf(stderr, "Signature Base String: %s\n", bufz);
+        }
 		return bufz;
 	}
 	return NULL;
@@ -638,9 +639,9 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
 	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, read_header);
 	curl_easy_setopt(curl, CURLOPT_WRITEHEADER, NULL);
-#ifdef PHP_OAUTH_DEBUG
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
-#endif
+    if(Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_DEBUG TSRMLS_CC))) {
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+    }
 #if defined(ZTS)
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 #endif
@@ -807,7 +808,7 @@ SO_METHOD(__construct)
 {
 	HashTable *hasht;
 	char *ck, *cs, *sig_method = NULL,*auth_method = NULL;
-	zval *zck, *zcs, *zsm, *zam, *zver;
+	zval *zck, *zcs, *zsm, *zam, *zver, *zdebug;
 	int ck_len, cs_len, sig_method_len = 0, auth_method_len = 0;
 	php_so_object *soo;
 
@@ -876,6 +877,12 @@ SO_METHOD(__construct)
 	if (soo_set_property(soo, zver, OAUTH_ATTR_OAUTH_VERSION)) {
 		return;
 	} 
+
+	MAKE_STD_ZVAL(zdebug);
+	ZVAL_BOOL(zdebug, 0);
+	if (soo_set_property(soo, zdebug, OAUTH_ATTR_DEBUG)) {
+		return;
+	} 
 	soo->lastresponse.c = NULL;
 }
 /* }}} */
@@ -934,6 +941,44 @@ SO_METHOD(getRequestToken)
 		return;
 	}
 	RETURN_NULL();
+}
+/* }}} */
+
+/* {{{ proto bool OAuth::enableDebug()
+   Enable debug mode, will verbosely output http information about requests */
+SO_METHOD(enableDebug)
+{
+	php_so_object *soo;
+    zval *debug;
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+
+    MAKE_STD_ZVAL(debug);
+	ZVAL_BOOL(debug, 1);
+	if (soo_set_property(soo, debug, OAUTH_ATTR_DEBUG)) {
+		RETURN_TRUE;
+	}
+
+	RETURN_FALSE;
+}
+/* }}} */
+
+/* {{{ proto bool OAuth::disableDebug()
+   Disable debug mode */
+SO_METHOD(disableDebug)
+{
+	php_so_object *soo;
+    zval *debug;
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+
+    MAKE_STD_ZVAL(debug);
+	ZVAL_BOOL(debug, 0);
+	if (soo_set_property(soo, debug, OAUTH_ATTR_DEBUG)) {
+		RETURN_TRUE;
+	}
+
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -1301,6 +1346,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setversion, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_noparams, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setauthtype, 0, 0, 1)
 	ZEND_ARG_INFO(0, auth_type)
 ZEND_END_ARG_INFO()
@@ -1344,6 +1393,8 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(setAuthType,			arginfo_oauth_setauthtype,		ZEND_ACC_PUBLIC)
 	SO_ME(setNonce,				arginfo_oauth_setnonce,			ZEND_ACC_PUBLIC)
 	SO_ME(fetch,				arginfo_oauth_fetch,			ZEND_ACC_PUBLIC)
+	SO_ME(enableDebug,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(disableDebug,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
 /* }}} */

@@ -54,6 +54,8 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_ATTR_OAUTH_USER_NONCE "oauth_user_nonce_zval"
 #define OAUTH_DEFAULT_VERSION "1.0"
 
+#define OAUTH_ATTR_DEBUG "oauth_debug"
+
 /* errors */
 #define OAUTH_ERR_CONTENT_TYPE "invalidcontentttype"
 #define OAUTH_ERR_BAD_REQUEST 400

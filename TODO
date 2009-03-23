@@ -22,3 +22,5 @@
 - Add docs
   * example code is great but real docs help too
 
+- Allow runtime setting of Expect header for POST requests
+  * Don't know if always disabling the Expect header is going to have a big enough impact, if it does, we'll need to allow setting it dynamically for API's which can't handle it properly

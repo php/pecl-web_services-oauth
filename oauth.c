@@ -540,7 +540,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 {
 	CURLcode cres, ctres, crres;
 	CURL *curl;
-	struct curl_slist *auth_header = NULL;
+	struct curl_slist *curl_headers = NULL;
 	struct curl_httppost *formdata = NULL;
 	struct curl_httppost *lastptr = NULL;
 	long l_code, response_code;
@@ -565,6 +565,8 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 			curl_formadd(&formdata, &lastptr, CURLFORM_COPYNAME, cur_key, CURLFORM_COPYCONTENTS, Z_STRVAL_PP((zval **)p_cur), CURLFORM_END);
 		}
 
+        /* Disable sending the 100 Expect header for POST requests */
+        curl_headers = curl_slist_append(curl_headers, "Expect:");
 		curl_easy_setopt(curl, CURLOPT_HTTPPOST, formdata);
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 	} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_URI)) {
@@ -597,6 +599,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 		}
 
 		smart_str_0(&surl);
+
 		curl_easy_setopt(curl, CURLOPT_URL, surl.c);
 	} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_AUTHORIZATION)) {
 		smart_str_appends(&sheader, "Authorization: OAuth ");
@@ -626,12 +629,12 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 		}
 		smart_str_0(&sheader);
 
-		auth_header = curl_slist_append(auth_header, sheader.c);
-		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, auth_header);
+		curl_headers = curl_slist_append(curl_headers, sheader.c);
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 
 		smart_str_free(&sheader);
 	}
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curl_headers);
 	curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, soo_read_response);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, soo);
@@ -653,8 +656,8 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 	}
 	smart_str_0(&soo->lastresponse);
 
-	if (auth_header) {
-		curl_slist_free_all(auth_header);
+	if (curl_headers) {
+		curl_slist_free_all(curl_headers);
 	}
 
 	if (CURLE_OK == cres) {

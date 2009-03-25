@@ -134,6 +134,7 @@ static void so_object_free_storage(void *obj TSRMLS_DC) /* {{{ */
 
 	soo = (php_so_object *) obj;
 	zend_object_std_dtor(&soo->zo TSRMLS_CC);
+/*
 	if (soo->zo.guards) {
 		zend_hash_destroy(soo->zo.guards);
 		FREE_HASHTABLE(soo->zo.guards);
@@ -149,6 +150,7 @@ static void so_object_free_storage(void *obj TSRMLS_DC) /* {{{ */
 	if (soo->lastresponse.c) {
 		smart_str_free(&soo->lastresponse);
 	}
+*/
 	efree(obj);
 }
 /* }}} */

@@ -29,10 +29,10 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
     <email>felipe@php.net</email>
     <active>yes</active>
   </developer>
-  <date>2008-12-03</date>
+  <date>2009-03-26</date>
   <version>
-    <release>0.99.2</release>
-    <api>0.99.2</api>
+    <release>0.99.3</release>
+    <api>0.99.3</api>
   </version>
   <stability>
     <release>beta</release>
@@ -40,13 +40,11 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-      - Fixed PECL bug #15110 #15111 (ZTS build, Segfault and memory leak, hannes/felipe) + other memleaks
-      - Fixed PECL bug #15112 (incorrect cvs branch)
-      - Updated fetch to respect additional request params, added examples and TODO
-      - Updates for 5.3
-      - Support for older libcurl versions
-      - Added arginfo
-      - Marking as beta
+      - Fixed double free with Zend object (Rasmus)
+      - Fixed memory leaks if ext/hash was not available
+      - Encode consumer secret first for the properties hash
+      - Added enableDebug and disableDebug functions (docs coming soon)
+      - More examples (Twitter, Google Portable Contacts, Netflix)
   </notes>
   <contents>
 	  <dir name="/">
@@ -80,6 +78,21 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
           <dir name="examples/netflix">
 			  <file name="config.inc.php" role="doc" />
 			  <file name="request_token.php" role="doc" />
+			  <file name="access_token.php" role="doc" />
+			  <file name="feeds.php" role="doc" />
+			  <file name="rental_history_atom.php" role="doc" />
+		  </dir>
+          <dir name="examples/twitter">
+			  <file name="README" role="doc" />
+			  <file name="constants.php" role="doc" />
+			  <file name="fetchTimeline.php" role="doc" />
+		  </dir>
+          <dir name="examples/google">
+			  <file name="README" role="doc" />
+			  <file name="config.inc.php" role="doc" />
+			  <file name="request_token.php" role="doc" />
+			  <file name="access_token.php" role="doc" />
+			  <file name="getContactInfo.php" role="doc" />
 		  </dir>
     </dir>
   </contents>
@@ -97,6 +110,28 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+      <release>
+          <date>2008-11-20</date>
+          <version>
+              <release>0.99.1</release>
+              <api>0.99.1</api>
+          </version>
+          <stability>
+              <release>alpha</release>
+              <api>alpha</api>
+          </stability>
+          <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+          <notes>
+              - Fixed PECL bug #15110 #15111 (ZTS build, Segfault and memory leak, hannes/felipe) + other memleaks
+              - Fixed PECL bug #15112 (incorrect cvs branch)
+              - Updated fetch to respect additional request params, added examples and TODO
+              - Updates for 5.3
+              - Support for older libcurl versions
+              - Added arginfo
+              - Marking as beta
+          </notes>
+
+      </release>
       <release>
           <date>2008-11-20</date>
           <version>

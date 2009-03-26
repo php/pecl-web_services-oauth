@@ -31,8 +31,8 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </developer>
   <date>2009-03-26</date>
   <version>
-    <release>0.99.3</release>
-    <api>0.99.3</api>
+    <release>0.99.4</release>
+    <api>0.99.4</api>
   </version>
   <stability>
     <release>beta</release>
@@ -40,11 +40,7 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-      - Fixed double free with Zend object (Rasmus)
-      - Fixed memory leaks if ext/hash was not available
-      - Encode consumer secret first for the properties hash
-      - Added enableDebug and disableDebug functions (docs coming soon)
-      - More examples (Twitter, Google Portable Contacts, Netflix)
+      - Added extra constants for Google Portable Contact API's
   </notes>
   <contents>
 	  <dir name="/">
@@ -111,14 +107,34 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </extsrcrelease>
   <changelog>
       <release>
-          <date>2008-11-20</date>
+          <date>2008-26-03</date>
           <version>
-              <release>0.99.1</release>
-              <api>0.99.1</api>
+              <release>0.99.3</release>
+              <api>0.99</api>
           </version>
           <stability>
-              <release>alpha</release>
-              <api>alpha</api>
+              <release>beta</release>
+              <api>beta</api>
+          </stability>
+          <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+          <notes>
+              - Fixed double free with Zend object (Rasmus)
+              - Fixed memory leaks if ext/hash was not available
+              - Encode consumer secret first for the properties hash
+              - Added enableDebug and disableDebug functions (docs coming soon)
+              - More examples (Twitter, Google Portable Contacts, Netflix)
+          </notes>
+
+      </release>
+      <release>
+          <date>2008-12-03</date>
+          <version>
+              <release>0.99.2</release>
+              <api>0.99</api>
+          </version>
+          <stability>
+              <release>beta</release>
+              <api>beta</api>
           </stability>
           <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
           <notes>
@@ -136,7 +152,7 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
           <date>2008-11-20</date>
           <version>
               <release>0.99.1</release>
-              <api>0.99.1</api>
+              <api>0.99</api>
           </version>
           <stability>
               <release>alpha</release>

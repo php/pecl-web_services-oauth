@@ -147,10 +147,10 @@ static void so_object_free_storage(void *obj TSRMLS_DC) /* {{{ */
 		zend_hash_destroy(soo->properties);
 		FREE_HASHTABLE(soo->properties);
 	}
+*/
 	if (soo->lastresponse.c) {
 		smart_str_free(&soo->lastresponse);
 	}
-*/
 	efree(obj);
 }
 /* }}} */

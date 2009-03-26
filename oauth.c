@@ -1100,7 +1100,7 @@ SO_METHOD(setToken)
 
 	if (token_secret_len > 1) {
 		MAKE_STD_ZVAL(ts);
-		ZVAL_STRING(ts, token_secret, 1);
+		ZVAL_STRING(ts, oauth_url_encode(token_secret), 0);
 		soo_set_property(soo, ts, OAUTH_ATTR_TOKEN_SECRET);
 	}
 	RETURN_TRUE;

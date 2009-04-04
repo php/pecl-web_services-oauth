@@ -745,7 +745,10 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 				efree(bufz);
 			}
 		}
-	}
+	} else if(cres == CURLE_TOO_MANY_REDIRECTS) {
+        cres = FAILURE;
+        spprintf(&bufz, 0, "Max redirections exceeded (%d allowed)", (int)OAUTH_MAX_REDIRS);
+    }
 	CLEANUP_CURL_AND_FORM(formdata, curl);
 	return cres;
 }

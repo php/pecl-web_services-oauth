@@ -558,6 +558,9 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 
 	auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
 	curl = curl_easy_init();
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, OAUTH_MAX_REDIRS);
+    curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
 
 	if (!strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
 		for (zend_hash_internal_pointer_reset(ht);
@@ -568,6 +571,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht TSRMLS_DC)
 		}
 
         /* Disable sending the 100 Expect header for POST requests */
+        /* Other notes: if there is a redirect the POST becomes a GET request, see curl_easy_setopt(3) and the CURLOPT_POSTREDIR option for more information */
         curl_headers = curl_slist_append(curl_headers, "Expect:");
 		curl_easy_setopt(curl, CURLOPT_HTTPPOST, formdata);
 		curl_easy_setopt(curl, CURLOPT_URL, url);

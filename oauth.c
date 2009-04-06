@@ -585,7 +585,6 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 	auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
 	curl = curl_easy_init();
 
-
     if(Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC))) {
 		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 		curl_easy_setopt(curl, CURLOPT_MAXREDIRS, OAUTH_MAX_REDIRS);
@@ -1576,20 +1575,20 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(__construct,			arginfo_oauth__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)
 	SO_ME(getRequestToken,		arginfo_oauth_getrequesttoken,	ZEND_ACC_PUBLIC)
 	SO_ME(getAccessToken,		arginfo_oauth_getaccesstoken,	ZEND_ACC_PUBLIC)
-	SO_ME(getLastResponse,		arginfo_oauth__void,			ZEND_ACC_PUBLIC)
-	SO_ME(getLastResponseInfo,	arginfo_oauth__void,			ZEND_ACC_PUBLIC)
+	SO_ME(getLastResponse,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(getLastResponseInfo,	arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(setToken,				arginfo_oauth_settoken,			ZEND_ACC_PUBLIC)
 	SO_ME(setVersion,			arginfo_oauth_setversion,		ZEND_ACC_PUBLIC)
 	SO_ME(setAuthType,			arginfo_oauth_setauthtype,		ZEND_ACC_PUBLIC)
 	SO_ME(setNonce,				arginfo_oauth_setnonce,			ZEND_ACC_PUBLIC)
 	SO_ME(fetch,				arginfo_oauth_fetch,			ZEND_ACC_PUBLIC)
-	SO_ME(enableDebug,			arginfo_oauth__void,			ZEND_ACC_PUBLIC)
-	SO_ME(disableDebug,			arginfo_oauth__void,			ZEND_ACC_PUBLIC)
-	SO_ME(enableSSLChecks,		arginfo_oauth__void,			ZEND_ACC_PUBLIC)
-	SO_ME(disableSSLChecks,		arginfo_oauth__void,			ZEND_ACC_PUBLIC)
-	SO_ME(enableRedirects,		arginfo_oauth__void,			ZEND_ACC_PUBLIC)
-	SO_ME(disableRedirects,		arginfo_oauth__void,			ZEND_ACC_PUBLIC)
-	SO_ME(__destruct,			arginfo_oauth__void,			ZEND_ACC_PUBLIC)
+	SO_ME(enableDebug,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(disableDebug,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(enableSSLChecks,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(disableSSLChecks,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(enableRedirects,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(disableRedirects,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(__destruct,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
 /* }}} */

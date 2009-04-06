@@ -30,10 +30,16 @@
 #define OAUTH_HTTP_PORT 80
 #define OAUTH_HTTPS_PORT 443
 #define OAUTH_MAX_REDIRS 4L
+#define OAUTH_MAX_HEADER_LEN 512L
 #define OAUTH_AUTH_TYPE_URI "uri"
-#define OAUTH_AUTH_TYPE_AUTHORIZATION "authorization"
-#define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
 #define OAUTH_AUTH_TYPE_FORM "form"
+#define OAUTH_AUTH_TYPE_AUTHORIZATION "authorization"
+#define OAUTH_AUTH_TYPE_NONE "noauth"
+#define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
+
+#if LIBCURL_VERSION_NUM >= 0x071304
+#define OAUTH_ALLOWED_PROTOCOLS CURLPROTO_HTTP | CURLPROTO_HTTPS
+#endif
 
 extern zend_module_entry oauth_module_entry;
 #define phpext_oauth_ptr &oauth_module_entry
@@ -53,9 +59,17 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_ATTR_OAUTH_VERSION "oauth_version_zval"
 #define OAUTH_ATTR_OAUTH_NONCE "oauth_nonce_zval"
 #define OAUTH_ATTR_OAUTH_USER_NONCE "oauth_user_nonce_zval"
-#define OAUTH_DEFAULT_VERSION "1.0"
 
 #define OAUTH_ATTR_DEBUG "oauth_debug"
+#define OAUTH_ATTR_SSLCHECK "oauth_sslcheck"
+#define OAUTH_ATTR_FOLLOWREDIRECTS "oauth_followredirects"
+
+#define OAUTH_HTTP_METHOD_GET 1L
+#define OAUTH_HTTP_METHOD_POST 2L
+#define OAUTH_HTTP_METHOD_PUT 3L
+#define OAUTH_HTTP_METHOD_HEAD 4L
+
+#define OAUTH_DEFAULT_VERSION "1.0"
 
 /* errors */
 #define OAUTH_ERR_CONTENT_TYPE "invalidcontentttype"
@@ -103,7 +117,12 @@ typedef struct {
 	zval *tmp;
 	smart_str lastresponse;
 	void ***thread_ctx;
+	char last_location_header[OAUTH_MAX_HEADER_LEN];
 } php_so_object;
+
+static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC);
+static int soo_set_nonce(php_so_object *soo TSRMLS_DC);
+static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);
 
 #endif
 

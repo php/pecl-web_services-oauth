@@ -29,7 +29,6 @@
 #include "ext/standard/php_string.h"
 #include "ext/standard/php_versioning.h"
 #include "ext/standard/url.h"
-#include "php_oauth.h"
 #include "php_variables.h"
 #include "zend_exceptions.h"
 #include "zend_interfaces.h"
@@ -39,6 +38,8 @@
 #include "ext/standard/php_lcg.h"
 
 #include <curl/curl.h>
+
+#include "php_oauth.h"
 
 #define SO_ME(func, arg_info, flags) PHP_ME(oauth, func, arg_info, flags)
 #define SO_MALIAS(func, alias, arg_info, flags) PHP_MALIAS(oauth, func, alias, arg_info, flags)
@@ -87,23 +88,6 @@ static inline php_so_object *fetch_so_object(zval *obj TSRMLS_DC) /* {{{ */
 }
 /* }}} */
 
-static void oauth_prop_hash_dtor(php_so_object *soo TSRMLS_DC) /* {{{ */
-{
-    HashTable *ht;
-    zval **p_cur;
-
-    ht = soo->properties;
-
-    for (zend_hash_internal_pointer_reset(ht);
-            zend_hash_get_current_data(ht, (void **)&p_cur) == SUCCESS;
-            zend_hash_move_forward(ht)) {
-        if(Z_TYPE_PP(p_cur)==IS_STRING) {
-            zval_ptr_dtor(p_cur);
-        }
-    }
-}
-/* }}} */
-
 static int so_set_response_args(HashTable *hasht, zval *data, zval *retarray TSRMLS_DC) /* {{{ */
 {
 	if (data && Z_TYPE_P(data) == IS_STRING) {
@@ -138,11 +122,6 @@ static zval *so_set_response_info(HashTable *hasht, zval *info) /* {{{ */
 {
 	HashTable *data_ptr;
 	ulong h = zend_hash_func(OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO));
-
-    /* free the previously allocated hash */
-	if (zend_hash_quick_find(hasht, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), h, (void **)&data_ptr) == SUCCESS) {
-        FREE_ARGS_HASH(data_ptr);
-	}
 
 	if (zend_hash_quick_update(hasht, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), h, &info, sizeof(zval *), NULL) != SUCCESS) {
 		return NULL;
@@ -329,10 +308,6 @@ static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_na
 	prop_len = strlen(prop_name);
 	h = zend_hash_func(prop_name, prop_len+1);
     
-    /*old_value = soo_get_property(soo, prop_name TSRMLS_CC);
-    if(old_value) {
-        Z_DELREF_PP(old_value);
-    }*/
 	return zend_hash_quick_update(soo->properties, prop_name, prop_len+1, h, (void *)&prop, sizeof(zval *), NULL);
 }
 /* }}} */
@@ -588,9 +563,8 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
     if(Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC))) {
 		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 		curl_easy_setopt(curl, CURLOPT_MAXREDIRS, OAUTH_MAX_REDIRS);
+        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
 	}
-
-    curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
 
 	if (!strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
 		for (zend_hash_internal_pointer_reset(ht);
@@ -745,12 +719,6 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 			if (curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &s_code) == CURLE_OK) {
 				CAAS("url", s_code);
 			}
-
-#if LIBCURL_VERSION_NUM >= 0x071202
-			if (curl_easy_getinfo(curl, CURLINFO_REDIRECT_URL, &s_code) == CURLE_OK) {
-				CAAS("redirect_url", s_code);
-			}
-#endif
 
 			if (curl_easy_getinfo(curl, CURLINFO_HEADER_SIZE, &l_code) == CURLE_OK) {
 				CAAL("header_size", l_code);
@@ -994,7 +962,6 @@ SO_METHOD(__destruct)
 	ulong h = zend_hash_func(OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO));
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
-    oauth_prop_hash_dtor(soo TSRMLS_CC);
 
     /* free the response info hash if one exists */
 	if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), h, (void **)&data_ptr) == SUCCESS) {
@@ -1060,7 +1027,7 @@ SO_METHOD(getRequestToken)
 /* }}} */
 
 /* {{{ proto bool OAuth::enableRedirects()
-   Redirect and sign the redirected requests automatically for future requests; this breaks certain providers who do not expect OAuth at the Location (enabled by default) */
+   Follow redirects automatically without resigning the request; this breaks certain providers who expect OAuth headers to be resigned for each request (enabled by default) */
 SO_METHOD(enableRedirects)
 {
 	php_so_object *soo;
@@ -1079,7 +1046,7 @@ SO_METHOD(enableRedirects)
 /* }}} */
 
 /* {{{ proto bool OAuth::disableRedirects()
-   Disable following and signing redirects automatically for future requests (enabled by default) */
+   Don't follow redirects automatically, thus allowing the request to be manually redirected (enabled by default) */
 SO_METHOD(disableRedirects)
 {
 	php_so_object *soo;
@@ -1304,7 +1271,8 @@ SO_METHOD(fetch)
 	zval *ts = NULL, **token_secret = NULL;
 	void *p_current_req_val;
 	uint req_cur_key_len;
-	ulong req_num_key, http_method = 0;
+	ulong req_num_key;
+	long http_method = 0;
 	HashTable *args = NULL, *rargs = NULL;
 	CURLcode retcode;
 

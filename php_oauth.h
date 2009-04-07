@@ -38,7 +38,7 @@
 #define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
 
 #if LIBCURL_VERSION_NUM >= 0x071304
-#define OAUTH_ALLOWED_PROTOCOLS CURLPROTO_HTTP | CURLPROTO_HTTPS
+#define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS
 #endif
 
 extern zend_module_entry oauth_module_entry;
@@ -118,11 +118,14 @@ typedef struct {
 	smart_str lastresponse;
 	void ***thread_ctx;
 	char last_location_header[OAUTH_MAX_HEADER_LEN];
+	uint redirects;
 } php_so_object;
 
 static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC);
 static int soo_set_nonce(php_so_object *soo TSRMLS_DC);
 static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);
+static int oauth_add_signature(php_so_object *soo, char *uri, HashTable *args, HashTable *eargs TSRMLS_DC);
+static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC);
 
 #endif
 

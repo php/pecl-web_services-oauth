@@ -201,6 +201,24 @@ void soo_handle_error(long errorCode, char *msg, char *response TSRMLS_DC) /* {{
 }
 /* }}} */
 
+static void oauth_prop_hash_dtor(php_so_object *soo TSRMLS_DC) /* {{{ */
+{
+	HashTable *ht;
+	zval **p_cur;
+
+	ht = soo->properties;
+
+	for (zend_hash_internal_pointer_reset(ht);
+			zend_hash_get_current_data(ht, (void **)&p_cur) == SUCCESS;
+			zend_hash_move_forward(ht)) {
+		if(Z_TYPE_PP(p_cur)==IS_STRING) {
+			zval_ptr_dtor(p_cur);
+		}
+	}
+	FREE_ARGS_HASH(ht);
+}
+/* }}} */
+
 static char *soo_hmac_sha1(char *message, zval *cs, zval *ts TSRMLS_DC) /* {{{ */
 {
 	zval *args[4],*retval,*func;
@@ -336,7 +354,7 @@ static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_ar
 {
 	zval *func, *exret2, *exargs2[2];
 	uint cur_key_len, post_cur_key_len;
-	ulong num_key, post_num_key;
+	ulong num_key, post_num_key, oauth_sig_h;
 	zend_bool prepend_amp = FALSE;
 	char *query, *cur_key;
 	char *arg_key = NULL, *post_cur_key = NULL, *auth_type = NULL;
@@ -423,6 +441,10 @@ static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_ar
 			query = estrdup(squery.c);
 			sapi_module.treat_data(PARSE_STRING, query, exargs2[0] TSRMLS_CC);
 			smart_str_free(&squery);
+
+			/* remove oauth_signature if it's in the hash */
+			oauth_sig_h = zend_hash_func(OAUTH_PARAM_SIGNATURE, sizeof(OAUTH_PARAM_SIGNATURE));
+			zend_hash_quick_del(Z_ARRVAL_P(exargs2[0]), OAUTH_PARAM_SIGNATURE, sizeof(OAUTH_PARAM_SIGNATURE), oauth_sig_h);
 
 			MAKE_STD_ZVAL(exargs2[1]);
 			ZVAL_STRING(exargs2[1], "strnatcmp", 0);
@@ -552,18 +574,13 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 	zend_bool prepend_amp = FALSE, prepend_comma = FALSE;
 	char *s_code, *cur_key, *content_type = NULL, *bufz = NULL;
 	char *auth_type = NULL, *param_name = NULL, *param_val = NULL;
-	uint cur_key_len;
+	uint cur_key_len, is_redirect, follow_redirects;
 	ulong num_key;
 	smart_str surl = {0}, sheader = {0};
 
 	auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
+    follow_redirects = Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC));
 	curl = curl_easy_init();
-
-    if(Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC))) {
-		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-		curl_easy_setopt(curl, CURLOPT_MAXREDIRS, OAUTH_MAX_REDIRS);
-        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
-	}
 
 	if (!strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
 		for (zend_hash_internal_pointer_reset(ht);
@@ -683,7 +700,6 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 #endif
 
 #if LIBCURL_VERSION_NUM >= 0x071304
-    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, OAUTH_PROTOCOLS_ALLOWED);
     curl_easy_setopt(curl, CURLOPT_PROTOCOLS, OAUTH_PROTOCOLS_ALLOWED);
 #endif
 
@@ -703,90 +719,110 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 		crres = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
 		if (CURLE_OK == crres && ctres == CURLE_OK) {
-			ALLOC_INIT_ZVAL(info);
-			array_init(info);
+			is_redirect = (response_code > 300 && response_code < 304 && soo->last_location_header);
+			if(is_redirect && follow_redirects) {
+				if(soo->redirects >= OAUTH_MAX_REDIRS) {
+					cres = FAILURE;
+					spprintf(&bufz, 0, "max redirections exceeded (max: %ld last redirect url: %s)", OAUTH_MAX_REDIRS, soo->last_location_header);
+					MAKE_STD_ZVAL(zret);
+					ZVAL_STRING(zret, soo->lastresponse.c, 1)
+						so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
+					soo_handle_error(response_code, bufz, soo->lastresponse.c TSRMLS_CC);
+					efree(bufz);
+				} else {
+					++soo->redirects;
+					make_standard_query(ht, soo TSRMLS_CC);
+					oauth_add_signature(soo, soo->last_location_header, ht, NULL TSRMLS_CC);
+					cres = make_req(soo, soo->last_location_header, ht, method TSRMLS_CC);
+				}
+			} else {
+				ALLOC_INIT_ZVAL(info);
+				array_init(info);
 
-			CAAL("http_code", response_code);
+				CAAL("http_code", response_code);
 
-			if(response_code > 300 && response_code < 304 && soo->last_location_header) {
-				CAAS("redirect_url", soo->last_location_header);
-			}
+				if(is_redirect) {
+					CAAS("redirect_url", soo->last_location_header);
+				}
 
-			if (content_type != NULL) {
-				CAAS("content_type", content_type);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &s_code) == CURLE_OK) {
-				CAAS("url", s_code);
-			}
+				if (content_type != NULL) {
+					CAAS("content_type", content_type);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &s_code) == CURLE_OK) {
+					CAAS("url", s_code);
+				}
 
-			if (curl_easy_getinfo(curl, CURLINFO_HEADER_SIZE, &l_code) == CURLE_OK) {
-				CAAL("header_size", l_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_REQUEST_SIZE, &l_code) == CURLE_OK) {
-				CAAL("request_size", l_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_FILETIME, &l_code) == CURLE_OK) {
-				CAAL("filetime", l_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_SSL_VERIFYRESULT, &l_code) == CURLE_OK) {
-				CAAL("ssl_verify_result", l_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_REDIRECT_COUNT, &l_code) == CURLE_OK) {
-				CAAL("redirect_count", l_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME,&d_code) == CURLE_OK) {
-				CAAD("total_time", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_NAMELOOKUP_TIME, &d_code) == CURLE_OK) {
-				CAAD("namelookup_time", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_CONNECT_TIME, &d_code) == CURLE_OK) {
-				CAAD("connect_time", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_PRETRANSFER_TIME, &d_code) == CURLE_OK) {
-				CAAD("pretransfer_time", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_SIZE_UPLOAD, &d_code) == CURLE_OK){
-				CAAD("size_upload", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD, &d_code) == CURLE_OK){
-				CAAD("size_download", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD, &d_code) == CURLE_OK){
-				CAAD("speed_download", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_SPEED_UPLOAD, &d_code) == CURLE_OK){
-				CAAD("speed_upload", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &d_code) == CURLE_OK) {
-				CAAD("download_content_length", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_UPLOAD, &d_code) == CURLE_OK) {
-				CAAD("upload_content_length", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_STARTTRANSFER_TIME, &d_code) == CURLE_OK){
-				CAAD("starttransfer_time", d_code);
-			}
-			if (curl_easy_getinfo(curl, CURLINFO_REDIRECT_TIME, &d_code) == CURLE_OK){
-				CAAD("redirect_time", d_code);
-			}
-			so_set_response_info(soo->properties, info);
+				if (curl_easy_getinfo(curl, CURLINFO_HEADER_SIZE, &l_code) == CURLE_OK) {
+					CAAL("header_size", l_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_REQUEST_SIZE, &l_code) == CURLE_OK) {
+					CAAL("request_size", l_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_FILETIME, &l_code) == CURLE_OK) {
+					CAAL("filetime", l_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_SSL_VERIFYRESULT, &l_code) == CURLE_OK) {
+					CAAL("ssl_verify_result", l_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_REDIRECT_COUNT, &l_code) == CURLE_OK) {
+					CAAL("redirect_count", l_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME,&d_code) == CURLE_OK) {
+					CAAD("total_time", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_NAMELOOKUP_TIME, &d_code) == CURLE_OK) {
+					CAAD("namelookup_time", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_CONNECT_TIME, &d_code) == CURLE_OK) {
+					CAAD("connect_time", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_PRETRANSFER_TIME, &d_code) == CURLE_OK) {
+					CAAD("pretransfer_time", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_SIZE_UPLOAD, &d_code) == CURLE_OK){
+					CAAD("size_upload", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD, &d_code) == CURLE_OK){
+					CAAD("size_download", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD, &d_code) == CURLE_OK){
+					CAAD("speed_download", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_SPEED_UPLOAD, &d_code) == CURLE_OK){
+					CAAD("speed_upload", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &d_code) == CURLE_OK) {
+					CAAD("download_content_length", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_UPLOAD, &d_code) == CURLE_OK) {
+					CAAD("upload_content_length", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_STARTTRANSFER_TIME, &d_code) == CURLE_OK){
+					CAAD("starttransfer_time", d_code);
+				}
+				if (curl_easy_getinfo(curl, CURLINFO_REDIRECT_TIME, &d_code) == CURLE_OK){
+					CAAD("redirect_time", d_code);
+				}
 
-			/* XXX maybe we should instead check for specific codes, like 40X */
-			if (response_code != 200 && !(response_code > 300 && response_code < 304)) {
-				cres = FAILURE;
-				spprintf(&bufz, 0, "Invalid auth/bad request (got a %d, expected 200 or a redirect)", (int)response_code);
-				MAKE_STD_ZVAL(zret);
-				ZVAL_STRING(zret, soo->lastresponse.c, 1)
-				so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
-				soo_handle_error(response_code, bufz, soo->lastresponse.c TSRMLS_CC);
-				efree(bufz);
+				so_set_response_info(soo->properties, info);
+
+				if(response_code == 200) {
+					soo->redirects = 0;
+				}
+
+				/* XXX maybe we should instead check for specific codes, like 40X */
+				if (response_code != 200 && !(response_code > 300 && response_code < 304)) {
+					cres = FAILURE;
+					spprintf(&bufz, 0, "Invalid auth/bad request (got a %d, expected 200 or a redirect)", (int)response_code);
+					MAKE_STD_ZVAL(zret);
+					ZVAL_STRING(zret, soo->lastresponse.c, 1)
+						so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
+					soo_handle_error(response_code, bufz, soo->lastresponse.c TSRMLS_CC);
+					efree(bufz);
+				}
 			}
 		}
-	} else if(cres == CURLE_TOO_MANY_REDIRECTS) {
-        cres = FAILURE;
-        spprintf(&bufz, 0, "Max redirections exceeded (%d allowed)", (int)OAUTH_MAX_REDIRS);
-    }
+	}
 	CLEANUP_CURL_AND_FORM(formdata, curl);
 	return cres;
 }
@@ -831,6 +867,32 @@ static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC) /* 
 }
 /* }}} */
 
+static int oauth_add_signature(php_so_object *soo, char *uri, HashTable *args, HashTable *extra_args TSRMLS_DC) /* {{{ */
+{
+	char *sbs = NULL, *sig = NULL;
+	zval **token_secret = NULL, **consumer_secret = NULL;
+
+	sbs = generate_sig_base(soo, uri, args, extra_args TSRMLS_CC);
+	if(!sbs) {
+		return FAILURE;
+	}
+
+	consumer_secret = soo_get_property(soo, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC);
+	SEPARATE_ZVAL(consumer_secret);
+	token_secret = soo_get_property(soo, OAUTH_ATTR_TOKEN_SECRET TSRMLS_CC);
+
+	sig = soo_hmac_sha1(sbs, *consumer_secret, *token_secret TSRMLS_CC);
+	efree(sbs);
+	if(!sig) {
+		return FAILURE;
+	}
+
+	SO_ADD_SIG(args, sig);
+
+	return SUCCESS;
+}
+/* }}} */
+
 /* {{{ proto string oauth_urlencode(string uri)
    URI encoding according to RFC 3986, note: is not utf8 capable until the underlying phpapi is */
 PHP_FUNCTION(oauth_urlencode)
@@ -865,6 +927,7 @@ SO_METHOD(__construct)
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
 	memset(soo->last_location_header, 0, OAUTH_MAX_HEADER_LEN);
+	soo->redirects = 0;
 
 	TSRMLS_SET_CTX(soo->thread_ctx);
 
@@ -957,14 +1020,17 @@ SO_METHOD(__construct)
 SO_METHOD(__destruct)
 {
 	php_so_object *soo;
-	HashTable *data_ptr;
+	zval **data_ptr;
+    HashTable *last_req_info;
 	ulong h = zend_hash_func(OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO));
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-    /* free the response info hash if one exists */
+	oauth_prop_hash_dtor(soo TSRMLS_CC);
+
 	if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), h, (void **)&data_ptr) == SUCCESS) {
-        FREE_ARGS_HASH(data_ptr);
+        last_req_info = HASH_OF(*data_ptr);
+        FREE_ARGS_HASH(last_req_info);
 	}
 }
 
@@ -1026,7 +1092,7 @@ SO_METHOD(getRequestToken)
 /* }}} */
 
 /* {{{ proto bool OAuth::enableRedirects()
-   Follow redirects automatically without resigning the request; this breaks certain providers who expect OAuth headers to be resigned for each request (enabled by default) */
+   Follow and sign redirects automatically (enabled by default) */
 SO_METHOD(enableRedirects)
 {
 	php_so_object *soo;

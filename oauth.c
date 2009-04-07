@@ -120,7 +120,6 @@ static int so_set_response_args(HashTable *hasht, zval *data, zval *retarray TSR
 
 static zval *so_set_response_info(HashTable *hasht, zval *info) /* {{{ */
 {
-	HashTable *data_ptr;
 	ulong h = zend_hash_func(OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO));
 
 	if (zend_hash_quick_update(hasht, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), h, &info, sizeof(zval *), NULL) != SUCCESS) {

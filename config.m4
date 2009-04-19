@@ -11,7 +11,7 @@ if test "$PHP_OAUTH" != "no"; then
   PHP_ADD_LIBRARY(curl,,OAUTH_SHARED_LIBADD)
 
   PHP_NEW_EXTENSION(oauth, oauth.c, $ext_shared)
-  CFLAGS="$CFLAGS -Wall -g -DCOMPILE_DL_OAUTH"
+  CFLAGS="$CFLAGS -Wall -g"
 
   PHP_ADD_EXTENSION_DEP(oauth, curl)
   PHP_ADD_EXTENSION_DEP(oauth, hash)

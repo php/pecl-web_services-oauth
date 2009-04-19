@@ -447,7 +447,7 @@ static char *generate_sig_base(php_so_object *soo, const char *http_method, char
 			old_magic_quote_setting = PG(magic_quotes_runtime);
 			PG(magic_quotes_gpc) = 0;
 			old_input_filter = sapi_module.input_filter;
-			sapi_register_input_filter(oauth_no_filter);
+			sapi_module.input_filter = oauth_no_filter;  /* Not threadsafe - need a better way */
 
 			sapi_module.treat_data(PARSE_STRING, query, exargs2[0] TSRMLS_CC);
 

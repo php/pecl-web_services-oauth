@@ -204,17 +204,9 @@ void soo_handle_error(long errorCode, char *msg, char *response TSRMLS_DC) /* {{
 static void oauth_prop_hash_dtor(php_so_object *soo TSRMLS_DC) /* {{{ */
 {
 	HashTable *ht;
-	zval **p_cur;
 
 	ht = soo->properties;
 
-	for (zend_hash_internal_pointer_reset(ht);
-			zend_hash_get_current_data(ht, (void **)&p_cur) == SUCCESS;
-			zend_hash_move_forward(ht)) {
-		if(Z_TYPE_PP(p_cur)==IS_STRING) {
-			zval_ptr_dtor(p_cur);
-		}
-	}
 	FREE_ARGS_HASH(ht);
 }
 /* }}} */
@@ -345,22 +337,57 @@ static char *oauth_url_encode(char *url) /* {{{ */
 }
 /* }}} */
 
+/* build url-encoded string from args, optionally starting with & and optionally filter oauth params or non-oauth params */ 
+int http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp, int filter)
+{
+   void *cur_val;
+   char *arg_key = NULL, *cur_key = NULL, *param_value;
+   uint cur_key_len;
+   int numargs = 0;
+
+   if (args) {
+       for (zend_hash_internal_pointer_reset(args);
+               zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, NULL, 0, NULL) != HASH_KEY_NON_EXISTANT;
+               zend_hash_move_forward(args)) {
+           int is_oauth_param = !strncmp(OAUTH_PARAM_PREFIX, cur_key, OAUTH_PARAM_PREFIX_LEN);
+           /* apply filter where applicable */
+           if (filter==PARAMS_FILTER_NONE 
+                   || (filter==PARAMS_FILTER_OAUTH && !is_oauth_param) 
+                   || (filter==PARAMS_FILTER_NON_OAUTH && is_oauth_param)) {
+               if (prepend_amp) {
+                   smart_str_appendc(s, '&');
+               }
+               zend_hash_get_current_data(args, (void **)&cur_val);
+               arg_key = oauth_url_encode(cur_key);
+               param_value = oauth_url_encode(Z_STRVAL_PP((zval **)cur_val));
+
+               smart_str_appends(s, arg_key);
+               smart_str_appendc(s, '=');
+               smart_str_appends(s, param_value);
+
+               efree(arg_key);
+               efree(param_value);
+               prepend_amp = TRUE;
+               ++numargs;
+           }
+       }
+   }
+   return numargs;
+}
+
 /*
  * This function does not currently care to respect parameter precedence, in the sense that if a common param is defined
  * in POST/GET or Authorization header, the precendence is defined by: OAuth Core 1.0 section 9.1.1
  */
 
-static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC) /* {{{ */
+static char *generate_sig_base(php_so_object *soo, const char *http_method, char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC) /* {{{ */
 {
 	zval *func, *exret2, *exargs2[2];
-	uint cur_key_len, post_cur_key_len;
-	ulong num_key, post_num_key, oauth_sig_h;
+   ulong oauth_sig_h;
 	zend_bool prepend_amp = FALSE;
-	char *query, *cur_key;
-	char *arg_key = NULL, *post_cur_key = NULL, *auth_type = NULL;
-	char *s_port = NULL, *bufz = NULL, *param_value, *sbs_query_part = NULL, *sbs_scheme_part = NULL;
+   char *query;
+   char *s_port = NULL, *bufz = NULL, *sbs_query_part = NULL, *sbs_scheme_part = NULL;
 	HashTable *decoded_args;
-	void *current_arg_val,*current_arg_val_ex,*current_value;
 	php_url *urlparts;
 	smart_str sbuf = {0}, squery = {0};
 
@@ -388,50 +415,13 @@ static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_ar
 			smart_str_appends(&sbuf, urlparts->path);
 			smart_str_0(&sbuf);
 
-			if (post_args) {
-				for (zend_hash_internal_pointer_reset(post_args);
-						zend_hash_get_current_key_ex(post_args, &post_cur_key, &post_cur_key_len, &post_num_key, 0, NULL) != HASH_KEY_NON_EXISTANT;
-						zend_hash_move_forward(post_args)) {
-					if (prepend_amp) {
-						smart_str_appendc(&squery, '&');
-					}
-					zend_hash_get_current_data(post_args, (void **)&current_arg_val);
-
-					arg_key = oauth_url_encode(post_cur_key);
-					param_value = oauth_url_encode(Z_STRVAL_PP((zval **)current_arg_val));
-
-					smart_str_appends(&squery, arg_key);
-					smart_str_appendc(&squery, '=');
-					smart_str_appends(&squery, param_value);
-
-					efree(arg_key);
-					efree(param_value);
-					prepend_amp = TRUE;
-				}
+           if (http_build_query(&squery, post_args, FALSE, PARAMS_FILTER_NONE)) {
 				if (urlparts->query) {
 					smart_str_appendc(&squery, '&');
 					smart_str_appends(&squery, urlparts->query);
 				}
 			}
-			if (extra_args) {
-				for (zend_hash_internal_pointer_reset(extra_args);
-						zend_hash_get_current_key_ex(extra_args, &post_cur_key, &post_cur_key_len, &post_num_key, 0, NULL) != HASH_KEY_NON_EXISTANT;
-						zend_hash_move_forward(extra_args)) {
-					if (prepend_amp) {
-						smart_str_appendc(&squery, '&');
-					}
-					zend_hash_get_current_data(extra_args, (void **)&current_arg_val_ex);
-					arg_key = oauth_url_encode(post_cur_key);
-					param_value = oauth_url_encode(Z_STRVAL_PP((zval **)current_arg_val_ex));
-
-					smart_str_appends(&squery, arg_key);
-					smart_str_appendc(&squery, '=');
-					smart_str_appends(&squery, param_value);
-
-					efree(arg_key);
-					efree(param_value);
-				}
-			}
+           http_build_query(&squery, extra_args, TRUE, PARAMS_FILTER_NONE);
 			MAKE_STD_ZVAL(func);
 			MAKE_STD_ZVAL(exret2);
 			MAKE_STD_ZVAL(exargs2[0]);
@@ -460,27 +450,8 @@ static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_ar
 					decoded_args = Z_ARRVAL_P(exargs2[0]);
 					prepend_amp = FALSE;
 
-					for (zend_hash_internal_pointer_reset(decoded_args);
-							zend_hash_get_current_key_ex(decoded_args, &cur_key, &cur_key_len, &num_key, 0, NULL) != HASH_KEY_NON_EXISTANT;
-							zend_hash_move_forward(decoded_args)) {
-						if (prepend_amp) {
-							smart_str_appendc(&squery, '&');
-						}
-						zend_hash_get_current_data(decoded_args, (void **)&current_value);
-
-						if (Z_STRLEN_PP((zval **)current_value) > 0) {
-							arg_key = oauth_url_encode(cur_key);
-							param_value = oauth_url_encode(Z_STRVAL_PP((zval **)current_value));
-
-							smart_str_appends(&squery, arg_key);
-							smart_str_appendc(&squery, '=');
-							smart_str_appends(&squery, param_value);
-
-							efree(arg_key);
-							efree(param_value);
-							prepend_amp = TRUE;
-						}
-					}
+                   /* this one should check if values are non empty */
+                   http_build_query(&squery, decoded_args, FALSE, PARAMS_FILTER_NONE);
 					smart_str_0(&squery);
 				} else {
 					soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Was not able to get oauth parameters!", NULL TSRMLS_CC);
@@ -490,17 +461,13 @@ static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_ar
 			zval_ptr_dtor(&exargs2[0]);
 			FREE_ZVAL(exargs2[1]);
 
-			auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
 			sbs_query_part = oauth_url_encode(squery.c);
 			sbs_scheme_part = oauth_url_encode(sbuf.c);
 
-			if (!strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
-				spprintf(&bufz, 0, "POST&%s&%s", sbs_scheme_part, sbs_query_part);
-			} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_URI) || !strcmp(auth_type, OAUTH_AUTH_TYPE_AUTHORIZATION)) {
-				spprintf(&bufz, 0, "GET&%s&%s", sbs_scheme_part, sbs_query_part);
-			} else {
+           spprintf(&bufz, 0, "%s&%s&%s", http_method, sbs_scheme_part, sbs_query_part);
+/* TODO move this into oauth_get_http_method()
 				soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid auth type", NULL TSRMLS_CC);
-			}
+*/
 			efree(sbs_query_part);
 			efree(sbs_scheme_part);
 			smart_str_free(&sbuf);
@@ -509,7 +476,7 @@ static char *generate_sig_base(php_so_object *soo, char *uri, HashTable *post_ar
 
 		php_url_free(urlparts);
 
-        if(Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_DEBUG TSRMLS_CC))) {
+        if(soo->debug) {
             fprintf(stderr, "Signature Base String: %s\n", bufz);
         }
 		return bufz;
@@ -560,41 +527,52 @@ static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
 	return hlen;
 }
 
-static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong method TSRMLS_DC) /* {{{ */
+static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const char *http_method, HashTable *request_headers TSRMLS_DC) /* {{{ */
 {
 	CURLcode cres, ctres, crres;
 	CURL *curl;
 	struct curl_slist *curl_headers = NULL;
-	struct curl_httppost *formdata = NULL;
-	struct curl_httppost *lastptr = NULL;
 	long l_code, response_code;
 	double d_code;
 	zval *info, *zret;
 	void *p_cur, *p_kcur;
-	zend_bool prepend_amp = FALSE, prepend_comma = FALSE;
+	zend_bool prepend_comma = FALSE;
 	char *s_code, *cur_key, *content_type = NULL, *bufz = NULL;
 	char *auth_type = NULL, *param_name = NULL, *param_val = NULL;
-	uint cur_key_len, is_redirect, follow_redirects;
+	uint cur_key_len, is_redirect, follow_redirects, sslcheck;
 	ulong num_key;
-	smart_str surl = {0}, sheader = {0};
+	smart_str surl = {0}, sheader = {0}, rheader = {0}, post = {0};
 
 	auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
-    follow_redirects = Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC));
+    follow_redirects = soo->follow_redirects;
+	sslcheck = soo->sslcheck;
+
 	curl = curl_easy_init();
 
-	if (!strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
-		for (zend_hash_internal_pointer_reset(ht);
-				zend_hash_get_current_data(ht, (void **)&p_cur) == SUCCESS;
-				zend_hash_move_forward(ht)) {
-			zend_hash_get_current_key_ex(ht, &cur_key, &cur_key_len, &num_key, 0, NULL);
-			curl_formadd(&formdata, &lastptr, CURLFORM_COPYNAME, cur_key, CURLFORM_COPYCONTENTS, Z_STRVAL_PP((zval **)p_cur), CURLFORM_END);
+   if (request_headers) {
+       for (zend_hash_internal_pointer_reset(request_headers);
+               zend_hash_get_current_data(request_headers, (void **)&p_cur) == SUCCESS;
+               zend_hash_move_forward(request_headers)) {
+           /* check if a string based key is used */
+           if (HASH_KEY_IS_STRING!=zend_hash_get_current_key_ex(request_headers, &cur_key, &cur_key_len, &num_key, 0, NULL)) {
+               curl_headers = curl_slist_append(curl_headers, Z_STRVAL_PP((zval **)p_cur));
+           } else {
+               smart_str_appends(&rheader, cur_key);
+               smart_str_appends(&rheader, ": ");
+               smart_str_appends(&rheader, Z_STRVAL_PP((zval **)p_cur));
+               smart_str_0(&rheader);
+               curl_headers = curl_slist_append(curl_headers, rheader.c);
+               smart_str_free(&rheader);
+           }
 		}
+   }
 
-        /* Disable sending the 100 Expect header for POST requests */
-        /* Other notes: if there is a redirect the POST becomes a GET request, see curl_easy_setopt(3) and the CURLOPT_POSTREDIR option for more information */
-        curl_headers = curl_slist_append(curl_headers, "Expect:");
-		curl_easy_setopt(curl, CURLOPT_HTTPPOST, formdata);
-		curl_easy_setopt(curl, CURLOPT_URL, url);
+   if (!strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
+       http_build_query(&post, ht, FALSE, PARAMS_FILTER_NONE);
+       smart_str_0(&post);
+	   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c);
+
+	   curl_easy_setopt(curl, CURLOPT_URL, url);
 	} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_URI)) {
 		smart_str_appends(&surl, url);
 
@@ -604,26 +582,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 			smart_str_appendc(&surl, '&');
 		}
 
-		for (zend_hash_internal_pointer_reset(ht);
-				zend_hash_get_current_data(ht, (void **)&p_kcur) == SUCCESS;
-				zend_hash_move_forward(ht)) {
-
-			if (prepend_amp) {
-				smart_str_appendc(&surl, '&');
-			}
-			zend_hash_get_current_key_ex(ht, &cur_key, &cur_key_len, &num_key, 0, NULL);
-			param_name = oauth_url_encode(cur_key);
-			param_val = oauth_url_encode(Z_STRVAL_PP((zval **)p_kcur));
-
-			smart_str_appends(&surl, param_name);
-			smart_str_appendc(&surl, '=');
-			smart_str_appends(&surl, param_val);
-
-			efree(param_name);
-			efree(param_val);
-			prepend_amp = TRUE;
-		}
-
+		http_build_query(&surl, ht, FALSE, PARAMS_FILTER_NON_OAUTH);
 		smart_str_0(&surl);
 
 		curl_easy_setopt(curl, CURLOPT_URL, surl.c);
@@ -661,40 +620,39 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 		smart_str_free(&sheader);
 	}
 
-	/* the fetch method takes precedence so figure it out after we've added the OAuth params */
+   /* the fetch method takes precedence so figure it out after we've added the OAuth params */
 
-	switch(method) {
-		case OAUTH_HTTP_METHOD_GET:
-			curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
-		break;
-		case OAUTH_HTTP_METHOD_POST:
-		/* don't do anything if it's already a POST */
-		if (strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
-			curl_formadd(&formdata, &lastptr, CURLFORM_COPYNAME, "", CURLFORM_COPYCONTENTS, "", CURLFORM_END);
-			curl_easy_setopt(curl, CURLOPT_HTTPPOST, formdata);
-		}
-		break;
-		case OAUTH_HTTP_METHOD_PUT:
-			curl_easy_setopt(curl, CURLOPT_PUT, 1L);
-		break;
-		case OAUTH_HTTP_METHOD_HEAD:
-			curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-		break;
-		default: break;
-	}
+   if (0==strcmp(http_method, OAUTH_HTTP_METHOD_GET)) {
+	   curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+   } else if (0==strcmp(http_method,OAUTH_HTTP_METHOD_POST)) {
+	   /* don't do anything if it's already a POST */
+	   if (strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
+		   /* filter oauth_ params */
+		   http_build_query(&post, ht, FALSE, PARAMS_FILTER_OAUTH);
+		   smart_str_0(&post);
+		   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c);
+	   }
+   } else if (0==strcmp(http_method, OAUTH_HTTP_METHOD_PUT)) {
+	   curl_easy_setopt(curl, CURLOPT_PUT, 1L);
+   } else if (0==strcmp(http_method, OAUTH_HTTP_METHOD_HEAD)) {
+	   curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+   }
 
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curl_headers);
+   /* Disable sending the 100 Expect header for POST requests */
+   /* Other notes: if there is a redirect the POST becomes a GET request, see curl_easy_setopt(3) and the CURLOPT_POSTREDIR option for more information */
+	curl_headers = curl_slist_append(curl_headers, "Expect:");
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curl_headers);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, soo_read_response);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, soo);
-    if(!Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_SSLCHECK TSRMLS_CC))) {
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-    }
+	if(!sslcheck) {
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+	}
 	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, soo_read_header);
 	curl_easy_setopt(curl, CURLOPT_WRITEHEADER, soo);
-    if(Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_DEBUG TSRMLS_CC))) {
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
-    }
+	if(soo->debug) {
+		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+	}
 #if defined(ZTS)
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 #endif
@@ -708,6 +666,9 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 	if(surl.c) {
 		smart_str_free(&surl);
 	}
+   if (post.c) {
+       smart_str_free(&post);
+   }
 	smart_str_0(&soo->lastresponse);
 
 	if (curl_headers) {
@@ -732,8 +693,9 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 				} else {
 					++soo->redirects;
 					make_standard_query(ht, soo TSRMLS_CC);
-					oauth_add_signature(soo, soo->last_location_header, ht, NULL TSRMLS_CC);
-					cres = make_req(soo, soo->last_location_header, ht, method TSRMLS_CC);
+                   /* http_method for redirects should be GET */
+                   oauth_add_signature(soo, OAUTH_HTTP_METHOD_GET, soo->last_location_header, ht, NULL TSRMLS_CC);
+                   cres = make_req(soo, soo->last_location_header, ht, http_method, request_headers TSRMLS_CC);
 				}
 			} else {
 				ALLOC_INIT_ZVAL(info);
@@ -811,7 +773,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 				}
 
 				/* XXX maybe we should instead check for specific codes, like 40X */
-				if (response_code != 200 && !(response_code > 300 && response_code < 304)) {
+               if (response_code != 200 && !(response_code > 300 && response_code <= 304)) {
 					cres = FAILURE;
 					spprintf(&bufz, 0, "Invalid auth/bad request (got a %d, expected 200 or a redirect)", (int)response_code);
 					MAKE_STD_ZVAL(zret);
@@ -823,7 +785,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, ulong met
 			}
 		}
 	}
-	CLEANUP_CURL_AND_FORM(formdata, curl);
+   curl_easy_cleanup(curl);
 	return cres;
 }
 /* }}} */
@@ -867,12 +829,24 @@ static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC) /* 
 }
 /* }}} */
 
-static int oauth_add_signature(php_so_object *soo, char *uri, HashTable *args, HashTable *extra_args TSRMLS_DC) /* {{{ */
+static const char *oauth_get_http_method(php_so_object *soo, const char *http_method TSRMLS_DC)
+{
+   char *auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
+
+   if (0==strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
+       return OAUTH_HTTP_METHOD_POST;
+   } else if (!http_method) {
+       return OAUTH_HTTP_METHOD_GET;
+   }
+   return http_method;
+}
+
+static int oauth_add_signature(php_so_object *soo, const char *http_method, char *uri, HashTable *args, HashTable *extra_args TSRMLS_DC) /* {{{ */
 {
 	char *sbs = NULL, *sig = NULL;
 	zval **token_secret = NULL, **consumer_secret = NULL;
 
-	sbs = generate_sig_base(soo, uri, args, extra_args TSRMLS_CC);
+   sbs = generate_sig_base(soo, http_method, uri, args, extra_args TSRMLS_CC);
 	if(!sbs) {
 		return FAILURE;
 	}
@@ -920,7 +894,7 @@ SO_METHOD(__construct)
 {
 	HashTable *hasht;
 	char *ck, *cs, *sig_method = NULL,*auth_method = NULL;
-	zval *zck, *zcs, *zsm, *zam, *zver, *zdebug, *zsslcheck, *zredirects;
+	zval *zck, *zcs, *zsm, *zam, *zver;
 	int ck_len, cs_len, sig_method_len = 0, auth_method_len = 0;
 	php_so_object *soo;
 
@@ -994,23 +968,10 @@ SO_METHOD(__construct)
 		return;
 	} 
 
-	MAKE_STD_ZVAL(zdebug);
-	ZVAL_BOOL(zdebug, 0);
-	if (soo_set_property(soo, zdebug, OAUTH_ATTR_DEBUG TSRMLS_CC) != SUCCESS) {
-		return;
-	} 
+	soo->debug = 0;
+	soo->sslcheck = 1;
+	soo->follow_redirects = 1;
 
-	MAKE_STD_ZVAL(zsslcheck);
-	ZVAL_BOOL(zsslcheck, 1);
-	if (soo_set_property(soo, zsslcheck, OAUTH_ATTR_SSLCHECK TSRMLS_CC) != SUCCESS) {
-		return;
-	} 
-
-	MAKE_STD_ZVAL(zredirects);
-	ZVAL_BOOL(zredirects, 1);
-	if (soo_set_property(soo, zredirects, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC) != SUCCESS) {
-		return;
-	} 
 	soo->lastresponse.c = NULL;
 }
 /* }}} */
@@ -1026,7 +987,7 @@ SO_METHOD(__destruct)
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-	if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), h, (void **)&data_ptr) == SUCCESS) {
+   if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), h, (void *)&data_ptr) == SUCCESS) {
         last_req_info = HASH_OF(*data_ptr);
         FREE_ARGS_HASH(last_req_info);
 	}
@@ -1059,7 +1020,7 @@ SO_METHOD(getRequestToken)
 	zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
 
 	make_standard_query(args, soo TSRMLS_CC);
-	sbs = generate_sig_base(soo, url, args, NULL TSRMLS_CC);
+   sbs = generate_sig_base(soo, OAUTH_HTTP_METHOD_GET, url, args, NULL TSRMLS_CC);
 	if (!sbs) {
 		FREE_ARGS_HASH(args);
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid url, unable to generate signature base string", NULL TSRMLS_CC);
@@ -1077,7 +1038,7 @@ SO_METHOD(getRequestToken)
 
 	SO_ADD_SIG(args, sig);
 
-	retcode = make_req(soo, url, args, 0 TSRMLS_CC);
+   retcode = make_req(soo, url, args, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), NULL TSRMLS_CC);
 	FREE_ARGS_HASH(args);
 
 	if (retcode == CURLE_OK && soo->lastresponse.c) {
@@ -1096,17 +1057,12 @@ SO_METHOD(getRequestToken)
 SO_METHOD(enableRedirects)
 {
 	php_so_object *soo;
-    zval **redirect;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-    redirect = soo_get_property(soo, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC);
-	ZVAL_BOOL(*redirect, 1);
-	if (soo_set_property(soo, *redirect, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC)) {
-		RETURN_TRUE;
-	}
+	soo->follow_redirects = 1;
 
-	RETURN_FALSE;
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -1115,17 +1071,12 @@ SO_METHOD(enableRedirects)
 SO_METHOD(disableRedirects)
 {
 	php_so_object *soo;
-    zval **redirect;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-    redirect = soo_get_property(soo, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC);
-	ZVAL_BOOL(*redirect, 0);
-	if (soo_set_property(soo, *redirect, OAUTH_ATTR_FOLLOWREDIRECTS TSRMLS_CC)) {
-		RETURN_TRUE;
-	}
+	soo->follow_redirects = 0;
 
-	RETURN_FALSE;
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -1134,17 +1085,12 @@ SO_METHOD(disableRedirects)
 SO_METHOD(disableDebug)
 {
 	php_so_object *soo;
-    zval **debug;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-    debug = soo_get_property(soo, OAUTH_ATTR_DEBUG TSRMLS_CC);
-	ZVAL_BOOL(*debug, 0);
-	if (soo_set_property(soo, *debug, OAUTH_ATTR_DEBUG TSRMLS_CC)) {
-		RETURN_TRUE;
-	}
+	soo->debug = 0;
 
-	RETURN_FALSE;
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -1153,17 +1099,12 @@ SO_METHOD(disableDebug)
 SO_METHOD(enableDebug)
 {
 	php_so_object *soo;
-    zval **debug;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-    debug = soo_get_property(soo, OAUTH_ATTR_DEBUG TSRMLS_CC);
-	ZVAL_BOOL(*debug, 1);
-	if (soo_set_property(soo, *debug, OAUTH_ATTR_DEBUG TSRMLS_CC)) {
-		RETURN_TRUE;
-	}
+	soo->debug = 1;
 
-	RETURN_FALSE;
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -1172,17 +1113,12 @@ SO_METHOD(enableDebug)
 SO_METHOD(enableSSLChecks)
 {
 	php_so_object *soo;
-    zval **sslcheck;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-    sslcheck = soo_get_property(soo, OAUTH_ATTR_SSLCHECK TSRMLS_CC);
-	ZVAL_BOOL(*sslcheck, 1);
-	if (soo_set_property(soo, *sslcheck, OAUTH_ATTR_SSLCHECK TSRMLS_CC)) {
-		RETURN_TRUE;
-	}
+	soo->sslcheck = 1;
 
-	RETURN_FALSE;
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -1191,17 +1127,12 @@ SO_METHOD(enableSSLChecks)
 SO_METHOD(disableSSLChecks)
 {
 	php_so_object *soo;
-    zval **sslcheck;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-    sslcheck = soo_get_property(soo, OAUTH_ATTR_SSLCHECK TSRMLS_CC);
-	ZVAL_BOOL(*sslcheck, 0);
-	if (soo_set_property(soo, *sslcheck, OAUTH_ATTR_SSLCHECK TSRMLS_CC)) {
-		RETURN_TRUE;
-	}
+	soo->sslcheck = 0;
 
-	RETURN_FALSE;
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -1325,25 +1256,25 @@ SO_METHOD(setToken)
 }
 /* }}} */
 
-/* {{{ proto bool OAuth::fetch(string protected_resource_url [, array extra_parameters, int request_type])
-   fetch a protected resource, pass in extra_parameters (array(name => value)) */
+/* {{{ proto bool OAuth::fetch(string protected_resource_url [, string|array extra_parameters, string request_type, array request_headers])
+   fetch a protected resource, pass in extra_parameters (array(name => value) or "custom body") */
 SO_METHOD(fetch)
 {
 	php_so_object *soo;
-	int fetchurl_len;
-	char *fetchurl, *req_cur_key = NULL, *sbs = NULL, *sig = NULL;
-	zval **token = NULL, *zret = NULL, **cs, *request_args = NULL;
+   int fetchurl_len,http_method_len;
+   char *fetchurl, *req_cur_key = NULL, *sbs = NULL, *sig = NULL, *auth_type;
+   zval **token = NULL, *zret = NULL, **cs, *request_args = NULL, *request_headers = NULL;
 	zval *ts = NULL, **token_secret = NULL;
 	void *p_current_req_val;
 	uint req_cur_key_len;
 	ulong req_num_key;
-	long http_method = 0;
-	HashTable *args = NULL, *rargs = NULL;
+   char *http_method = NULL;
+   HashTable *args = NULL, *rargs = NULL, *rheaders = NULL;
 	CURLcode retcode;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|zl", &fetchurl, &fetchurl_len, &request_args, &http_method) == FAILURE) {
+   if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|zsa", &fetchurl, &fetchurl_len, &request_args, &http_method, &http_method_len, &request_headers) == FAILURE) {
 		return;
 	}
 
@@ -1351,6 +1282,13 @@ SO_METHOD(fetch)
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url length", NULL TSRMLS_CC);
 		RETURN_NULL();
 	}
+
+   auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
+   if (0==strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
+       http_method = OAUTH_HTTP_METHOD_POST;
+   } else if (!http_method) {
+       http_method = OAUTH_HTTP_METHOD_GET;
+   }
 
 	ALLOC_HASHTABLE(args);
 	zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
@@ -1360,12 +1298,16 @@ SO_METHOD(fetch)
 		rargs = HASH_OF(request_args);
 	}
 
+   if (request_headers) {
+       rheaders = HASH_OF(request_headers);
+   }
+
 	token = soo_get_property(soo, OAUTH_ATTR_TOKEN TSRMLS_CC);
 	if (token) {
 		add_arg_for_req(args, OAUTH_PARAM_TOKEN, Z_STRVAL_PP(token) TSRMLS_CC);
 	}
 
-	sbs = generate_sig_base(soo, fetchurl, args, rargs TSRMLS_CC);
+   sbs = generate_sig_base(soo, oauth_get_http_method(soo, http_method TSRMLS_CC), fetchurl, args, rargs TSRMLS_CC);
 	if (!sbs) {
 		FREE_ARGS_HASH(args);
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url, unable to generate signature base string", NULL TSRMLS_CC);
@@ -1396,7 +1338,7 @@ SO_METHOD(fetch)
 			add_arg_for_req(args, req_cur_key, Z_STRVAL_PP((zval **)p_current_req_val) TSRMLS_CC);
 		}
 	}
-	retcode = make_req(soo, fetchurl, args, http_method TSRMLS_CC);
+   retcode = make_req(soo, fetchurl, args, http_method, rheaders TSRMLS_CC);
 
 	MAKE_STD_ZVAL(zret);
 	ZVAL_STRINGL(zret, soo->lastresponse.c, soo->lastresponse.len, 1);
@@ -1448,7 +1390,7 @@ SO_METHOD(getAccessToken)
 		add_arg_for_req(args, OAUTH_PARAM_TOKEN, Z_STRVAL_PP(token) TSRMLS_CC);
 	}
 
-	sbs = generate_sig_base(soo, aturi, args, NULL TSRMLS_CC);
+   sbs = generate_sig_base(soo, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), aturi, args, NULL TSRMLS_CC);
 	if (!sbs) {
 		FREE_ARGS_HASH(args);
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Unable to generate signature base string, perhaps the access token url is invalid", NULL TSRMLS_CC);
@@ -1472,7 +1414,7 @@ SO_METHOD(getAccessToken)
 
 	SO_ADD_SIG(args, sig);
 
-	retcode = make_req(soo, aturi, args, 0 TSRMLS_CC);
+	retcode = make_req(soo, aturi, args, OAUTH_HTTP_METHOD_GET, NULL TSRMLS_CC);
 	FREE_ARGS_HASH(args);
 
 	if (retcode == CURLE_OK && soo->lastresponse.c) {
@@ -1502,7 +1444,7 @@ SO_METHOD(getLastResponseInfo)
 
 	hf = zend_hash_func(OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO));
 
-	if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), hf, (void **)&data_ptr) == SUCCESS) {
+   if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), hf, (void *)&data_ptr) == SUCCESS) {
 		if (Z_TYPE_PP(data_ptr) == IS_ARRAY) {
 			convert_to_array_ex(data_ptr);
 		}
@@ -1650,10 +1592,10 @@ PHP_MINIT_FUNCTION(oauth)
 	REGISTER_STRING_CONSTANT("OAUTH_AUTH_TYPE_URI", OAUTH_AUTH_TYPE_URI, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_AUTH_TYPE_FORM", OAUTH_AUTH_TYPE_FORM, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_AUTH_TYPE_NONE", OAUTH_AUTH_TYPE_FORM, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("OAUTH_HTTP_METHOD_GET", OAUTH_HTTP_METHOD_GET, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("OAUTH_HTTP_METHOD_POST", OAUTH_HTTP_METHOD_POST, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("OAUTH_HTTP_METHOD_PUT", OAUTH_HTTP_METHOD_PUT, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("OAUTH_HTTP_METHOD_HEAD", OAUTH_HTTP_METHOD_HEAD, CONST_CS | CONST_PERSISTENT);
+   REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_GET", OAUTH_HTTP_METHOD_GET, CONST_CS | CONST_PERSISTENT);
+   REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_POST", OAUTH_HTTP_METHOD_POST, CONST_CS | CONST_PERSISTENT);
+   REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_PUT", OAUTH_HTTP_METHOD_PUT, CONST_CS | CONST_PERSISTENT);
+   REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_HEAD", OAUTH_HTTP_METHOD_HEAD, CONST_CS | CONST_PERSISTENT);
 	return SUCCESS;
 }
 /* }}} */

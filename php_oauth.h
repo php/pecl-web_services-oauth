@@ -60,14 +60,14 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_ATTR_OAUTH_NONCE "oauth_nonce_zval"
 #define OAUTH_ATTR_OAUTH_USER_NONCE "oauth_user_nonce_zval"
 
-#define OAUTH_ATTR_DEBUG "oauth_debug"
-#define OAUTH_ATTR_SSLCHECK "oauth_sslcheck"
-#define OAUTH_ATTR_FOLLOWREDIRECTS "oauth_followredirects"
+#define OAUTH_HTTP_METHOD_GET "GET"
+#define OAUTH_HTTP_METHOD_POST "POST"
+#define OAUTH_HTTP_METHOD_PUT "PUT"
+#define OAUTH_HTTP_METHOD_HEAD "HEAD"
 
-#define OAUTH_HTTP_METHOD_GET 1L
-#define OAUTH_HTTP_METHOD_POST 2L
-#define OAUTH_HTTP_METHOD_PUT 3L
-#define OAUTH_HTTP_METHOD_HEAD 4L
+#define PARAMS_FILTER_OAUTH 1
+#define PARAMS_FILTER_NON_OAUTH 2
+#define PARAMS_FILTER_NONE 0
 
 #define OAUTH_DEFAULT_VERSION "1.0"
 
@@ -125,13 +125,22 @@ typedef struct {
 	void ***thread_ctx;
 	char last_location_header[OAUTH_MAX_HEADER_LEN];
 	uint redirects;
+	uint sslcheck; /* whether we check for SSL verification or not */
+	uint debug; /* verbose output */
+	uint follow_redirects; /* follow and sign redirects? */
 } php_so_object;
 
 static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC);
 static int soo_set_nonce(php_so_object *soo TSRMLS_DC);
 static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);
-static int oauth_add_signature(php_so_object *soo, char *uri, HashTable *args, HashTable *eargs TSRMLS_DC);
+static int oauth_add_signature(php_so_object *soo, const char *http_method, char *uri, HashTable *args, HashTable *eargs TSRMLS_DC);
 static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC);
+
+#ifndef zend_hash_quick_del
+#define HASH_DEL_KEY_QUICK 2
+#define zend_hash_quick_del(ht, arKey, nKeyLength, h) \
+       zend_hash_del_key_or_index(ht, arKey, nKeyLength, h, HASH_DEL_KEY_QUICK)
+#endif
 
 #endif
 

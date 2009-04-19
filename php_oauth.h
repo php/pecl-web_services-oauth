@@ -109,6 +109,12 @@ ZEND_END_MODULE_GLOBALS(oauth)
 #define OAUTH(v) (oauth_globals.v)
 #endif
 
+#ifndef zend_hash_quick_del
+#define HASH_DEL_KEY_QUICK 2
+#define zend_hash_quick_del(ht, arKey, nKeyLength, h) \
+zend_hash_del_key_or_index(ht, arKey, nKeyLength, h, HASH_DEL_KEY_QUICK)
+#endif
+
 ZEND_EXTERN_MODULE_GLOBALS(oauth)
 
 typedef struct {

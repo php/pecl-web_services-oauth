@@ -172,7 +172,7 @@ static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ *
 }
 /* }}} */
 
-PHPAPI zend_object_value new_so_object(zend_class_entry *ce TSRMLS_DC) /* {{{ */
+static zend_object_value new_so_object(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 {
 	php_so_object *soo;
 

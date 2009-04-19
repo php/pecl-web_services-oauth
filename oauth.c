@@ -72,6 +72,8 @@ static PHP_GINIT_FUNCTION(oauth);
 
 static zend_object_handlers so_object_handlers;
 
+static unsigned int oauth_no_filter(int arg, char *var, char **val, unsigned int val_len, unsigned int *new_val_len TSRMLS_DC);
+
 #if COMPILE_DL_OAUTH
 ZEND_GET_MODULE(oauth);
 #endif
@@ -376,6 +378,13 @@ int http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp, int f
    return numargs;
 }
 
+/* don't actually do anything related to filtering, just a function which serves as a mechanism to turn off the filtering temporarily for parsing query params */
+static unsigned int oauth_no_filter(int arg, char *var, char **val, unsigned int val_len, unsigned int *new_val_len TSRMLS_DC) /* {{{ */
+{
+	return 1;
+}
+/* }}} */
+
 /*
  * This function does not currently care to respect parameter precedence, in the sense that if a common param is defined
  * in POST/GET or Authorization header, the precendence is defined by: OAuth Core 1.0 section 9.1.1
@@ -391,6 +400,9 @@ static char *generate_sig_base(php_so_object *soo, const char *http_method, char
 	HashTable *decoded_args;
 	php_url *urlparts;
 	smart_str sbuf = {0}, squery = {0};
+	zend_bool old_magic_quote_setting;
+
+	unsigned int (*old_input_filter)(int arg, char *var, char **val, unsigned int val_len, unsigned int *new_val_len TSRMLS_DC);
 
 	urlparts = php_url_parse_ex(uri, strlen(uri));
 
@@ -422,7 +434,9 @@ static char *generate_sig_base(php_so_object *soo, const char *http_method, char
 					smart_str_appends(&squery, urlparts->query);
 				}
 			}
+
 			http_build_query(&squery, extra_args, TRUE, PARAMS_FILTER_NONE);
+
 			MAKE_STD_ZVAL(func);
 			MAKE_STD_ZVAL(exret2);
 			MAKE_STD_ZVAL(exargs2[0]);
@@ -430,7 +444,16 @@ static char *generate_sig_base(php_so_object *soo, const char *http_method, char
 
 			smart_str_0(&squery);
 			query = estrdup(squery.c);
+			old_magic_quote_setting = PG(magic_quotes_runtime);
+			PG(magic_quotes_gpc) = 0;
+			old_input_filter = sapi_module.input_filter;
+			sapi_register_input_filter(oauth_no_filter);
+
 			sapi_module.treat_data(PARSE_STRING, query, exargs2[0] TSRMLS_CC);
+
+			PG(magic_quotes_gpc) = old_magic_quote_setting;
+			sapi_module.input_filter = old_input_filter;
+
 			smart_str_free(&squery);
 
 			/* remove oauth_signature if it's in the hash */
@@ -573,7 +596,9 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
        smart_str_0(&post);
 	   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c);
 
-	   fprintf(stderr,"POSTFIELDS: %s\n", post.c);
+	   if(soo->debug) {
+		   fprintf(stderr,"POSTFIELDS: %s\n", post.c);
+	   }
 
 	   curl_easy_setopt(curl, CURLOPT_URL, url);
 	} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_URI)) {

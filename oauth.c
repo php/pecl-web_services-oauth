@@ -15,6 +15,11 @@
 #endif
 
 #include "php.h"
+
+#ifdef PHP_WIN32
+#include "win32/time.h"
+#endif
+
 #include "SAPI.h"
 #include "zend_API.h"
 #include "zend_variables.h"

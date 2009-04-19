@@ -1,8 +1,0 @@
-- Respect param precedence,
-  * This ext does not currently care to respect parameter precedence, in the sense that if a common param is defined in POST/GET or Authorization header, the precendence is defined by: OAuth Core 1.0 section 9.1.1
-
-- Add tests
-  * need there be anymore said?
-
-- Allow runtime setting of Expect header for POST requests
-  * Don't know if always disabling the Expect header is going to have a big enough impact, if it does, we'll need to allow setting it dynamically for API's which can't handle it properly

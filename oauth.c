@@ -1593,7 +1593,7 @@ OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_fetch, 0, 0, 1)
 	ZEND_ARG_INFO(0, protected_resource_url)
     ZEND_ARG_INFO(1, extra_parameters) /* ARRAY_INFO(1, arg, 0) */
-    ZEND_ARG_INFO(1, http_method)
+    ZEND_ARG_INFO(0, http_method)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO

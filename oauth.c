@@ -72,8 +72,6 @@ static PHP_GINIT_FUNCTION(oauth);
 
 static zend_object_handlers so_object_handlers;
 
-static unsigned int oauth_no_filter(int arg, char *var, char **val, unsigned int val_len, unsigned int *new_val_len TSRMLS_DC);
-
 #if COMPILE_DL_OAUTH
 ZEND_GET_MODULE(oauth);
 #endif
@@ -81,6 +79,48 @@ ZEND_GET_MODULE(oauth);
 static PHP_GINIT_FUNCTION(oauth) /* {{{ */
 {
 	oauth_globals->soo_exception_ce = NULL;
+}
+/* }}} */
+
+static int oauth_parse_str(char *params, zval *dest_array TSRMLS_DC) /* {{{ */
+{
+	char *res = NULL, *var, *val, *separator = NULL;
+	char *strtok_buf = NULL;
+
+	if (!params) {
+		return FAILURE;
+	}
+
+	res = params;
+
+	separator = (char *) estrdup(PG(arg_separator).input);
+	
+	var = php_strtok_r(res, separator, &strtok_buf);
+	
+	while (var) {
+		val = strchr(var, '=');
+
+		if (val) { /* have a value */
+			int val_len;
+
+			*val++ = '\0';
+			php_url_decode(var, strlen(var));
+			val_len = php_url_decode(val, strlen(val));
+			val = estrndup(val, val_len);
+		} else {
+			int val_len;
+
+			php_url_decode(var, strlen(var));
+			val_len = 0;
+			val = estrndup("", val_len);
+		}
+		add_assoc_string(dest_array, var, val, 1);
+		efree(val);
+		var = php_strtok_r(NULL, separator, &strtok_buf);
+	}
+
+	efree(separator);
+	return SUCCESS;
 }
 /* }}} */
 
@@ -111,6 +151,7 @@ static int so_set_response_args(HashTable *hasht, zval *data, zval *retarray TSR
 			char *res = NULL;
 
 			res = estrndup(Z_STRVAL_P(data), Z_STRLEN_P(data));
+			/* do not use oauth_parse_str here, we want the result to pass through input filters */
 			sapi_module.treat_data(PARSE_STRING, res, retarray TSRMLS_CC);
 		}
 
@@ -162,9 +203,6 @@ static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ *
 	nos = ecalloc(1, sizeof(php_so_object));
 
 	zend_object_std_init(&nos->zo, ce TSRMLS_CC);
-
-	ALLOC_HASHTABLE(nos->zo.properties);
-	zend_hash_init(nos->zo.properties, 0, NULL, ZVAL_PTR_DTOR, 0);
 
 	nos->zo.ce = ce;
 	nos->zo.guards = NULL;
@@ -340,7 +378,7 @@ static char *oauth_url_encode(char *url) /* {{{ */
 /* }}} */
 
 /* build url-encoded string from args, optionally starting with & and optionally filter oauth params or non-oauth params */ 
-int http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp, int filter)
+int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp, int filter)
 {
    void *cur_val;
    char *arg_key = NULL, *cur_key = NULL, *param_value;
@@ -378,13 +416,6 @@ int http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp, int f
    return numargs;
 }
 
-/* don't actually do anything related to filtering, just a function which serves as a mechanism to turn off the filtering temporarily for parsing query params */
-static unsigned int oauth_no_filter(int arg, char *var, char **val, unsigned int val_len, unsigned int *new_val_len TSRMLS_DC) /* {{{ */
-{
-	return 1;
-}
-/* }}} */
-
 /*
  * This function does not currently care to respect parameter precedence, in the sense that if a common param is defined
  * in POST/GET or Authorization header, the precendence is defined by: OAuth Core 1.0 section 9.1.1
@@ -400,9 +431,6 @@ static char *generate_sig_base(php_so_object *soo, const char *http_method, char
 	HashTable *decoded_args;
 	php_url *urlparts;
 	smart_str sbuf = {0}, squery = {0};
-	zend_bool old_magic_quote_setting;
-
-	unsigned int (*old_input_filter)(int arg, char *var, char **val, unsigned int val_len, unsigned int *new_val_len TSRMLS_DC);
 
 	urlparts = php_url_parse_ex(uri, strlen(uri));
 
@@ -428,14 +456,14 @@ static char *generate_sig_base(php_so_object *soo, const char *http_method, char
 			smart_str_appends(&sbuf, urlparts->path);
 			smart_str_0(&sbuf);
 
-			if (http_build_query(&squery, post_args, FALSE, PARAMS_FILTER_NONE)) {
+			if (oauth_http_build_query(&squery, post_args, FALSE, PARAMS_FILTER_NONE)) {
 				if (urlparts->query) {
 					smart_str_appendc(&squery, '&');
 					smart_str_appends(&squery, urlparts->query);
 				}
 			}
 
-			http_build_query(&squery, extra_args, TRUE, PARAMS_FILTER_NONE);
+			oauth_http_build_query(&squery, extra_args, TRUE, PARAMS_FILTER_NONE);
 
 			MAKE_STD_ZVAL(func);
 			MAKE_STD_ZVAL(exret2);
@@ -444,16 +472,10 @@ static char *generate_sig_base(php_so_object *soo, const char *http_method, char
 
 			smart_str_0(&squery);
 			query = estrdup(squery.c);
-			old_magic_quote_setting = PG(magic_quotes_runtime);
-			PG(magic_quotes_gpc) = 0;
-			old_input_filter = sapi_module.input_filter;
-			sapi_module.input_filter = oauth_no_filter;  /* Not threadsafe - need a better way */
 
-			sapi_module.treat_data(PARSE_STRING, query, exargs2[0] TSRMLS_CC);
+			oauth_parse_str(query, exargs2[0] TSRMLS_CC);
 
-			PG(magic_quotes_gpc) = old_magic_quote_setting;
-			sapi_module.input_filter = old_input_filter;
-
+			efree(query);
 			smart_str_free(&squery);
 
 			/* remove oauth_signature if it's in the hash */
@@ -475,7 +497,7 @@ static char *generate_sig_base(php_so_object *soo, const char *http_method, char
 					prepend_amp = FALSE;
 
 					/* this one should check if values are non empty */
-					http_build_query(&squery, decoded_args, FALSE, PARAMS_FILTER_NONE);
+					oauth_http_build_query(&squery, decoded_args, FALSE, PARAMS_FILTER_NONE);
 					smart_str_0(&squery);
 				} else {
 					soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Was not able to get oauth parameters!", NULL TSRMLS_CC);
@@ -592,7 +614,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
    }
 
    if (!strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
-       http_build_query(&post, ht, FALSE, PARAMS_FILTER_NONE);
+       oauth_http_build_query(&post, ht, FALSE, PARAMS_FILTER_NONE);
        smart_str_0(&post);
 	   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c);
 
@@ -610,7 +632,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 			smart_str_appendc(&surl, '&');
 		}
 
-		http_build_query(&surl, ht, FALSE, PARAMS_FILTER_NON_OAUTH);
+		oauth_http_build_query(&surl, ht, FALSE, PARAMS_FILTER_NON_OAUTH);
 		smart_str_0(&surl);
 
 		curl_easy_setopt(curl, CURLOPT_URL, surl.c);
@@ -656,7 +678,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 	   /* don't do anything if it's already a POST */
 	   if (strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
 		   /* filter oauth_ params */
-		   http_build_query(&post, ht, FALSE, PARAMS_FILTER_OAUTH);
+		   oauth_http_build_query(&post, ht, FALSE, PARAMS_FILTER_OAUTH);
 		   smart_str_0(&post);
 		   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c);
 	   }
@@ -806,14 +828,18 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 					spprintf(&bufz, 0, "Invalid auth/bad request (got a %d, expected 200 or a redirect)", (int)response_code);
 					MAKE_STD_ZVAL(zret);
 					ZVAL_STRING(zret, soo->lastresponse.c, 1)
-						so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
+					so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
 					soo_handle_error(response_code, bufz, soo->lastresponse.c TSRMLS_CC);
 					efree(bufz);
-				}
+			   }
 			}
 		}
+	} else {
+		spprintf(&bufz, 0, "making the request failed (%s)", curl_easy_strerror(cres));
+		soo_handle_error(-1, bufz, soo->lastresponse.c TSRMLS_CC);
+		efree(bufz);
 	}
-   curl_easy_cleanup(curl);
+	curl_easy_cleanup(curl);
 	return cres;
 }
 /* }}} */
@@ -1066,7 +1092,7 @@ SO_METHOD(getRequestToken)
 
 	SO_ADD_SIG(args, sig);
 
-   retcode = make_req(soo, url, args, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), NULL TSRMLS_CC);
+	retcode = make_req(soo, url, args, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), NULL TSRMLS_CC);
 	FREE_ARGS_HASH(args);
 
 	if (retcode == CURLE_OK && soo->lastresponse.c) {

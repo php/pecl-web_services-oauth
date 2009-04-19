@@ -1026,12 +1026,12 @@ SO_METHOD(__destruct)
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-	oauth_prop_hash_dtor(soo TSRMLS_CC);
-
 	if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), h, (void **)&data_ptr) == SUCCESS) {
         last_req_info = HASH_OF(*data_ptr);
         FREE_ARGS_HASH(last_req_info);
 	}
+
+	oauth_prop_hash_dtor(soo TSRMLS_CC);
 }
 
 /* {{{ proto array OAuth::getRequestToken(string request_token_url)

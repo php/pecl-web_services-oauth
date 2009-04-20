@@ -832,7 +832,11 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 					cres = FAILURE;
 					spprintf(&bufz, 0, "Invalid auth/bad request (got a %d, expected 200 or a redirect)", (int)response_code);
 					MAKE_STD_ZVAL(zret);
-					ZVAL_STRING(zret, soo->lastresponse.c, 1)
+					if(soo->lastresponse.c) {
+						ZVAL_STRING(zret, soo->lastresponse.c, 1)
+					} else {
+						ZVAL_STRING(zret, "", 1)
+					}
 					so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
 					soo_handle_error(response_code, bufz, soo->lastresponse.c TSRMLS_CC);
 					efree(bufz);

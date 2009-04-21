@@ -29,10 +29,10 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
     <email>felipe@php.net</email>
     <active>yes</active>
   </developer>
-  <date>2009-03-26</date>
+  <date>2009-04-20</date>
   <version>
-    <release>0.99.4</release>
-    <api>0.99.4</api>
+    <release>0.99.5</release>
+    <api>0.99.5</api>
   </version>
   <stability>
     <release>beta</release>
@@ -40,7 +40,10 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-      - Added extra constants for Google Portable Contact API's
+	  - Added support for multiple protocols (Tjerk Meesters)
+	  - Signature generation fix for quoted values
+	  - Added disableSSLChecks and enableSSLChecks (enabled by default)
+	  - Added support for following and signing redirects
   </notes>
   <contents>
 	  <dir name="/">
@@ -82,6 +85,7 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
 			  <file name="README" role="doc" />
 			  <file name="constants.php" role="doc" />
 			  <file name="fetchTimeline.php" role="doc" />
+			  <file name="updateStatus.php" role="doc" />
 		  </dir>
           <dir name="examples/google">
 			  <file name="README" role="doc" />
@@ -106,6 +110,21 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+	  <release>
+		  <date>2009-03-26</date>
+		  <version>
+				<release>0.99.5</release>
+				<api>0.99.5</api>
+		  </version>
+		  <stability>
+				<release>beta</release>
+				<api>beta</api>
+		  </stability>
+			  <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+		  <notes>
+			  - Added extra constants for Google Portable Contact API's
+		  </notes>
+	  </release>
       <release>
           <date>2008-26-03</date>
           <version>

@@ -4,4 +4,5 @@ define('OAUTH_CONSUMER_KEY','fookey');
 define('OAUTH_CONSUMER_SECRET','foosecret');
 define('GENERAL_PURPOSE_TOKEN','footoken');
 define('GENERAL_PURPOSE_TOKEN_SECRET','footokensecret');
+define('OAUTH_TMP_DIR', sys_get_temp_dir());
 ?>

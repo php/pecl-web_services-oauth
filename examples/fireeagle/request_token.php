@@ -5,7 +5,7 @@ try {
 
 	$arrayResp = $o->getRequestToken("https://fireeagle.yahooapis.com/oauth/request_token");
 
-	file_put_contents("/tmp/request_token_resp",serialize($arrayResp));
+	file_put_contents(OAUTH_TMP_DIR . "/request_token_resp",serialize($arrayResp));
 	$authorizeUrl = "https://fireeagle.yahoo.net/oauth/authorize?oauth_token={$arrayResp["oauth_token"]}";
 	if(PHP_SAPI=="cli") {
 		echo "Navigate your http client to: {$authorizeUrl}\n";

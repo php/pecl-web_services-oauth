@@ -48,7 +48,7 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   <contents>
 	  <dir name="/">
 		  <file name="config.m4" role="src" />
-			<file name="config.w32" role="src" />
+		  <file name="config.w32" role="src" />
 		  <file name="oauth.c" role="src" />
 		  <file name="php_oauth.h" role="src" />
 		  <file name="LICENSE" role="doc" />

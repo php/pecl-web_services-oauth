@@ -5,7 +5,7 @@ try {
     
     $arrayResp = $o->getRequestToken("https://www.foo.tld/oauth/requestToken");
 
-	file_put_contents("/tmp/request_token_resp",serialize($arrayResp));
+	file_put_contents(OAUTH_TMP_DIR ."/request_token_resp",serialize($arrayResp));
     
     /* note: on the redirect there is no need to pass anything other than the oauth_token parameter */
 	header("Location: https://www.foo.tld/oauth/authorize?oauth_token={$arrayResp["oauth_token"]}");

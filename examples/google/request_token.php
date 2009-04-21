@@ -7,7 +7,7 @@ try {
 	$scopes = urlencode("http://www.google.com/calendar/feeds/") . "%20" . urlencode("http://www.blogger.com/feeds/");
 
 	$arrayResp = $o->getRequestToken("https://www.google.com/accounts/OAuthGetRequestToken?scope={$scopes}");
-	file_put_contents("/tmp/request_token_resp",serialize($arrayResp));
+	file_put_contents(OAUTH_TMP_DIR . "/request_token_resp",serialize($arrayResp));
 	$authorizeUrl = "https://www.google.com/accounts/OAuthAuthorizeToken?oauth_token={$arrayResp["oauth_token"]}";
 	if(PHP_SAPI=="cli") {
 		echo "Navigate your http client to: {$authorizeUrl}\n";

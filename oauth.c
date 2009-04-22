@@ -828,9 +828,9 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 				}
 
 				/* XXX maybe we should instead check for specific codes, like 40X */
-               if (response_code != 200 && !(response_code > 300 && response_code <= 304)) {
+               if ((response_code < 200 && response_code > 206) || !(response_code > 300 && response_code <= 304)) {
 					cres = FAILURE;
-					spprintf(&bufz, 0, "Invalid auth/bad request (got a %d, expected 200 or a redirect)", (int)response_code);
+					spprintf(&bufz, 0, "Invalid auth/bad request (got a %d, expected HTTP/1.1 20X or a redirect)", (int)response_code);
 					MAKE_STD_ZVAL(zret);
 					if(soo->lastresponse.c) {
 						ZVAL_STRING(zret, soo->lastresponse.c, 1)

@@ -29,10 +29,10 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
     <email>felipe@php.net</email>
     <active>yes</active>
   </developer>
-  <date>2009-04-20</date>
+  <date>2009-04-21</date>
   <version>
-    <release>0.99.5</release>
-    <api>0.99.5</api>
+    <release>0.99.6</release>
+    <api>0.99.6</api>
   </version>
   <stability>
     <release>beta</release>
@@ -40,10 +40,9 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-	  - Added support for multiple protocols (Tjerk Meesters)
-	  - Signature generation fix for quoted values
-	  - Added disableSSLChecks and enableSSLChecks (enabled by default)
-	  - Added support for following and signing redirects
+	  - Win32 support (pierre)
+	  - Fixed bug #16398
+	  - Use pear package version number
   </notes>
   <contents>
 	  <dir name="/">
@@ -111,6 +110,23 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+	  <release>
+		  <date>2009-04-20</date>
+		  <version>
+			<release>0.99.5</release>
+			<api>0.99.5</api>
+		  </version>
+		  <stability>
+			<release>beta</release>
+			<api>beta</api>
+		  </stability>
+		  <notes>
+			  - Added support for multiple protocols (Tjerk Meesters)
+			  - Signature generation fix for quoted values
+			  - Added disableSSLChecks and enableSSLChecks (enabled by default)
+			  - Added support for following and signing redirects
+		  </notes>
+	  </release>
 	  <release>
 		  <date>2009-03-26</date>
 		  <version>

@@ -1475,7 +1475,7 @@ SO_METHOD(getAccessToken)
 
 	SO_ADD_SIG(args, sig);
 
-	retcode = make_req(soo, aturi, args, OAUTH_HTTP_METHOD_GET, NULL TSRMLS_CC);
+	retcode = make_req(soo, aturi, args, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), NULL TSRMLS_CC);
 	FREE_ARGS_HASH(args);
 
 	if (retcode == CURLE_OK && soo->lastresponse.c) {

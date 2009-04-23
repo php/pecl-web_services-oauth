@@ -31,8 +31,8 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </developer>
   <date>2009-04-21</date>
   <version>
-    <release>0.99.6</release>
-    <api>0.99.6</api>
+    <release>0.99.7</release>
+    <api>0.99.7</api>
   </version>
   <stability>
     <release>beta</release>
@@ -40,9 +40,9 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-	  - Win32 support (pierre)
-	  - Fixed bug #16398
-	  - Use pear package version number
+	  - Throw an exception if a caller attempts to use something other than HTTP POST with an auth type set to FORM
+	  - Do not use pear package version number (bug #16404)
+	  - Please read http://oauth.net/advisories/2009-1
   </notes>
   <contents>
 	  <dir name="/">
@@ -110,6 +110,22 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+	  <release>
+		  <date>2009-04-23</date>
+		  <version>
+			<release>0.99.6</release>
+			<api>0.99.6</api>
+		  </version>
+		  <stability>
+			<release>beta</release>
+			<api>beta</api>
+		  </stability>
+		  <notes>
+			  - Win32 support (pierre)
+			  - Fixed bug #16398
+			  - Use pear package version number
+		  </notes>
+	  </release>
 	  <release>
 		  <date>2009-04-20</date>
 		  <version>

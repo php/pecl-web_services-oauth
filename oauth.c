@@ -668,7 +668,6 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 			}
 		}
 		smart_str_0(&sheader);
-
 		curl_headers = curl_slist_append(curl_headers, sheader.c);
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 
@@ -828,7 +827,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 				}
 
 				/* XXX maybe we should instead check for specific codes, like 40X */
-               if ((response_code < 200 && response_code > 206) || !(response_code > 300 && response_code <= 304)) {
+				if (response_code < 200 || response_code > 206) {
 					cres = FAILURE;
 					spprintf(&bufz, 0, "Invalid auth/bad request (got a %d, expected HTTP/1.1 20X or a redirect)", (int)response_code);
 					MAKE_STD_ZVAL(zret);
@@ -983,11 +982,11 @@ SO_METHOD(__construct)
 	}
 
 	if (!sig_method_len) {
-		sig_method = OAUTH_AUTH_TYPE_AUTHORIZATION;
+		sig_method = OAUTH_SIG_METHOD_HMACSHA1;
 	}
 
 	if (!auth_method_len) {
-		auth_method = OAUTH_SIG_METHOD_HMACSHA1;
+		auth_method = OAUTH_AUTH_TYPE_AUTHORIZATION;
 	}
 
 	if (soo->properties) {
@@ -1083,7 +1082,7 @@ SO_METHOD(getRequestToken)
 	zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
 
 	make_standard_query(args, soo TSRMLS_CC);
-   sbs = generate_sig_base(soo, OAUTH_HTTP_METHOD_GET, url, args, NULL TSRMLS_CC);
+	sbs = generate_sig_base(soo, OAUTH_HTTP_METHOD_GET, url, args, NULL TSRMLS_CC);
 	if (!sbs) {
 		FREE_ARGS_HASH(args);
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid url, unable to generate signature base string", NULL TSRMLS_CC);
@@ -1324,15 +1323,15 @@ SO_METHOD(setToken)
 SO_METHOD(fetch)
 {
 	php_so_object *soo;
-   int fetchurl_len,http_method_len;
-   char *fetchurl, *req_cur_key = NULL, *sbs = NULL, *sig = NULL, *auth_type;
-   zval **token = NULL, *zret = NULL, **cs, *request_args = NULL, *request_headers = NULL;
+	int fetchurl_len, http_method_len = 0;
+	char *fetchurl, *req_cur_key = NULL, *sbs = NULL, *sig = NULL, *auth_type;
+	zval **token = NULL, *zret = NULL, **cs, *request_args = NULL, *request_headers = NULL;
 	zval *ts = NULL, **token_secret = NULL;
 	void *p_current_req_val;
 	uint req_cur_key_len;
 	ulong req_num_key;
-   char *http_method = NULL;
-   HashTable *args = NULL, *rargs = NULL, *rheaders = NULL;
+	char *http_method = NULL;
+	HashTable *args = NULL, *rargs = NULL, *rheaders = NULL;
 	CURLcode retcode;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
@@ -1346,12 +1345,11 @@ SO_METHOD(fetch)
 		RETURN_NULL();
 	}
 
-   auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
-   if (0==strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
-       http_method = OAUTH_HTTP_METHOD_POST;
-   } else if (!http_method) {
-       http_method = OAUTH_HTTP_METHOD_GET;
-   }
+	auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
+
+	if(http_method_len && !strcasecmp(auth_type, OAUTH_AUTH_TYPE_FORM) && strcasecmp(http_method, OAUTH_HTTP_METHOD_POST)) {
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "auth type is set to HTTP POST with a non-POST http method, use setAuthType to put OAuth parameters somewhere else in the request", NULL TSRMLS_CC);
+	}
 
 	ALLOC_HASHTABLE(args);
 	zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
@@ -1361,16 +1359,16 @@ SO_METHOD(fetch)
 		rargs = HASH_OF(request_args);
 	}
 
-   if (request_headers) {
-       rheaders = HASH_OF(request_headers);
-   }
+	if (request_headers) {
+		rheaders = HASH_OF(request_headers);
+	}
 
 	token = soo_get_property(soo, OAUTH_ATTR_TOKEN TSRMLS_CC);
 	if (token) {
 		add_arg_for_req(args, OAUTH_PARAM_TOKEN, Z_STRVAL_PP(token) TSRMLS_CC);
 	}
 
-   sbs = generate_sig_base(soo, oauth_get_http_method(soo, http_method TSRMLS_CC), fetchurl, args, rargs TSRMLS_CC);
+	sbs = generate_sig_base(soo, oauth_get_http_method(soo, http_method TSRMLS_CC), fetchurl, args, rargs TSRMLS_CC);
 	if (!sbs) {
 		FREE_ARGS_HASH(args);
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url, unable to generate signature base string", NULL TSRMLS_CC);
@@ -1453,7 +1451,7 @@ SO_METHOD(getAccessToken)
 		add_arg_for_req(args, OAUTH_PARAM_TOKEN, Z_STRVAL_PP(token) TSRMLS_CC);
 	}
 
-   sbs = generate_sig_base(soo, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), aturi, args, NULL TSRMLS_CC);
+	sbs = generate_sig_base(soo, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), aturi, args, NULL TSRMLS_CC);
 	if (!sbs) {
 		FREE_ARGS_HASH(args);
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Unable to generate signature base string, perhaps the access token url is invalid", NULL TSRMLS_CC);
@@ -1597,8 +1595,9 @@ ZEND_END_ARG_INFO()
 OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_fetch, 0, 0, 1)
 	ZEND_ARG_INFO(0, protected_resource_url)
-    ZEND_ARG_INFO(1, extra_parameters) /* ARRAY_INFO(1, arg, 0) */
+    ZEND_ARG_INFO(0, extra_parameters) /* ARRAY_INFO(1, arg, 0) */
     ZEND_ARG_INFO(0, http_method)
+    ZEND_ARG_INFO(0, request_headers)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO

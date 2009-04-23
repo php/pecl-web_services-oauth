@@ -1082,7 +1082,7 @@ SO_METHOD(getRequestToken)
 	zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
 
 	make_standard_query(args, soo TSRMLS_CC);
-	sbs = generate_sig_base(soo, OAUTH_HTTP_METHOD_GET, url, args, NULL TSRMLS_CC);
+	sbs = generate_sig_base(soo, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), url, args, NULL TSRMLS_CC);
 	if (!sbs) {
 		FREE_ARGS_HASH(args);
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid url, unable to generate signature base string", NULL TSRMLS_CC);

@@ -1049,11 +1049,6 @@ SO_METHOD(__destruct)
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-   if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_LAST_RES_INFO, sizeof(OAUTH_ATTR_LAST_RES_INFO), h, (void *)&data_ptr) == SUCCESS) {
-        last_req_info = HASH_OF(*data_ptr);
-        FREE_ARGS_HASH(last_req_info);
-	}
-
 	oauth_prop_hash_dtor(soo TSRMLS_CC);
 }
 
@@ -1324,7 +1319,7 @@ SO_METHOD(fetch)
 {
 	php_so_object *soo;
 	int fetchurl_len, http_method_len = 0;
-	char *fetchurl, *req_cur_key = NULL, *sbs = NULL, *sig = NULL, *auth_type;
+	char *fetchurl, *req_cur_key = NULL, *sbs = NULL, *sig = NULL, *auth_type, *final_http_method;
 	zval **token = NULL, *zret = NULL, **cs, *request_args = NULL, *request_headers = NULL;
 	zval *ts = NULL, **token_secret = NULL;
 	void *p_current_req_val;
@@ -1340,6 +1335,7 @@ SO_METHOD(fetch)
 		return;
 	}
 
+
 	if (fetchurl_len < 1) {
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url length", NULL TSRMLS_CC);
 		RETURN_NULL();
@@ -1347,7 +1343,12 @@ SO_METHOD(fetch)
 
 	auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
 
-	if(http_method_len && !strcasecmp(auth_type, OAUTH_AUTH_TYPE_FORM) && strcasecmp(http_method, OAUTH_HTTP_METHOD_POST)) {
+	if(!http_method_len) {
+		final_http_method = (char *)oauth_get_http_method(soo, http_method TSRMLS_CC);
+	} else {
+		final_http_method = http_method;
+	}
+	if(!strcasecmp(auth_type, OAUTH_AUTH_TYPE_FORM) && strcasecmp(final_http_method, OAUTH_HTTP_METHOD_POST)) {
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "auth type is set to HTTP POST with a non-POST http method, use setAuthType to put OAuth parameters somewhere else in the request", NULL TSRMLS_CC);
 	}
 
@@ -1368,7 +1369,7 @@ SO_METHOD(fetch)
 		add_arg_for_req(args, OAUTH_PARAM_TOKEN, Z_STRVAL_PP(token) TSRMLS_CC);
 	}
 
-	sbs = generate_sig_base(soo, oauth_get_http_method(soo, http_method TSRMLS_CC), fetchurl, args, rargs TSRMLS_CC);
+	sbs = generate_sig_base(soo, oauth_get_http_method(soo, final_http_method TSRMLS_CC), fetchurl, args, rargs TSRMLS_CC);
 	if (!sbs) {
 		FREE_ARGS_HASH(args);
 		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url, unable to generate signature base string", NULL TSRMLS_CC);
@@ -1399,7 +1400,7 @@ SO_METHOD(fetch)
 			add_arg_for_req(args, req_cur_key, Z_STRVAL_PP((zval **)p_current_req_val) TSRMLS_CC);
 		}
 	}
-   retcode = make_req(soo, fetchurl, args, http_method, rheaders TSRMLS_CC);
+	retcode = make_req(soo, fetchurl, args, final_http_method, rheaders TSRMLS_CC);
 
 	MAKE_STD_ZVAL(zret);
 	ZVAL_STRINGL(zret, soo->lastresponse.c, soo->lastresponse.len, 1);

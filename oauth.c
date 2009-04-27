@@ -59,23 +59,49 @@
 	zend_hash_destroy(a);	\
 	FREE_HASHTABLE(a);
 
+#define INIT_SMART_STR(a) \
+	(a).len = 0; \
+	(a).c = NULL;
+
+#define INIT_DEBUG_INFO(a) \
+	INIT_SMART_STR((a)->headers_in); \
+	INIT_SMART_STR((a)->headers_out); \
+	INIT_SMART_STR((a)->body_in); \
+	INIT_SMART_STR((a)->body_out); \
+	INIT_SMART_STR((a)->curl_info);
+
+#define FREE_DEBUG_INFO(a) \
+	smart_str_free(&(a)->headers_in); \
+	smart_str_free(&(a)->headers_out); \
+	smart_str_free(&(a)->body_in); \
+	smart_str_free(&(a)->body_out); \
+	smart_str_free(&(a)->curl_info); 
+
 /* this and code that uses it is from ext/curl/interface.c */
 #define CAAL(s, v) add_assoc_long_ex(info, s, sizeof(s), (long) v);
 #define CAAD(s, v) add_assoc_double_ex(info, s, sizeof(s), (double) v);
 #define CAAS(s, v) add_assoc_string_ex(info, s, sizeof(s), (char *) (v ? v : ""), 1);
+
+#define ADD_DEBUG_INFO(a, k, s, t) \
+	if(s.len) { \
+		smart_str_0(&(s)); \
+		if(t) { \
+			tmp = php_trim((s).c, (s).len, NULL, 0, NULL, 3 TSRMLS_CC); \
+			add_assoc_string((a), k, tmp, 1); \
+			efree(tmp); \
+		} else { \
+			add_assoc_string((a), k, (s).c, 1); \
+		} \
+	}
 
 #ifndef TRUE
 #define TRUE 1
 #define FALSE 0
 #endif
 
-zend_class_entry *so_class_entry = NULL;
-
 ZEND_DECLARE_MODULE_GLOBALS(oauth)
 
 static PHP_GINIT_FUNCTION(oauth);
-
-static zend_object_handlers so_object_handlers;
 
 #if COMPILE_DL_OAUTH
 ZEND_GET_MODULE(oauth);
@@ -83,7 +109,8 @@ ZEND_GET_MODULE(oauth);
 
 static PHP_GINIT_FUNCTION(oauth) /* {{{ */
 {
-	oauth_globals->soo_exception_ce = NULL;
+	OAUTH(soo_exception_ce) = NULL;
+	OAUTH(soo_class_entry) = NULL;
 }
 /* }}} */
 
@@ -128,7 +155,11 @@ static int oauth_parse_str(char *params, zval *dest_array TSRMLS_DC) /* {{{ */
 
 static inline php_so_object *fetch_so_object(zval *obj TSRMLS_DC) /* {{{ */
 {
-	return (php_so_object *)zend_object_store_get_object(obj TSRMLS_CC);
+	php_so_object *soo = (php_so_object *)zend_object_store_get_object(obj TSRMLS_CC);
+
+	soo->this_ptr = obj;
+
+	return soo;
 }
 /* }}} */
 
@@ -193,7 +224,7 @@ static zend_object_value php_so_register_object(php_so_object *soo TSRMLS_DC) /*
 	zend_object_value rv;
 
 	rv.handle = zend_objects_store_put(soo, (zend_objects_store_dtor_t)zend_objects_destroy_object, so_object_free_storage, NULL TSRMLS_CC);
-	rv.handlers = (zend_object_handlers *) &so_object_handlers;
+	rv.handlers = (zend_object_handlers *) &OAUTH(so_object_handlers);
 	return rv;
 }
 /* }}} */
@@ -532,7 +563,10 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 		php_url_free(urlparts);
 
 		if(soo && soo->debug) {
-			fprintf(stderr, "Signature Base String: %s\n", bufz);
+			if(soo->debug_info->sbs) {
+				efree(soo->debug_info->sbs);
+			}
+			soo->debug_info->sbs = estrdup(bufz);
 		}
 		return bufz;
 	}
@@ -550,6 +584,51 @@ static size_t soo_read_response(char *ptr, size_t size, size_t nmemb, void *ctx)
 
 	return relsize;
 }
+
+int oauth_debug_handler(CURL *ch, curl_infotype type, char *data, size_t data_len, void *ctx) /* {{{ */
+{
+	php_so_debug *sdbg;
+	char *z_data = NULL;
+	smart_str *dest;
+
+	if(data_len > 1 && data[0]=='\r' && data[1]=='\n') { /* ignore \r\n */
+		return 0;
+	}
+
+	sdbg = (php_so_debug *)ctx;
+	z_data = emalloc(data_len + 2);
+	memset(z_data, 0, data_len + 2);
+	memcpy(z_data, data, data_len);
+	z_data[data_len] = '\0';
+
+	switch(type) {
+		case CURLINFO_TEXT:
+			dest = &sdbg->curl_info;
+			break;
+		case CURLINFO_HEADER_IN:
+			dest = &sdbg->headers_in;
+			break;
+		case CURLINFO_HEADER_OUT:
+			dest = &sdbg->headers_out;
+			break;
+		case CURLINFO_DATA_IN:
+			dest = &sdbg->body_in;
+			break;
+		case CURLINFO_DATA_OUT:
+			dest = &sdbg->body_out;
+			break;
+		default:
+			dest = NULL;
+	}
+
+	if(dest) {
+		smart_str_appends(dest, z_data);
+	}
+	efree(z_data);
+
+	return 0;
+}
+/* }}} */
 
 static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
 {
@@ -580,6 +659,37 @@ static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
 		strncpy(soo->last_location_header,header,hlen - xhead_clen - 3 /*\r\n\0*/);
 	}
 	return hlen;
+}
+
+static void oauth_set_debug_info(php_so_object *soo TSRMLS_DC) {
+	zval *debugInfo;
+	char *tmp;
+
+	if(soo->debug_info) {
+
+		debugInfo = soo->debugArr;
+		
+		if(!debugInfo) {
+			ALLOC_INIT_ZVAL(debugInfo);
+			array_init(debugInfo);
+		} else {
+			FREE_ARGS_HASH(HASH_OF(debugInfo));
+			array_init(debugInfo);
+		}
+
+		if(soo->debug_info->sbs) {
+			add_assoc_string(debugInfo, "sbs", soo->debug_info->sbs, 1);
+		}
+
+		ADD_DEBUG_INFO(debugInfo, "headers_sent", soo->debug_info->headers_out, 1);
+		ADD_DEBUG_INFO(debugInfo, "headers_recv", soo->debug_info->headers_in, 1);
+		ADD_DEBUG_INFO(debugInfo, "body_sent", soo->debug_info->body_out, 0);
+		ADD_DEBUG_INFO(debugInfo, "body_recv", soo->debug_info->body_in, 0);
+
+		zend_update_property(OAUTH(soo_class_entry), soo->this_ptr, "debugInfo", sizeof("debugInfo") - 1, debugInfo TSRMLS_CC);
+
+		soo->debugArr = debugInfo;
+	} 
 }
 
 static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const char *http_method, HashTable *request_headers TSRMLS_DC) /* {{{ */
@@ -626,10 +736,6 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 		oauth_http_build_query(&post, ht, FALSE, PARAMS_FILTER_NONE);
 		smart_str_0(&post);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c);
-
-		if(soo->debug) {
-			fprintf(stderr,"POSTFIELDS: %s\n", post.c);
-		}
 
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 	} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_URI)) {
@@ -720,6 +826,16 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 #endif
 
 	smart_str_free(&soo->lastresponse);
+
+	if(soo->debug) {
+		if(soo->debug_info->sbs) {
+			FREE_DEBUG_INFO(soo->debug_info);
+		}
+		INIT_DEBUG_INFO(soo->debug_info);
+		curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, oauth_debug_handler);
+		curl_easy_setopt(curl, CURLOPT_DEBUGDATA, soo->debug_info);
+	}
+
 	cres = curl_easy_perform(curl);
 	if(surl.c) {
 		smart_str_free(&surl);
@@ -851,6 +967,9 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 		soo_handle_error(-1, bufz, soo->lastresponse.c TSRMLS_CC);
 		efree(bufz);
 	}
+	if(soo->debug) {
+		oauth_set_debug_info(soo TSRMLS_CC);
+	}
 	curl_easy_cleanup(curl);
 	return cres;
 }
@@ -952,7 +1071,7 @@ PHP_FUNCTION(oauth_urlencode)
 }
 /* }}} */
 
-/* {{{ proto string getSBS(string http_method, string uri, array parameters)
+/* {{{ proto string oauth_get_sbs(string http_method, string uri, array parameters)
    Get a signature base string */
 PHP_FUNCTION(oauth_get_sbs)
 {
@@ -994,6 +1113,14 @@ SO_METHOD(__construct)
 
 	memset(soo->last_location_header, 0, OAUTH_MAX_HEADER_LEN);
 	soo->redirects = 0;
+	soo->debug = 0;
+	soo->debug_info = emalloc(sizeof(php_so_debug));
+	soo->debug_info->sbs = NULL;
+	soo->debugArr = NULL;
+
+	INIT_DEBUG_INFO(soo->debug_info);
+
+	zend_update_property_null(OAUTH(soo_class_entry), getThis(), "debugInfo", sizeof("debugInfo") - 1 TSRMLS_CC);
 
 	TSRMLS_SET_CTX(soo->thread_ctx);
 
@@ -1077,7 +1204,17 @@ SO_METHOD(__destruct)
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
 	oauth_prop_hash_dtor(soo TSRMLS_CC);
+
+	if(soo->debug_info->sbs) {
+		FREE_DEBUG_INFO(soo->debug_info);
+		efree(soo->debug_info->sbs);
+	}
+	efree(soo->debug_info);
+	if(soo->debugArr) {
+		zval_ptr_dtor(&soo->debugArr);
+	}
 }
+/* }}} */
 
 /* {{{ proto array OAuth::getRequestToken(string request_token_url)
    Get request token */
@@ -1666,6 +1803,42 @@ static zend_function_entry so_functions[] = { /* {{{ */
 };
 /* }}} */
 
+static zval *oauth_read_member(zval *obj, zval *mem, int type TSRMLS_DC) /* {{{ */
+{
+	zval *return_value;
+	php_so_object *soo;
+
+	soo = fetch_so_object(obj TSRMLS_CC);
+
+	if(!strcmp(Z_STRVAL_P(mem),"debug")) {
+		MAKE_STD_ZVAL(return_value);
+		ZVAL_BOOL(return_value, soo->debug);
+	} else if(!strcmp(Z_STRVAL_P(mem),"sslChecks")) {
+		MAKE_STD_ZVAL(return_value);
+		ZVAL_BOOL(return_value, soo->sslcheck);
+	} else {
+		return zend_get_std_object_handlers()->read_property(obj, mem, type TSRMLS_CC);
+	}
+	return return_value;
+} /* }}} */
+
+static void oauth_write_member(zval *obj, zval *mem, zval *value TSRMLS_DC) /* {{{ */
+{
+	char *property;
+	php_so_object *soo;
+
+	property = Z_STRVAL_P(mem);
+	soo = fetch_so_object(obj TSRMLS_CC);
+
+	if(!strcmp(property,"debug")) {
+		soo->debug = Z_LVAL_P(value);
+	} else if(!strcmp(property,"sslChecks")) {
+		soo->sslcheck = Z_LVAL_P(value);
+	} else {
+		zend_get_std_object_handlers()->write_property(obj, mem, value TSRMLS_CC);
+	}
+} /* }}} */
+
 /* {{{ PHP_MINIT_FUNCTION
 */
 PHP_MINIT_FUNCTION(oauth) 
@@ -1678,8 +1851,17 @@ PHP_MINIT_FUNCTION(oauth)
 
 	INIT_CLASS_ENTRY(soce, "OAuth", so_functions);
 	soce.create_object = new_so_object;
-	so_class_entry = zend_register_internal_class(&soce TSRMLS_CC);
-	memcpy(&so_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+
+	OAUTH(soo_class_entry) = zend_register_internal_class(&soce TSRMLS_CC);
+	memcpy(&OAUTH(so_object_handlers), zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+	
+	OAUTH(so_object_handlers).read_property = oauth_read_member;
+	OAUTH(so_object_handlers).write_property = oauth_write_member;
+
+	zend_declare_property_long(OAUTH(soo_class_entry), "debug", sizeof("debug")-1, 0, ZEND_ACC_PUBLIC TSRMLS_CC);
+	zend_declare_property_long(OAUTH(soo_class_entry), "sslChecks", sizeof("sslChecks")-1, 1, ZEND_ACC_PUBLIC TSRMLS_CC);
+	zend_declare_property_string(OAUTH(soo_class_entry), "debugInfo", sizeof("debugInfo")-1, "", ZEND_ACC_PUBLIC TSRMLS_CC);
+
 
 	INIT_CLASS_ENTRY(soo_ex_ce, "OAuthException", NULL);
 	OAUTH(soo_exception_ce) = zend_register_internal_class_ex(&soo_ex_ce, zend_exception_get_default(TSRMLS_C), NULL TSRMLS_CC);
@@ -1702,7 +1884,8 @@ PHP_MINIT_FUNCTION(oauth)
 */
 PHP_MSHUTDOWN_FUNCTION(oauth) 
 {
-	so_class_entry = NULL;
+	OAUTH(soo_class_entry) = NULL;
+	OAUTH(soo_exception_ce) = NULL;
 	curl_global_cleanup();
 	return SUCCESS;
 }

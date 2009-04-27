@@ -101,18 +101,9 @@
 
 ZEND_DECLARE_MODULE_GLOBALS(oauth)
 
-static PHP_GINIT_FUNCTION(oauth);
-
 #if COMPILE_DL_OAUTH
 ZEND_GET_MODULE(oauth);
 #endif
-
-static PHP_GINIT_FUNCTION(oauth) /* {{{ */
-{
-	OAUTH(soo_exception_ce) = NULL;
-	OAUTH(soo_class_entry) = NULL;
-}
-/* }}} */
 
 static int oauth_parse_str(char *params, zval *dest_array TSRMLS_DC) /* {{{ */
 {
@@ -1927,7 +1918,7 @@ zend_module_entry oauth_module_entry = {
 	PHP_MINFO(oauth),
 	OAUTH_EXT_VER,
 	PHP_MODULE_GLOBALS(oauth),
-	PHP_GINIT(oauth),
+	NULL,
 	NULL,
 	NULL,
 	STANDARD_MODULE_PROPERTIES_EX

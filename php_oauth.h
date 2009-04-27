@@ -100,7 +100,9 @@ PHP_MSHUTDOWN_FUNCTION(oauth);
 PHP_MINFO_FUNCTION(oauth);
 
 ZEND_BEGIN_MODULE_GLOBALS(oauth)
+zend_class_entry *soo_class_entry;
 zend_class_entry *soo_exception_ce;
+zend_object_handlers so_object_handlers;
 ZEND_END_MODULE_GLOBALS(oauth)
 
 #ifdef ZTS
@@ -118,9 +120,17 @@ zend_hash_del_key_or_index(ht, arKey, nKeyLength, h, HASH_DEL_KEY_QUICK)
 ZEND_EXTERN_MODULE_GLOBALS(oauth)
 
 typedef struct {
+	char		*sbs;
+	smart_str	headers_in;
+	smart_str	headers_out;
+	smart_str	body_in;
+	smart_str	body_out;
+	smart_str	curl_info;
+} php_so_debug;
+
+typedef struct {
 	zend_object zo;
 	HashTable *properties;
-	zval *tmp;
 	smart_str lastresponse;
 	void ***thread_ctx;
 	char last_location_header[OAUTH_MAX_HEADER_LEN];
@@ -128,6 +138,9 @@ typedef struct {
 	uint sslcheck; /* whether we check for SSL verification or not */
 	uint debug; /* verbose output */
 	uint follow_redirects; /* follow and sign redirects? */
+	zval *this_ptr;
+	zval *debugArr;
+	php_so_debug *debug_info;
 } php_so_object;
 
 static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC);

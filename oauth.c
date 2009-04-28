@@ -376,7 +376,6 @@ static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_na
 {
 	size_t prop_len = 0;
 	ulong h;
-	//zval **old_value = NULL;
 
 	prop_len = strlen(prop_name);
 	h = zend_hash_func(prop_name, prop_len+1);
@@ -387,7 +386,7 @@ static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_na
 
 static char *oauth_url_encode(char *url) /* {{{ */
 {
-	char *urlencoded, *ret;
+	char *urlencoded = NULL, *ret;
 	int out_len, ret_len;
 
 	if(url) {
@@ -676,6 +675,7 @@ static void oauth_set_debug_info(php_so_object *soo TSRMLS_DC) {
 		ADD_DEBUG_INFO(debugInfo, "headers_recv", soo->debug_info->headers_in, 1);
 		ADD_DEBUG_INFO(debugInfo, "body_sent", soo->debug_info->body_out, 0);
 		ADD_DEBUG_INFO(debugInfo, "body_recv", soo->debug_info->body_in, 0);
+		ADD_DEBUG_INFO(debugInfo, "info", soo->debug_info->curl_info, 0);
 
 		zend_update_property(OAUTH(soo_class_entry), soo->this_ptr, "debugInfo", sizeof("debugInfo") - 1, debugInfo TSRMLS_CC);
 
@@ -690,7 +690,7 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 	struct curl_slist *curl_headers = NULL;
 	long l_code, response_code;
 	double d_code;
-	zval *info, *zret;
+	zval *info, *zret, **zca_info, **zca_path;
 	void *p_cur, *p_kcur;
 	zend_bool prepend_comma = FALSE;
 	char *s_code, *cur_key, *content_type = NULL, *bufz = NULL;
@@ -700,6 +700,8 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 	smart_str surl = {0}, sheader = {0}, rheader = {0}, post = {0};
 
 	auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
+	zca_info = soo_get_property(soo, OAUTH_ATTR_CA_INFO TSRMLS_CC);
+	zca_path = soo_get_property(soo, OAUTH_ATTR_CA_PATH TSRMLS_CC);
 	follow_redirects = soo->follow_redirects;
 	sslcheck = soo->sslcheck;
 
@@ -802,6 +804,13 @@ static CURLcode make_req(php_so_object *soo, char *url, HashTable *ht, const cha
 	if(!sslcheck) {
 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+	} else {
+		if(zca_path && Z_STRLEN_PP(zca_path)) {
+			curl_easy_setopt(curl, CURLOPT_CAPATH, Z_STRVAL_PP(zca_path));
+		}
+		if(zca_info && Z_STRLEN_PP(zca_info)) {
+			curl_easy_setopt(curl, CURLOPT_CAINFO, Z_STRVAL_PP(zca_info));
+		}
 	}
 	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, soo_read_header);
 	curl_easy_setopt(curl, CURLOPT_WRITEHEADER, soo);
@@ -1204,6 +1213,40 @@ SO_METHOD(__destruct)
 	if(soo->debugArr) {
 		zval_ptr_dtor(&soo->debugArr);
 	}
+}
+/* }}} */
+
+/* {{{ proto array OAuth::setCAInfo(string ca_path, string ca_info)
+   Get request token */
+SO_METHOD(setCAInfo)
+{
+	php_so_object *soo;
+	char *ca_path, *ca_info;
+	int ca_path_len, ca_info_len;
+	zval *zca_path, *zca_info;
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|ss", &ca_path, &ca_path_len, &ca_info, &ca_info_len) == FAILURE) {
+		return;
+	}
+
+	if (ca_path_len) {
+		MAKE_STD_ZVAL(zca_path);
+		ZVAL_STRINGL(zca_path, ca_path, ca_path_len, 1);
+		if (soo_set_property(soo, zca_path, OAUTH_ATTR_CA_PATH TSRMLS_CC) != SUCCESS) {
+			RETURN_NULL()
+		}
+	}
+
+	if (ca_info_len) {
+		MAKE_STD_ZVAL(zca_info);
+		ZVAL_STRINGL(zca_info, ca_info, ca_info_len, 1);
+		if (soo_set_property(soo, zca_info, OAUTH_ATTR_CA_INFO TSRMLS_CC) != SUCCESS) {
+			RETURN_NULL()
+		}
+	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -1751,6 +1794,12 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setnonce, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setcainfo, 0, 0, 2)
+	ZEND_ARG_INFO(0, ca_path)
+	ZEND_ARG_INFO(0, ca_info)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_settoken, 0, 0, 2)
 	ZEND_ARG_INFO(0, token)
 	ZEND_ARG_INFO(0, token_secret)
@@ -1789,6 +1838,7 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(disableSSLChecks,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(enableRedirects,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(disableRedirects,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(setCAInfo,			arginfo_oauth_setcainfo,		ZEND_ACC_PUBLIC)
 	SO_ME(__destruct,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };

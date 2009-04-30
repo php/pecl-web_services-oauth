@@ -29,10 +29,10 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
     <email>felipe@php.net</email>
     <active>yes</active>
   </developer>
-  <date>2009-04-21</date>
+  <date>2009-04-30</date>
   <version>
-    <release>0.99.7</release>
-    <api>0.99.7</api>
+    <release>0.99.8</release>
+    <api>0.99.8</api>
   </version>
   <stability>
     <release>beta</release>
@@ -40,9 +40,8 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-	  - Throw an exception if a caller attempts to use something other than HTTP POST with an auth type set to FORM
-	  - Do not use pear package version number (bug #16404)
-	  - Please read http://oauth.net/advisories/2009-1
+	  - Added setCAPath/getCAPath for Certificate Authority information
+	  - Fixed bus error on fetch if http_method was undefined
   </notes>
   <contents>
 	  <dir name="/">
@@ -112,6 +111,22 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   <changelog>
 	  <release>
 		  <date>2009-04-23</date>
+		  <version>
+			<release>0.99.7</release>
+			<api>0.99.7</api>
+		  </version>
+		  <stability>
+			<release>beta</release>
+			<api>beta</api>
+		  </stability>
+		  <notes>
+			  - Throw an exception if a caller attempts to use something other than HTTP POST with an auth type set to FORM
+			  - Do not use pear package version number (bug #16404)
+			  - Please read http://oauth.net/advisories/2009-1
+		  </notes>
+	  </release>
+	  <release>
+		  <date>2009-04-20</date>
 		  <version>
 			<release>0.99.6</release>
 			<api>0.99.6</api>

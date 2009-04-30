@@ -1216,9 +1216,9 @@ SO_METHOD(__destruct)
 }
 /* }}} */
 
-/* {{{ proto array OAuth::setCAInfo(string ca_path, string ca_info)
-   Get request token */
-SO_METHOD(setCAInfo)
+/* {{{ proto array OAuth::setCAPath(string ca_path, string ca_info)
+   Set the Certificate Authority information */
+SO_METHOD(setCAPath)
 {
 	php_so_object *soo;
 	char *ca_path, *ca_info;
@@ -1247,6 +1247,33 @@ SO_METHOD(setCAInfo)
 		}
 	}
 	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto array OAuth::getCAPath(string ca_path, string ca_info)
+   Get the Certificate Authority information */
+SO_METHOD(getCAPath)
+{
+	/* perhaps make this information available via members too? */
+	php_so_object *soo;
+	zval **zca_path, **zca_info;
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+
+	zca_info = soo_get_property(soo, OAUTH_ATTR_CA_INFO TSRMLS_CC);
+	zca_path = soo_get_property(soo, OAUTH_ATTR_CA_PATH TSRMLS_CC);
+
+	array_init(return_value);
+
+	if (zca_info || zca_path) {
+		if(zca_info) {
+			add_assoc_stringl(return_value, "ca_info", Z_STRVAL_PP(zca_info), Z_STRLEN_PP(zca_info), 1);
+		}
+
+		if(zca_path) {
+			add_assoc_stringl(return_value, "ca_path", Z_STRVAL_PP(zca_path), Z_STRLEN_PP(zca_path), 1);
+		}
+	}
 }
 /* }}} */
 
@@ -1794,7 +1821,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setnonce, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setcainfo, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setcapath, 0, 0, 2)
 	ZEND_ARG_INFO(0, ca_path)
 	ZEND_ARG_INFO(0, ca_info)
 ZEND_END_ARG_INFO()
@@ -1838,7 +1865,8 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(disableSSLChecks,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(enableRedirects,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(disableRedirects,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
-	SO_ME(setCAInfo,			arginfo_oauth_setcainfo,		ZEND_ACC_PUBLIC)
+	SO_ME(setCAPath,			arginfo_oauth_setcapath,		ZEND_ACC_PUBLIC)
+	SO_ME(getCAPath,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(__destruct,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };

@@ -1195,21 +1195,30 @@ SO_METHOD(__construct)
 }
 /* }}} */
 
-/* {{{ proto void OAuth::__destruct()
+/* {{{ proto void OAuth::__destruct(void)
    clean up of OAuth object */
 SO_METHOD(__destruct)
 {
 	php_so_object *soo;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
-
-	oauth_prop_hash_dtor(soo TSRMLS_CC);
-
-	if(soo->debug_info->sbs) {
-		FREE_DEBUG_INFO(soo->debug_info);
-		efree(soo->debug_info->sbs);
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+		return;
 	}
-	efree(soo->debug_info);
+
+	if (soo->properties) {
+		oauth_prop_hash_dtor(soo TSRMLS_CC);
+	}
+	if (soo->debug_info) {
+		FREE_DEBUG_INFO(soo->debug_info);
+		if (soo->debug_info->sbs) {			
+			efree(soo->debug_info->sbs);
+			soo->debug_info->sbs = NULL;
+		}
+		efree(soo->debug_info);
+		soo->debug_info = NULL;
+	}
 	if(soo->debugArr) {
 		zval_ptr_dtor(&soo->debugArr);
 	}
@@ -1250,7 +1259,7 @@ SO_METHOD(setCAPath)
 }
 /* }}} */
 
-/* {{{ proto array OAuth::getCAPath(string ca_path, string ca_info)
+/* {{{ proto array OAuth::getCAPath(void)
    Get the Certificate Authority information */
 SO_METHOD(getCAPath)
 {
@@ -1259,6 +1268,10 @@ SO_METHOD(getCAPath)
 	zval **zca_path, **zca_info;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+		return;
+	}
 
 	zca_info = soo_get_property(soo, OAUTH_ATTR_CA_INFO TSRMLS_CC);
 	zca_path = soo_get_property(soo, OAUTH_ATTR_CA_PATH TSRMLS_CC);
@@ -1334,13 +1347,17 @@ SO_METHOD(getRequestToken)
 }
 /* }}} */
 
-/* {{{ proto bool OAuth::enableRedirects()
+/* {{{ proto bool OAuth::enableRedirects(void)
    Follow and sign redirects automatically (enabled by default) */
 SO_METHOD(enableRedirects)
 {
 	php_so_object *soo;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+		return;
+	}
 
 	soo->follow_redirects = 1;
 
@@ -1348,7 +1365,7 @@ SO_METHOD(enableRedirects)
 }
 /* }}} */
 
-/* {{{ proto bool OAuth::disableRedirects()
+/* {{{ proto bool OAuth::disableRedirects(void)
    Don't follow redirects automatically, thus allowing the request to be manually redirected (enabled by default) */
 SO_METHOD(disableRedirects)
 {
@@ -1356,19 +1373,27 @@ SO_METHOD(disableRedirects)
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+		return;
+	}
+	
 	soo->follow_redirects = 0;
 
 	RETURN_TRUE;
 }
 /* }}} */
 
-/* {{{ proto bool OAuth::disableDebug()
+/* {{{ proto bool OAuth::disableDebug(void)
    Disable debug mode */
 SO_METHOD(disableDebug)
 {
 	php_so_object *soo;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+		return;
+	}
 
 	soo->debug = 0;
 
@@ -1376,13 +1401,17 @@ SO_METHOD(disableDebug)
 }
 /* }}} */
 
-/* {{{ proto bool OAuth::enableDebug()
+/* {{{ proto bool OAuth::enableDebug(void)
    Enable debug mode, will verbosely output http information about requests */
 SO_METHOD(enableDebug)
 {
 	php_so_object *soo;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+		return;
+	}
 
 	soo->debug = 1;
 
@@ -1390,13 +1419,17 @@ SO_METHOD(enableDebug)
 }
 /* }}} */
 
-/* {{{ proto bool OAuth::enableSSLChecks()
+/* {{{ proto bool OAuth::enableSSLChecks(void)
    Enable SSL verification for requests, enabled by default */
 SO_METHOD(enableSSLChecks)
 {
 	php_so_object *soo;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+		return;
+	}
 
 	soo->sslcheck = 1;
 
@@ -1404,13 +1437,17 @@ SO_METHOD(enableSSLChecks)
 }
 /* }}} */
 
-/* {{{ proto bool OAuth::disableSSLChecks()
+/* {{{ proto bool OAuth::disableSSLChecks(void)
    Disable SSL verification for requests (be careful using this for production) */
 SO_METHOD(disableSSLChecks)
 {
 	php_so_object *soo;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+		return;
+	}
 
 	soo->sslcheck = 0;
 
@@ -1538,7 +1575,7 @@ SO_METHOD(setToken)
 }
 /* }}} */
 
-/* {{{ proto bool OAuth::fetch(string protected_resource_url [, string|array extra_parameters, string request_type, array request_headers])
+/* {{{ proto bool OAuth::fetch(string protected_resource_url [, string|array extra_parameters [, string request_type [, array request_headers]]])
    fetch a protected resource, pass in extra_parameters (array(name => value) or "custom body") */
 SO_METHOD(fetch)
 {
@@ -1845,8 +1882,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_getaccesstoken, 0, 0, 1)
 	ZEND_ARG_INFO(0, access_token_url)
 	ZEND_ARG_INFO(0, auth_session_handle)
 ZEND_END_ARG_INFO()
-
-	/* }}} */
+/* }}} */
 
 static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(__construct,			arginfo_oauth__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)

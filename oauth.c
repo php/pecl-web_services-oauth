@@ -427,12 +427,15 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp,
 				arg_key = oauth_url_encode(cur_key);
 				param_value = oauth_url_encode(Z_STRVAL_PP((zval **)cur_val));
 
-				smart_str_appends(s, arg_key);
+				if(arg_key) {
+					smart_str_appends(s, arg_key);
+					efree(arg_key);
+				}
 				smart_str_appendc(s, '=');
-				smart_str_appends(s, param_value);
-
-				efree(arg_key);
-				efree(param_value);
+				if(param_value) {
+					smart_str_appends(s, param_value);
+					efree(param_value);
+				}
 				prepend_amp = TRUE;
 				++numargs;
 			}

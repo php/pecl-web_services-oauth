@@ -447,7 +447,7 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp,
 }
 
 /* retrieves parameter value from the _GET or _POST superglobal */
-void get_request_param(char *arg_name, char **return_val, int *return_len)
+void get_request_param(char *arg_name, char **return_val, int *return_len TSRMLS_DC)
 {
 	zval **ptr;
 	if (
@@ -726,7 +726,7 @@ static int add_arg_for_req(HashTable *ht, const char *arg, const char *val TSRML
 }
 /* }}} */
 
-void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_args)
+void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_args TSRMLS_DC)
 {
 	smart_str sheader = {0};
 	zend_bool prepend_comma = FALSE;
@@ -1162,7 +1162,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 			/* TODO look into merging oauth parameters if they occur in the current url */
 		} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_AUTHORIZATION)) {
 			/* add http header with oauth parameters */
-			oauth_add_signature_header(rheaders, oauth_args);
+			oauth_add_signature_header(rheaders, oauth_args TSRMLS_CC);
 		}
 
 		/* finalize endpoint url */
@@ -1803,7 +1803,7 @@ SO_METHOD(getAccessToken)
 
 	if (!verifier_len) {
 		/* try to get from _GET */
-		get_request_param(OAUTH_PARAM_VERIFIER, &verifier, &verifier_len);
+		get_request_param(OAUTH_PARAM_VERIFIER, &verifier, &verifier_len TSRMLS_CC);
 	}
 
 	if (ash_len > 0 || verifier_len > 0) {

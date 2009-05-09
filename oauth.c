@@ -1468,7 +1468,7 @@ SO_METHOD(getRequestToken)
 {
 	php_so_object *soo;
 	zval *zret = NULL;
-	char *url, *callback_url;
+	char *url, *callback_url = NULL;
 	int url_len = 0, callback_url_len = 0;
 	long retcode;
 	HashTable *args = NULL;
@@ -1484,10 +1484,15 @@ SO_METHOD(getRequestToken)
 		RETURN_FALSE;
 	}
 
-	if (callback_url_len > 0) {
+	if (callback_url) {
 		ALLOC_HASHTABLE(args);
 		zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
-		add_arg_for_req(args, OAUTH_PARAM_CALLBACK, callback_url TSRMLS_CC);
+		if (callback_url_len > 0) {
+			add_arg_for_req(args, OAUTH_PARAM_CALLBACK, callback_url TSRMLS_CC);
+		} else {
+			// empty callback url specified, treat as 1.0a
+			add_arg_for_req(args, OAUTH_PARAM_CALLBACK, OAUTH_CALLBACK_OOB TSRMLS_CC);
+		}
 	}
 
 	retcode = oauth_fetch(soo, url, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), NULL, NULL, args, 0 TSRMLS_CC);

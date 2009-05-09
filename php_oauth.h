@@ -93,6 +93,9 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_PARAM_VERIFIER "oauth_verifier"
 #define OAUTH_PARAM_CALLBACK "oauth_callback"
 
+/* values */
+#define OAUTH_CALLBACK_OOB "oob"
+
 #define OAUTH_PARAM_PREFIX "oauth_"
 #define OAUTH_PARAM_PREFIX_LEN 6
 

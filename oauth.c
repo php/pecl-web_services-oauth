@@ -1917,6 +1917,7 @@ ZEND_END_ARG_INFO()
 OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_getrequesttoken, 0, 0, 1)
 	ZEND_ARG_INFO(0, request_token_url)
+	ZEND_ARG_INFO(0, callback_url)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO

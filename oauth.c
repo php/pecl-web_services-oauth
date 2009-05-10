@@ -246,7 +246,11 @@ static zend_object_value new_so_object(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 void soo_handle_error(long errorCode, char *msg, char *response TSRMLS_DC) /* {{{ */
 {
 	zval *ex;
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 2)
+	zend_class_entry *dex = zend_exception_get_default(), *soox = soo_exception_ce;
+#else
 	zend_class_entry *dex = zend_exception_get_default(TSRMLS_C), *soox = soo_exception_ce;
+#endif
 
 	MAKE_STD_ZVAL(ex);
 	object_init_ex(ex,soox);
@@ -2050,7 +2054,12 @@ PHP_MINIT_FUNCTION(oauth)
 
 
 	INIT_CLASS_ENTRY(soo_ex_ce, "OAuthException", NULL);
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 2)
+	soo_exception_ce = zend_register_internal_class_ex(&soo_ex_ce, zend_exception_get_default(), NULL TSRMLS_CC);
+#else
 	soo_exception_ce = zend_register_internal_class_ex(&soo_ex_ce, zend_exception_get_default(TSRMLS_C), NULL TSRMLS_CC);
+#endif
 	zend_declare_property_null(soo_exception_ce, "lastResponse", sizeof("lastResponse")-1, ZEND_ACC_PUBLIC TSRMLS_CC);
 
 	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_HMACSHA1", OAUTH_SIG_METHOD_HMACSHA1, CONST_CS | CONST_PERSISTENT);

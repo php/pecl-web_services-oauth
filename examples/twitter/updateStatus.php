@@ -9,12 +9,16 @@ try {
     //$oauth->enableDebug();
 	/* do *not* use the next call for production environments */
 	$oauth->disableSSLChecks();
+	$oauth->debug = 1;
 
     $request_token_info = $oauth->getRequestToken(TWITTER_REQUEST_TOKEN_URL);
 
+	var_dump($oauth->debugInfo);
+
     printf("I think I got a valid request token, navigate your www client to:\n\n%s?oauth_token=%s\n\nOnce you finish authorizing, hit ENTER or INTERRUPT to exit\n\n", TWITTER_AUTHORIZE_URL, $request_token_info["oauth_token"]);
     
-    fread(STDIN,2);
+	$in = fopen("php://stdin", "r");
+	fgets($in, 255);
 
     printf("Grabbing an access token...\n");
 

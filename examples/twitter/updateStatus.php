@@ -5,16 +5,18 @@ include("constants.php");
 try {
 	$oauth = new OAuth(TWITTER_CONSUMER_KEY,TWITTER_CONSUMER_SECRET,OAUTH_SIG_METHOD_HMACSHA1,OAUTH_AUTH_TYPE_URI);
 
-    /* Uncomment the line below to get lots of debug */
-    //$oauth->enableDebug();
 	/* do *not* use the next call for production environments */
-	$oauth->disableSSLChecks();
+    $oauth->disableSSLChecks();
+    /* Uncomment either of the lines below to get the debugInfo member populated in $oauth */
+    //$oauth->debug = 1;
+    //$oauth->enableDebug();
 
     $request_token_info = $oauth->getRequestToken(TWITTER_REQUEST_TOKEN_URL);
 
     printf("I think I got a valid request token, navigate your www client to:\n\n%s?oauth_token=%s\n\nOnce you finish authorizing, hit ENTER or INTERRUPT to exit\n\n", TWITTER_AUTHORIZE_URL, $request_token_info["oauth_token"]);
     
-    fread(STDIN,2);
+    $in = fopen("php://stdin", "r");
+    fgets($in, 255);
 
     printf("Grabbing an access token...\n");
 
@@ -28,9 +30,13 @@ try {
     printf("Updating the status via %s\n",TWITTER_UPDATE_STATUS_API);
     $oauth->setToken($access_token_info["oauth_token"],$access_token_info["oauth_token_secret"]);
 
-	$api_args = array("status" => "'hi' from pecl/oauth");
+	$api_args = array("status" => "'hi' from pecl/oauth", "empty_param" => NULL);
 
-    $oauth->fetch(TWITTER_UPDATE_STATUS_API, $api_args, OAUTH_HTTP_METHOD_POST);
+    $oauth->fetch(TWITTER_UPDATE_STATUS_API, $api_args, OAUTH_HTTP_METHOD_POST, array("User-Agent" => "pecl/oauth"));
+
+    if(!empty($oauth->debug)) {
+        print_r($oauth->debugInfo);
+    }
 
     /* from this point on OAuth is over, now handling the JSON response is in order */
     $json = json_decode($oauth->getLastResponse());

@@ -11,5 +11,5 @@ define('GOOGLE_OAUTH_AUTHORIZE_API', 'https://www.google.com/accounts/OAuthAutho
 /* full PoCo developer guide for Google is at http://code.google.com/apis/contacts/docs/poco/1.0/developers_guide.html */
 define('GOOGLE_POCO_CONTACT_INFO_API', 'http://www-opensocial.googleusercontent.com/api/people/@me/@self');
 define('GOOGLE_POCO_ALL_CONTACTS', 'http://www-opensocial.googleusercontent.com/api/people/@me/@all');
-define('OAUTH_TMP_DIR', sys_get_temp_dir());
+define('OAUTH_TMP_DIR', function_exists('sys_get_temp_dir') ? sys_get_temp_dir() : realpath($_ENV["TMP"]));
 ?>

@@ -12,7 +12,8 @@ try {
 
     printf("I think I got a valid request token, navigate your www client to:\n\n%s?oauth_token=%s\n\nOnce you finish authorizing, hit ENTER or INTERRUPT to exit\n\n", TWITTER_AUTHORIZE_URL, $request_token_info["oauth_token"]);
     
-    fread(STDIN,2);
+    $in = fopen("php://stdin", "r");
+    fgets($in, 255);
 
     printf("Grabbing an access token...\n");
 

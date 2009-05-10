@@ -26,7 +26,7 @@
 # define OAUTH_IS_CALLABLE_CC
 #endif
 
-#define OAUTH_EXT_VER "0.99.8"
+#define OAUTH_EXT_VER "0.99.9"
 #define OAUTH_HTTP_PORT 80
 #define OAUTH_HTTPS_PORT 443
 #define OAUTH_MAX_REDIRS 4L
@@ -70,6 +70,8 @@ extern zend_module_entry oauth_module_entry;
 #define PARAMS_FILTER_NON_OAUTH 2
 #define PARAMS_FILTER_NONE 0
 
+#define OAUTH_FETCH_USETOKEN 1
+
 #define OAUTH_DEFAULT_VERSION "1.0"
 
 /* errors */
@@ -88,6 +90,11 @@ extern zend_module_entry oauth_module_entry;
 
 #define OAUTH_PARAM_TOKEN "oauth_token"
 #define OAUTH_PARAM_ASH "oauth_session_handle"
+#define OAUTH_PARAM_VERIFIER "oauth_verifier"
+#define OAUTH_PARAM_CALLBACK "oauth_callback"
+
+/* values */
+#define OAUTH_CALLBACK_OOB "oob"
 
 #define OAUTH_PARAM_PREFIX "oauth_"
 #define OAUTH_PARAM_PREFIX_LEN 6
@@ -100,25 +107,11 @@ PHP_MINIT_FUNCTION(oauth);
 PHP_MSHUTDOWN_FUNCTION(oauth);
 PHP_MINFO_FUNCTION(oauth);
 
-ZEND_BEGIN_MODULE_GLOBALS(oauth)
-zend_class_entry *soo_class_entry;
-zend_class_entry *soo_exception_ce;
-zend_object_handlers so_object_handlers;
-ZEND_END_MODULE_GLOBALS(oauth)
-
 #ifdef ZTS
 #define OAUTH(v) TSRMG(oauth_globals_id, zend_oauth_globals *, v)
 #else
 #define OAUTH(v) (oauth_globals.v)
 #endif
-
-#ifndef zend_hash_quick_del
-#define HASH_DEL_KEY_QUICK 2
-#define zend_hash_quick_del(ht, arKey, nKeyLength, h) \
-zend_hash_del_key_or_index(ht, arKey, nKeyLength, h, HASH_DEL_KEY_QUICK)
-#endif
-
-ZEND_EXTERN_MODULE_GLOBALS(oauth)
 
 typedef struct {
 	char		*sbs;
@@ -147,8 +140,8 @@ typedef struct {
 static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC);
 static int soo_set_nonce(php_so_object *soo TSRMLS_DC);
 static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);
-static int oauth_add_signature(php_so_object *soo, const char *http_method, char *uri, HashTable *args, HashTable *eargs TSRMLS_DC);
 static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC);
+static CURLcode make_req(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
 
 #ifndef zend_hash_quick_del
 #define HASH_DEL_KEY_QUICK 2

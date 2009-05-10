@@ -101,11 +101,9 @@
 #define FALSE 0
 #endif
 
-ZEND_DECLARE_MODULE_GLOBALS(oauth);
-
-#if COMPILE_DL_OAUTH
-ZEND_GET_MODULE(oauth);
-#endif
+static zend_class_entry *soo_class_entry;
+static zend_class_entry *soo_exception_ce;
+static zend_object_handlers so_object_handlers;
 
 static int oauth_parse_str(char *params, zval *dest_array TSRMLS_DC) /* {{{ */
 {
@@ -217,7 +215,7 @@ static zend_object_value php_so_register_object(php_so_object *soo TSRMLS_DC) /*
 	zend_object_value rv;
 
 	rv.handle = zend_objects_store_put(soo, (zend_objects_store_dtor_t)zend_objects_destroy_object, so_object_free_storage, NULL TSRMLS_CC);
-	rv.handlers = (zend_object_handlers *) &OAUTH(so_object_handlers);
+	rv.handlers = (zend_object_handlers *) &so_object_handlers;
 	return rv;
 }
 /* }}} */
@@ -248,7 +246,7 @@ static zend_object_value new_so_object(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 void soo_handle_error(long errorCode, char *msg, char *response TSRMLS_DC) /* {{{ */
 {
 	zval *ex;
-	zend_class_entry *dex = zend_exception_get_default(TSRMLS_C), *soox = OAUTH(soo_exception_ce);
+	zend_class_entry *dex = zend_exception_get_default(TSRMLS_C), *soox = soo_exception_ce;
 
 	MAKE_STD_ZVAL(ex);
 	object_init_ex(ex,soox);
@@ -698,7 +696,7 @@ static void oauth_set_debug_info(php_so_object *soo TSRMLS_DC) {
 		ADD_DEBUG_INFO(debugInfo, "body_recv", soo->debug_info->body_in, 0);
 		ADD_DEBUG_INFO(debugInfo, "info", soo->debug_info->curl_info, 0);
 
-		zend_update_property(OAUTH(soo_class_entry), soo->this_ptr, "debugInfo", sizeof("debugInfo") - 1, debugInfo TSRMLS_CC);
+		zend_update_property(soo_class_entry, soo->this_ptr, "debugInfo", sizeof("debugInfo") - 1, debugInfo TSRMLS_CC);
 
 		soo->debugArr = debugInfo;
 	} 
@@ -1296,7 +1294,7 @@ SO_METHOD(__construct)
 
 	INIT_DEBUG_INFO(soo->debug_info);
 
-	zend_update_property_null(OAUTH(soo_class_entry), getThis(), "debugInfo", sizeof("debugInfo") - 1 TSRMLS_CC);
+	zend_update_property_null(soo_class_entry, getThis(), "debugInfo", sizeof("debugInfo") - 1 TSRMLS_CC);
 
 	TSRMLS_SET_CTX(soo->thread_ctx);
 
@@ -1480,7 +1478,7 @@ SO_METHOD(getRequestToken)
 	}
 
 	if (url_len < 1) {
-		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid access token url length", NULL TSRMLS_CC);
+		soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid request token url length", NULL TSRMLS_CC);
 		RETURN_FALSE;
 	}
 
@@ -1779,7 +1777,7 @@ SO_METHOD(fetch)
 /* {{{ proto array OAuth::getAccessToken(string access_token_url [, string auth_session_handle [, string auth_verifier ]])
 	Get access token, 
 	If the server supports Scalable OAuth pass in the auth_session_handle to refresh the token (http://wiki.oauth.net/ScalableOAuth)
-	For 1.0a implementation, a verifier token must be passed; this token is not passed unless a value is explicitly assigned via the function arguments or $_GET['oauth_verifier'] is set
+	For 1.0a implementation, a verifier token must be passed; this token is not passed unless a value is explicitly assigned via the function arguments or $_GET/$_POST['oauth_verifier'] is set
 */
 SO_METHOD(getAccessToken)
 {
@@ -1802,7 +1800,7 @@ SO_METHOD(getAccessToken)
 	}
 
 	if (!verifier_len) {
-		/* try to get from _GET */
+		/* try to get from _GET/_POST */
 		get_request_param(OAUTH_PARAM_VERIFIER, &verifier, &verifier_len TSRMLS_CC);
 	}
 
@@ -2040,20 +2038,20 @@ PHP_MINIT_FUNCTION(oauth)
 	INIT_CLASS_ENTRY(soce, "OAuth", so_functions);
 	soce.create_object = new_so_object;
 
-	OAUTH(soo_class_entry) = zend_register_internal_class(&soce TSRMLS_CC);
-	memcpy(&OAUTH(so_object_handlers), zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+	soo_class_entry = zend_register_internal_class(&soce TSRMLS_CC);
+	memcpy(&so_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 	
-	OAUTH(so_object_handlers).read_property = oauth_read_member;
-	OAUTH(so_object_handlers).write_property = oauth_write_member;
+	so_object_handlers.read_property = oauth_read_member;
+	so_object_handlers.write_property = oauth_write_member;
 
-	zend_declare_property_long(OAUTH(soo_class_entry), "debug", sizeof("debug")-1, 0, ZEND_ACC_PUBLIC TSRMLS_CC);
-	zend_declare_property_long(OAUTH(soo_class_entry), "sslChecks", sizeof("sslChecks")-1, 1, ZEND_ACC_PUBLIC TSRMLS_CC);
-	zend_declare_property_string(OAUTH(soo_class_entry), "debugInfo", sizeof("debugInfo")-1, "", ZEND_ACC_PUBLIC TSRMLS_CC);
+	zend_declare_property_long(soo_class_entry, "debug", sizeof("debug")-1, 0, ZEND_ACC_PUBLIC TSRMLS_CC);
+	zend_declare_property_long(soo_class_entry, "sslChecks", sizeof("sslChecks")-1, 1, ZEND_ACC_PUBLIC TSRMLS_CC);
+	zend_declare_property_string(soo_class_entry, "debugInfo", sizeof("debugInfo")-1, "", ZEND_ACC_PUBLIC TSRMLS_CC);
 
 
 	INIT_CLASS_ENTRY(soo_ex_ce, "OAuthException", NULL);
-	OAUTH(soo_exception_ce) = zend_register_internal_class_ex(&soo_ex_ce, zend_exception_get_default(TSRMLS_C), NULL TSRMLS_CC);
-	zend_declare_property_null(OAUTH(soo_exception_ce), "lastResponse", sizeof("lastResponse")-1, ZEND_ACC_PUBLIC TSRMLS_CC);
+	soo_exception_ce = zend_register_internal_class_ex(&soo_ex_ce, zend_exception_get_default(TSRMLS_C), NULL TSRMLS_CC);
+	zend_declare_property_null(soo_exception_ce, "lastResponse", sizeof("lastResponse")-1, ZEND_ACC_PUBLIC TSRMLS_CC);
 
 	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_HMACSHA1", OAUTH_SIG_METHOD_HMACSHA1, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_AUTH_TYPE_AUTHORIZATION", OAUTH_AUTH_TYPE_AUTHORIZATION, CONST_CS | CONST_PERSISTENT);
@@ -2063,7 +2061,7 @@ PHP_MINIT_FUNCTION(oauth)
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_GET", OAUTH_HTTP_METHOD_GET, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_POST", OAUTH_HTTP_METHOD_POST, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_PUT", OAUTH_HTTP_METHOD_PUT, CONST_CS | CONST_PERSISTENT);
-	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_HEAD", OAUTH_HTTP_METHOD_HEAD, CONST_CS | CONST_PERSISTENT);
+	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_HEAD", OAUTH_HTTP_METHOD_HEAD, CONST_CS | CONST_PERSISTENT); 
 	return SUCCESS;
 }
 /* }}} */
@@ -2072,8 +2070,8 @@ PHP_MINIT_FUNCTION(oauth)
 */
 PHP_MSHUTDOWN_FUNCTION(oauth) 
 {
-	OAUTH(soo_class_entry) = NULL;
-	OAUTH(soo_exception_ce) = NULL;
+	soo_class_entry = NULL;
+	soo_exception_ce = NULL;
 	curl_global_cleanup();
 	return SUCCESS;
 }
@@ -2114,13 +2112,13 @@ zend_module_entry oauth_module_entry = {
 	NULL,
 	PHP_MINFO(oauth),
 	OAUTH_EXT_VER,
-	PHP_MODULE_GLOBALS(oauth),
-	NULL,
-	NULL,
-	NULL,
-	STANDARD_MODULE_PROPERTIES_EX
+	STANDARD_MODULE_PROPERTIES
 };
 /* }}} */
+
+#if COMPILE_DL_OAUTH
+ZEND_GET_MODULE(oauth);
+#endif
 
 /**
  * Local Variables:

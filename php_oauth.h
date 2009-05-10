@@ -26,7 +26,7 @@
 # define OAUTH_IS_CALLABLE_CC
 #endif
 
-#define OAUTH_EXT_VER "0.99.8"
+#define OAUTH_EXT_VER "0.99.9-dev"
 #define OAUTH_HTTP_PORT 80
 #define OAUTH_HTTPS_PORT 443
 #define OAUTH_MAX_REDIRS 4L
@@ -107,25 +107,11 @@ PHP_MINIT_FUNCTION(oauth);
 PHP_MSHUTDOWN_FUNCTION(oauth);
 PHP_MINFO_FUNCTION(oauth);
 
-ZEND_BEGIN_MODULE_GLOBALS(oauth);
-zend_class_entry *soo_class_entry;
-zend_class_entry *soo_exception_ce;
-zend_object_handlers so_object_handlers;
-ZEND_END_MODULE_GLOBALS(oauth);
-
 #ifdef ZTS
 #define OAUTH(v) TSRMG(oauth_globals_id, zend_oauth_globals *, v)
 #else
 #define OAUTH(v) (oauth_globals.v)
 #endif
-
-#ifndef zend_hash_quick_del
-#define HASH_DEL_KEY_QUICK 2
-#define zend_hash_quick_del(ht, arKey, nKeyLength, h) \
-zend_hash_del_key_or_index(ht, arKey, nKeyLength, h, HASH_DEL_KEY_QUICK)
-#endif
-
-ZEND_EXTERN_MODULE_GLOBALS(oauth);
 
 typedef struct {
 	char		*sbs;

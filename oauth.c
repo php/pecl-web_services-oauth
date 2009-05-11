@@ -201,7 +201,19 @@ static void so_object_free_storage(void *obj TSRMLS_DC) /* {{{ */
 	php_so_object *soo;
 
 	soo = (php_so_object *) obj;
+
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
+	if (soo->zo.guards) {
+		zend_hash_destroy(soo->zo.guards);
+		FREE_HASHTABLE(soo->zo.guards);
+	}
+	if (soo->zo.properties) {
+		zend_hash_destroy(soo->zo.properties);
+		FREE_HASHTABLE(soo->zo.properties);
+	}
+#else
 	zend_object_std_dtor(&soo->zo TSRMLS_CC);
+#endif
 
 	if (soo->lastresponse.c) {
 		smart_str_free(&soo->lastresponse);
@@ -226,10 +238,16 @@ static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ *
 
 	nos = ecalloc(1, sizeof(php_so_object));
 
-	zend_object_std_init(&nos->zo, ce TSRMLS_CC);
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
+	ALLOC_HASHTABLE(nos->zo.properties);
+	zend_hash_init(nos->zo.properties, 0, NULL, ZVAL_PTR_DTOR, 0);
 
 	nos->zo.ce = ce;
 	nos->zo.guards = NULL;
+#else
+	zend_object_std_init(&nos->zo, ce TSRMLS_CC);
+#endif
+
 	return nos;
 }
 /* }}} */
@@ -453,8 +471,8 @@ void get_request_param(char *arg_name, char **return_val, int *return_len TSRMLS
 {
 	zval **ptr;
 	if (
-	    (PG(http_globals)[TRACK_VARS_GET] && SUCCESS==zend_hash_find(HASH_OF(PG(http_globals)[TRACK_VARS_GET]), arg_name, strlen(arg_name)+1, (void**)&ptr) && IS_STRING==Z_TYPE_PP(ptr)) || 
-	    (PG(http_globals)[TRACK_VARS_POST] && SUCCESS==zend_hash_find(HASH_OF(PG(http_globals)[TRACK_VARS_POST]), arg_name, strlen(arg_name)+1, (void**)&ptr) && IS_STRING==Z_TYPE_PP(ptr))
+	    (PG(http_globals)[TRACK_VARS_GET] && SUCCESS==zend_hash_find(HASH_OF(PG(http_globals)[TRACK_VARS_GET]), arg_name, strlen(arg_name)+1, (void*)&ptr) && IS_STRING==Z_TYPE_PP(ptr)) || 
+	    (PG(http_globals)[TRACK_VARS_POST] && SUCCESS==zend_hash_find(HASH_OF(PG(http_globals)[TRACK_VARS_POST]), arg_name, strlen(arg_name)+1, (void*)&ptr) && IS_STRING==Z_TYPE_PP(ptr))
 	   ) {
 		*return_val = Z_STRVAL_PP(ptr);
 		*return_len = Z_STRLEN_PP(ptr);
@@ -2078,7 +2096,7 @@ PHP_MINIT_FUNCTION(oauth)
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_GET", OAUTH_HTTP_METHOD_GET, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_POST", OAUTH_HTTP_METHOD_POST, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_PUT", OAUTH_HTTP_METHOD_PUT, CONST_CS | CONST_PERSISTENT);
-	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_HEAD", OAUTH_HTTP_METHOD_HEAD, CONST_CS | CONST_PERSISTENT); 
+	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_HEAD", OAUTH_HTTP_METHOD_HEAD, CONST_CS | CONST_PERSISTENT);
 	return SUCCESS;
 }
 /* }}} */

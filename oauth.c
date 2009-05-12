@@ -1210,6 +1210,8 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 					final_http_method = OAUTH_HTTP_METHOD_GET;
 				}
 			}
+		} else if (http_response_code < 0) {
+			// do nothing, make_req() threw an exception
 		} else if (http_response_code < 200 || http_response_code > 206) {
 			spprintf(&bufz, 0, "Invalid auth/bad request (got a %ld, expected HTTP/1.1 20X or a redirect)", http_response_code);
 			MAKE_STD_ZVAL(zret);

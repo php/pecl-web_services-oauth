@@ -37,10 +37,6 @@
 #define OAUTH_AUTH_TYPE_NONE "noauth"
 #define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
 
-#if LIBCURL_VERSION_NUM >= 0x071304
-#define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS
-#endif
-
 extern zend_module_entry oauth_module_entry;
 #define phpext_oauth_ptr &oauth_module_entry
 
@@ -141,7 +137,15 @@ static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS
 static int soo_set_nonce(php_so_object *soo TSRMLS_DC);
 static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);
 static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC);
-static CURLcode make_req(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+
+#ifdef HAVE_CURL
+static long make_req(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+
+#if LIBCURL_VERSION_NUM >= 0x071304
+#define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS
+#endif
+
+#endif
 
 #ifndef zend_hash_quick_del
 #define HASH_DEL_KEY_QUICK 2

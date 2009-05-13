@@ -694,16 +694,14 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 }
 
 #define HTTP_RESPONSE_CAAS(zvalpp, header, storkey) { \
-	int __l=strlen(header); \
-	if (0==strncasecmp(Z_STRVAL_PP(zvalpp),header,__l)) { \
-		CAAS(storkey, (Z_STRVAL_PP(zvalpp)+__l)); \
+	if (0==strncasecmp(Z_STRVAL_PP(zvalpp),header,sizeof(header)-1)) { \
+		CAAS(storkey, (Z_STRVAL_PP(zvalpp)+sizeof(header)-1)); \
 	} \
 }
 
 #define HTTP_RESPONSE_CAAD(zvalpp, header, storkey) { \
-	int __l=strlen(header); \
-	if (0==strncasecmp(Z_STRVAL_PP(zvalpp),header,__l)) { \
-		CAAD(storkey, strtoul(Z_STRVAL_PP(zvalpp)+__l,NULL,10)); \
+	if (0==strncasecmp(Z_STRVAL_PP(zvalpp),header,sizeof(header)-1)) { \
+		CAAD(storkey, strtoul(Z_STRVAL_PP(zvalpp)+sizeof(header)-1,NULL,10)); \
 	} \
 }
 
@@ -754,6 +752,9 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 		if (sheaders.len) {
 			ZVAL_STRINGL(&zheaders, sheaders.c, sheaders.len, 0);
 			php_stream_context_set_option(sc, "http", "header", &zheaders);
+			if (soo->debug) {
+				smart_str_append(&soo->debug_info->headers_out, &sheaders);
+			}
 		}
 		smart_str_free(&sheaders);
 	}
@@ -773,7 +774,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 	php_stream_context_set_option(sc, "http", "ignore_errors", &zerrign);
 
 	smart_str_free(&soo->lastresponse);
-
+ 
 	if ((s = php_stream_open_wrapper_ex((char*)url, "rb", REPORT_ERRORS | ENFORCE_SAFE_MODE, NULL, sc))) {
 		zval *info;
 		char *buf;
@@ -789,6 +790,10 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 
 			zend_hash_internal_pointer_reset(Z_ARRVAL_P(s->wrapperdata));
 			while (SUCCESS == zend_hash_get_current_data(Z_ARRVAL_P(s->wrapperdata), (void**)&tmp)) {
+				if (soo->debug) {
+					smart_str_appendl(&soo->debug_info->headers_in, Z_STRVAL_PP(tmp), Z_STRLEN_PP(tmp));
+					smart_str_appends(&soo->debug_info->headers_in, "\r\n");
+				}
 				HTTP_RESPONSE_CODE(tmp);
 				HTTP_RESPONSE_LOCATION(tmp);
 				HTTP_RESPONSE_CAAS(tmp, "Content-Type: ", "content_type");
@@ -820,12 +825,17 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 		efree(bufz);
 	}
 
+	if(soo->debug) {
+		smart_str_append(&soo->debug_info->body_in, &soo->lastresponse);
+		smart_str_append(&soo->debug_info->body_out, payload);
+	}
+
 	return response_code;
 }
 /* }}} */
 
 #if HAVE_CURL
-static size_t soo_read_response(char *ptr, size_t size, size_t nmemb, void *ctx)
+static size_t soo_read_response(char *ptr, size_t size, size_t nmemb, void *ctx) /* {{{ */
 {
 	uint relsize;
 	php_so_object *soo = (php_so_object *)ctx;
@@ -835,6 +845,7 @@ static size_t soo_read_response(char *ptr, size_t size, size_t nmemb, void *ctx)
 
 	return relsize;
 }
+/* }}} */
 
 int oauth_debug_handler(CURL *ch, curl_infotype type, char *data, size_t data_len, void *ctx) /* {{{ */
 {
@@ -993,10 +1004,6 @@ static long make_req_curl(php_so_object *soo, const char *url, const smart_str *
 	smart_str_free(&soo->lastresponse);
 
 	if(soo->debug) {
-		if(soo->debug_info->sbs) {
-			FREE_DEBUG_INFO(soo->debug_info);
-		}
-		INIT_DEBUG_INFO(soo->debug_info);
 		curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, oauth_debug_handler);
 		curl_easy_setopt(curl, CURLOPT_DEBUGDATA, soo->debug_info);
 	}
@@ -1312,6 +1319,13 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 
 		/* finalize endpoint url */
 		smart_str_0(&surl);
+
+		if (soo->debug) {
+			if(soo->debug_info->sbs) {
+				FREE_DEBUG_INFO(soo->debug_info);
+			}
+			INIT_DEBUG_INFO(soo->debug_info);
+		}
 
 		switch (soo->reqengine) {
 			case OAUTH_REQENGINE_STREAMS:

@@ -1388,7 +1388,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 		} else {
 			/* valid response, time to get out of this loop */
 		}
-	} while (is_redirect);
+	} while (is_redirect && follow_redirects);
 
 	smart_str_free(&surl);
 	smart_str_free(&postdata);

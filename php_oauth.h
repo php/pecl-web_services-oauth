@@ -144,7 +144,7 @@ static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC);
 
 static long make_req_streams(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
 
-#if OAUTH_HAVE_CURL
+#if HAVE_CURL
 static long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
 
 #if LIBCURL_VERSION_NUM >= 0x071304

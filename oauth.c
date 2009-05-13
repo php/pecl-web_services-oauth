@@ -42,7 +42,7 @@
 #include "ext/standard/base64.h"
 #include "ext/standard/php_lcg.h"
 
-#if OAUTH_HAVE_CURL
+#if HAVE_CURL
 #include <curl/curl.h>
 #define CLEANUP_CURL_AND_FORM(f,h)	 \
 	curl_easy_cleanup(h);	 \
@@ -824,7 +824,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 }
 /* }}} */
 
-#if OAUTH_HAVE_CURL
+#if HAVE_CURL
 static size_t soo_read_response(char *ptr, size_t size, size_t nmemb, void *ctx)
 {
 	uint relsize;
@@ -1317,7 +1317,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 			case OAUTH_REQENGINE_STREAMS:
 				http_response_code = make_req_streams(soo, surl.c, &payload, final_http_method, rheaders TSRMLS_CC);
 				break;
-#if OAUTH_HAVE_CURL
+#if HAVE_CURL
 			case OAUTH_REQENGINE_CURL:
 				http_response_code = make_req_curl(soo, surl.c, &payload, final_http_method, rheaders TSRMLS_CC);
 				break;
@@ -1530,7 +1530,7 @@ SO_METHOD(__construct)
 	soo->follow_redirects = 1;
 
 	soo->lastresponse.c = NULL;
-#if OAUTH_HAVE_CURL
+#if HAVE_CURL
 	soo->reqengine = OAUTH_REQENGINE_CURL;
 #else
 	soo->reqengine = OAUTH_REQENGINE_STREAMS;
@@ -1935,7 +1935,7 @@ SO_METHOD(setRequestEngine)
 
 	switch (reqengine) {
 		case OAUTH_REQENGINE_STREAMS:
-#if OAUTH_HAVE_CURL
+#if HAVE_CURL
 		case OAUTH_REQENGINE_CURL:
 #endif
 			soo->reqengine = reqengine;
@@ -2244,7 +2244,7 @@ PHP_MINIT_FUNCTION(oauth)
 {
 	zend_class_entry soce, soo_ex_ce;
 
-#if OAUTH_HAVE_CURL
+#if HAVE_CURL
 	if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
 		return FAILURE;
 	}
@@ -2293,7 +2293,7 @@ PHP_MSHUTDOWN_FUNCTION(oauth)
 {
 	soo_class_entry = NULL;
 	soo_exception_ce = NULL;
-#if OAUTH_HAVE_CURL
+#if HAVE_CURL
 	curl_global_cleanup();
 #endif
 	return SUCCESS;
@@ -2309,7 +2309,7 @@ PHP_MINFO_FUNCTION(oauth)
 	php_info_print_table_row(2, "PLAINTEXT support", "not supported");
 	php_info_print_table_row(2, "RSA-SHA1 support", "not supported");
 	php_info_print_table_row(2, "HMAC-SHA1 support", "enabled");
-#if OAUTH_HAVE_CURL
+#if HAVE_CURL
 	php_info_print_table_row(2, "Request engine support", "php_streams, curl");
 #else
 	php_info_print_table_row(2, "Request engine support", "php_streams");

@@ -66,6 +66,9 @@ extern zend_module_entry oauth_module_entry;
 #define PARAMS_FILTER_NON_OAUTH 2
 #define PARAMS_FILTER_NONE 0
 
+#define OAUTH_REQENGINE_STREAMS 1
+#define OAUTH_REQENGINE_CURL 2
+
 #define OAUTH_FETCH_USETOKEN 1
 
 #define OAUTH_DEFAULT_VERSION "1.0"
@@ -128,6 +131,7 @@ typedef struct {
 	uint sslcheck; /* whether we check for SSL verification or not */
 	uint debug; /* verbose output */
 	uint follow_redirects; /* follow and sign redirects? */
+	uint reqengine; /* streams or curl */
 	zval *this_ptr;
 	zval *debugArr;
 	php_so_debug *debug_info;
@@ -138,8 +142,10 @@ static int soo_set_nonce(php_so_object *soo TSRMLS_DC);
 static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);
 static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC);
 
-#ifdef HAVE_CURL
-static long make_req(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+static long make_req_streams(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+
+#if OAUTH_HAVE_CURL
+static long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
 
 #if LIBCURL_VERSION_NUM >= 0x071304
 #define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS

@@ -430,16 +430,17 @@ static char *oauth_url_encode(char *url) /* {{{ */
 int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp, int filter)
 {
 	void *cur_val;
-	char *arg_key = NULL, *cur_key = NULL, *param_value;
+	char *arg_key = NULL, *param_value;
+	zend_hash_key_type cur_key;
 	uint cur_key_len;
 	int numargs = 0;
 	int is_oauth_param = 0;
 
 	if (args) {
 		for (zend_hash_internal_pointer_reset(args);
-				zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, NULL, 0, NULL) != HASH_KEY_NON_EXISTANT;
+				zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, NULL, 0, NULL) == HASH_KEY_IS_STRING;
 				zend_hash_move_forward(args)) {
-			is_oauth_param = !strncmp(OAUTH_PARAM_PREFIX, cur_key, OAUTH_PARAM_PREFIX_LEN);
+					is_oauth_param = !strncmp(OAUTH_PARAM_PREFIX, ZEND_HASH_KEY_STRVAL(cur_key), OAUTH_PARAM_PREFIX_LEN);
 			/* apply filter where applicable */
 			if (filter==PARAMS_FILTER_NONE 
 					|| (filter==PARAMS_FILTER_OAUTH && !is_oauth_param) 
@@ -448,7 +449,7 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp,
 					smart_str_appendc(s, '&');
 				}
 				zend_hash_get_current_data(args, (void **)&cur_val);
-				arg_key = oauth_url_encode(cur_key);
+				arg_key = oauth_url_encode(ZEND_HASH_KEY_STRVAL(cur_key));
 				param_value = oauth_url_encode(Z_STRVAL_PP((zval **)cur_val));
 
 				if(arg_key) {
@@ -660,7 +661,8 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 	zend_bool prepend_comma = FALSE;
 
 	zval **curval;
-	char *param_name, *param_val, *cur_key;
+	char *param_name, *param_val;
+	zend_hash_key_type cur_key;
 	uint cur_key_len;
 	ulong num_key;
 
@@ -674,7 +676,7 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 		if (prepend_comma) {
 			smart_str_appendc(&sheader, ',');
 		}
-		param_name = oauth_url_encode(cur_key);
+		param_name = oauth_url_encode(ZEND_HASH_KEY_STRVAL(cur_key));
 		param_val = oauth_url_encode(Z_STRVAL_PP(curval));
 
 		smart_str_appends(&sheader, param_name);
@@ -727,14 +729,14 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 
 	if (request_headers) {
 		zval **tmp, zheaders;
-		char *cur_key;
+		zend_hash_key_type cur_key;
 		uint cur_key_len;
 		ulong num_key;
 		smart_str sheaders = {0};
 		int first = 0;
 
 		for (zend_hash_internal_pointer_reset(request_headers);
-				zend_hash_get_current_data(request_headers, (void **)&tmp) == SUCCESS;
+				zend_hash_get_current_data(request_headers, (void *)&tmp) == SUCCESS;
 				zend_hash_move_forward(request_headers)) {
 			/* check if a string based key is used */
 			if (HASH_KEY_IS_STRING==zend_hash_get_current_key_ex(request_headers, &cur_key, &cur_key_len, &num_key, 0, NULL)) {
@@ -743,7 +745,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 				} else {
 					++first;
 				}
-				smart_str_appends(&sheaders, cur_key);
+				smart_str_appends(&sheaders, ZEND_HASH_KEY_STRVAL(cur_key));
 				smart_str_appends(&sheaders, ": ");
 				smart_str_appends(&sheaders, Z_STRVAL_PP(tmp));
 			}
@@ -789,7 +791,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 			zval **tmp;
 
 			zend_hash_internal_pointer_reset(Z_ARRVAL_P(s->wrapperdata));
-			while (SUCCESS == zend_hash_get_current_data(Z_ARRVAL_P(s->wrapperdata), (void**)&tmp)) {
+			while (SUCCESS == zend_hash_get_current_data(Z_ARRVAL_P(s->wrapperdata), (void *)&tmp)) {
 				if (soo->debug) {
 					smart_str_appendl(&soo->debug_info->headers_in, Z_STRVAL_PP(tmp), Z_STRLEN_PP(tmp));
 					smart_str_appends(&soo->debug_info->headers_in, "\r\n");
@@ -805,7 +807,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 			}
 		}
 
-		if ((rb = php_stream_copy_to_mem(s, &buf, PHP_STREAM_COPY_ALL, 0)) > 0) {
+		if ((rb = php_stream_copy_to_mem(s, (void*)&buf, PHP_STREAM_COPY_ALL, 0)) > 0) {
 			smart_str_appendl(&soo->lastresponse, buf, rb);
 			pefree(buf, 0);
 		}

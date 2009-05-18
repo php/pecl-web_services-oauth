@@ -137,6 +137,14 @@ typedef struct {
 	php_so_debug *debug_info;
 } php_so_object;
 
+#if (PHP_MAJOR_VERSION >= 6)
+#define ZEND_HASH_KEY_STRVAL(key) key.s
+typedef zstr zend_hash_key_type;
+#else
+#define ZEND_HASH_KEY_STRVAL(key) key
+typedef char * zend_hash_key_type;
+#endif
+
 static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC);
 static int soo_set_nonce(php_so_object *soo TSRMLS_DC);
 static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);

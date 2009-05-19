@@ -435,10 +435,11 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp,
 	uint cur_key_len;
 	int numargs = 0;
 	int is_oauth_param = 0;
+	ulong num_index;
 
 	if (args) {
 		for (zend_hash_internal_pointer_reset(args);
-				zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, NULL, 0, NULL) == HASH_KEY_IS_STRING;
+				zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, &num_index, 0, NULL) == HASH_KEY_IS_STRING;
 				zend_hash_move_forward(args)) {
 					is_oauth_param = !strncmp(OAUTH_PARAM_PREFIX, ZEND_HASH_KEY_STRVAL(cur_key), OAUTH_PARAM_PREFIX_LEN);
 			/* apply filter where applicable */
@@ -541,7 +542,7 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 			array_init(exargs2[0]);
 
 			smart_str_0(&squery);
-			query = estrdup(squery.c);
+			query = estrdup(squery.len?squery.c:"");
 
 			oauth_parse_str(query, exargs2[0] TSRMLS_CC);
 
@@ -577,7 +578,7 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 			zval_ptr_dtor(&exargs2[0]);
 			FREE_ZVAL(exargs2[1]);
 
-			sbs_query_part = oauth_url_encode(squery.c);
+			sbs_query_part = oauth_url_encode(squery.len?squery.c:"");
 			sbs_scheme_part = oauth_url_encode(sbuf.c);
 
 			spprintf(&bufz, 0, "%s&%s&%s", http_method, sbs_scheme_part, sbs_query_part);
@@ -1429,7 +1430,7 @@ PHP_FUNCTION(oauth_get_sbs)
 	int uri_len, http_method_len;
 	zval *req_params;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssz", &http_method, &http_method_len, &uri, &uri_len, &req_params) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|a", &http_method, &http_method_len, &uri, &uri_len, &req_params) == FAILURE) {
 		return;
 	}
 
@@ -2122,7 +2123,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_urlencode, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_sbs, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_sbs, 0, 0, 3)
 	ZEND_ARG_INFO(0, http_method)
 	ZEND_ARG_INFO(0, uri)
 	ZEND_ARG_INFO(0, parameters)

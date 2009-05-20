@@ -35,4 +35,4 @@ GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test%3Dhello
 -- using same var in url and params --
 GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test%3Dhi
 -- using null inside params --
-GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test%3D
+GET&http%3A%2F%2F127.0.0.1%3A12342%2F&

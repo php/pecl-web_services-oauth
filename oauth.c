@@ -432,7 +432,7 @@ static char *oauth_url_encode(char *url) /* {{{ */
 /* build url-encoded string from args, optionally starting with & */ 
 int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp)
 {
-	void *cur_val;
+	zval **cur_val;
 	char *arg_key = NULL, *param_value;
 	zend_hash_key_type cur_key;
 	uint cur_key_len;
@@ -444,36 +444,39 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp)
 		for (zend_hash_internal_pointer_reset_ex(args, &pos);
 				HASH_KEY_NON_EXISTANT!=(hash_key_type=zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, &num_index, 0, &pos));
 				zend_hash_move_forward_ex(args, &pos)) {
+			zend_hash_get_current_data_ex(args, (void **)&cur_val, &pos);
+			param_value = oauth_url_encode(Z_STRVAL_PP(cur_val));
+
+			if (!param_value) {
+				/* skip if the value is null */
+				continue;
+			}
 			switch (hash_key_type) {
 				case HASH_KEY_IS_STRING:
 					arg_key = oauth_url_encode(ZEND_HASH_KEY_STRVAL(cur_key));
 					break;
 				case HASH_KEY_IS_LONG:
-					// take value of num_index instead
+					/* take value of num_index instead */
 					arg_key = NULL;
 					break;
 				default:
-					// unicode keys not yet supported
+					/* unicode keys not yet supported */
+					efree(param_value);
 					continue;
 			}
 			if (prepend_amp) {
 				smart_str_appendc(s, '&');
 			}
-			zend_hash_get_current_data_ex(args, (void **)&cur_val, &pos);
-			param_value = oauth_url_encode(Z_STRVAL_PP((zval **)cur_val));
-
 			if (arg_key) {
 				smart_str_appends(s, arg_key);
 				efree(arg_key);
 			} else {
 				smart_str_append_unsigned(s, num_index);
 			}
-			/* even if param_value is empty, we still show the equals sign */
 			smart_str_appendc(s, '=');
-			if (param_value) {
-				smart_str_appends(s, param_value);
-				efree(param_value);
-			}
+			smart_str_appends(s, param_value);
+			efree(param_value);
+			/* next parameter needs to be prepended with ampersand */
 			prepend_amp = TRUE;
 			++numargs;
 		}
@@ -539,7 +542,6 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 			smart_str_0(&sbuf);
 
 			numargs += oauth_http_build_query(&squery, post_args, FALSE);
-
 			numargs += oauth_http_build_query(&squery, extra_args, numargs ? TRUE : FALSE);
 
 			if (urlparts->query) {

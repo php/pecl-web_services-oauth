@@ -31,11 +31,12 @@
 #define OAUTH_HTTPS_PORT 443
 #define OAUTH_MAX_REDIRS 4L
 #define OAUTH_MAX_HEADER_LEN 512L
-#define OAUTH_AUTH_TYPE_URI "uri"
-#define OAUTH_AUTH_TYPE_FORM "form"
-#define OAUTH_AUTH_TYPE_AUTHORIZATION "authorization"
-#define OAUTH_AUTH_TYPE_NONE "noauth"
-#define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
+#define OAUTH_AUTH_TYPE_URI 0x01
+#define OAUTH_AUTH_TYPE_FORM 0x02
+#define OAUTH_AUTH_TYPE_AUTHORIZATION 0x03
+#define OAUTH_AUTH_TYPE_NONE 0x04
+
+#define OAUTH_SIG_METHOD_HMACSHA1 0x01
 
 extern zend_module_entry oauth_module_entry;
 #define phpext_oauth_ptr &oauth_module_entry

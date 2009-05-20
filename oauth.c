@@ -1138,9 +1138,9 @@ Returns the default http method to use with the different auth types
 */
 static const char *oauth_get_http_method(php_so_object *soo, const char *http_method TSRMLS_DC) /* {{{ */
 {
-	char *auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
+	long auth_type = Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
 
-	if (0==strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
+	if (OAUTH_AUTH_TYPE_FORM==auth_type) {
 		return OAUTH_HTTP_METHOD_POST;
 	} else if (!http_method) {
 		return OAUTH_HTTP_METHOD_GET;
@@ -1203,21 +1203,21 @@ Prepares the request elements to be used by make_req(); this should allow for su
 */
 static long oauth_fetch(php_so_object *soo, const char *url, const char *method, zval *request_params, zval *request_headers, HashTable *init_oauth_args, int fetch_flags TSRMLS_DC) /* {{{ */
 {
-	char *sbs = NULL, *sig = NULL, *auth_type, *bufz = NULL;
+	char *sbs = NULL, *sig = NULL, *bufz = NULL;
 	const char *final_http_method;
 	zval **token = NULL, **cs;
 	zval *ts = NULL, **token_secret = NULL;
 	zval *zret;
 	HashTable *oauth_args = NULL;
 	HashTable *rargs = NULL, *rheaders = NULL;
-	long http_response_code;
+	long http_response_code, auth_type;
 	smart_str surl = {0}, payload = {0}, postdata = {0};
 	uint is_redirect = FALSE, follow_redirects = 0, need_to_free_rheaders = 0;
 
-	auth_type = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
+	auth_type = Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
 	final_http_method = oauth_get_http_method(soo, method TSRMLS_CC);
 
-	if (!strcasecmp(auth_type, OAUTH_AUTH_TYPE_FORM) && strcasecmp(final_http_method, OAUTH_HTTP_METHOD_POST)) {
+	if (OAUTH_AUTH_TYPE_FORM==auth_type && strcasecmp(final_http_method, OAUTH_HTTP_METHOD_POST)) {
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "auth type is set to HTTP POST with a non-POST http method, use setAuthType to put OAuth parameters somewhere else in the request", NULL TSRMLS_CC);
 	}
 
@@ -1317,19 +1317,23 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 			smart_str_append(&payload, &postdata);
 		}
 
-		if (!strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
-			/* append/set post data with oauth parameters */
-			oauth_http_build_query(&payload, oauth_args, payload.len);
-			smart_str_0(&payload);
-		} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_URI)) {
-			/* extend url request with oauth parameters */
-			if (!is_redirect) {
-				oauth_http_build_query(http_prepare_url_concat(&surl), oauth_args, FALSE);
-			}
-			/* TODO look into merging oauth parameters if they occur in the current url */
-		} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_AUTHORIZATION)) {
-			/* add http header with oauth parameters */
-			oauth_add_signature_header(rheaders, oauth_args TSRMLS_CC);
+		switch (auth_type) {
+			case OAUTH_AUTH_TYPE_FORM:
+				/* append/set post data with oauth parameters */
+				oauth_http_build_query(&payload, oauth_args, payload.len);
+				smart_str_0(&payload);
+				break;
+			case OAUTH_AUTH_TYPE_URI:
+				/* extend url request with oauth parameters */
+				if (!is_redirect) {
+					oauth_http_build_query(http_prepare_url_concat(&surl), oauth_args, FALSE);
+				}
+				/* TODO look into merging oauth parameters if they occur in the current url */
+				break;
+			case OAUTH_AUTH_TYPE_AUTHORIZATION:
+				/* add http header with oauth parameters */
+				oauth_add_signature_header(rheaders, oauth_args TSRMLS_CC);
+				break;
 		}
 
 		/* finalize endpoint url */
@@ -1467,15 +1471,16 @@ PHP_FUNCTION(oauth_get_sbs)
 SO_METHOD(__construct)
 {
 	HashTable *hasht;
-	char *ck, *cs, *sig_method = NULL,*auth_method = NULL;
+	char *ck, *cs;
+	long sig_method, auth_method;
 	zval *zck, *zcs, *zsm, *zam, *zver, *obj;
-	int ck_len, cs_len, sig_method_len = 0, auth_method_len = 0;
+	int ck_len, cs_len;
 	php_so_object *soo;
 
 	obj = getThis();
 	soo = fetch_so_object(obj TSRMLS_CC);
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|ss", &ck, &ck_len, &cs, &cs_len, &sig_method, &sig_method_len, &auth_method, &auth_method_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|ll", &ck, &ck_len, &cs, &cs_len, &sig_method, &auth_method) == FAILURE) {
 		return;
 	}
 
@@ -1507,11 +1512,11 @@ SO_METHOD(__construct)
 
 	TSRMLS_SET_CTX(soo->thread_ctx);
 
-	if (!sig_method_len) {
+	if (!sig_method) {
 		sig_method = OAUTH_SIG_METHOD_HMACSHA1;
 	}
 
-	if (!auth_method_len) {
+	if (!auth_method) {
 		auth_method = OAUTH_AUTH_TYPE_AUTHORIZATION;
 	}
 
@@ -1539,13 +1544,13 @@ SO_METHOD(__construct)
 		}
 	}
 	MAKE_STD_ZVAL(zsm);
-	ZVAL_STRING(zsm, sig_method, 1);
+	ZVAL_LONG(zsm, sig_method);
 	if (soo_set_property(soo, zsm, OAUTH_ATTR_SIGMETHOD TSRMLS_CC) != SUCCESS) {
 		return;
 	}
 
 	MAKE_STD_ZVAL(zam);
-	ZVAL_STRING(zam, auth_method, 1);
+	ZVAL_LONG(zam, auth_method);
 	if (soo_set_property(soo, zam, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC) != SUCCESS) {
 		return;
 	}
@@ -1868,26 +1873,28 @@ SO_METHOD(setVersion)
 SO_METHOD(setAuthType)
 {
 	php_so_object *soo;
-	int auth_len;
-	char *auth;
+	long auth;
 	zval *zauth;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &auth, &auth_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &auth) == FAILURE) {
 		return;
 	}
 
-	/* XXX check to see if we actually support the type rather than just the length */
-	if (auth_len < 1) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid auth type", NULL TSRMLS_CC);
-		RETURN_NULL();
-	}
-
-	MAKE_STD_ZVAL(zauth);
-	ZVAL_STRING(zauth, auth, 1);
-	if (soo_set_property(soo, zauth, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC) == SUCCESS) {
-		RETURN_TRUE;
+	switch (auth) {
+		case OAUTH_AUTH_TYPE_URI:
+		case OAUTH_AUTH_TYPE_FORM:
+		case OAUTH_AUTH_TYPE_AUTHORIZATION:
+		case OAUTH_AUTH_TYPE_NONE:
+			MAKE_STD_ZVAL(zauth);
+			ZVAL_LONG(zauth, auth);
+			if (SUCCESS==soo_set_property(soo, zauth, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC)) {
+				RETURN_TRUE;
+			}
+		default:
+			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid auth type", NULL TSRMLS_CC);
+			RETURN_NULL();
 	}
 
 	RETURN_FALSE;
@@ -2304,11 +2311,11 @@ PHP_MINIT_FUNCTION(oauth)
 	zend_declare_property_null(soo_exception_ce, "lastResponse", sizeof("lastResponse")-1, ZEND_ACC_PUBLIC TSRMLS_CC);
 	zend_declare_property_null(soo_exception_ce, "debugInfo", sizeof("debugInfo")-1, ZEND_ACC_PUBLIC TSRMLS_CC);
 
-	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_HMACSHA1", OAUTH_SIG_METHOD_HMACSHA1, CONST_CS | CONST_PERSISTENT);
-	REGISTER_STRING_CONSTANT("OAUTH_AUTH_TYPE_AUTHORIZATION", OAUTH_AUTH_TYPE_AUTHORIZATION, CONST_CS | CONST_PERSISTENT);
-	REGISTER_STRING_CONSTANT("OAUTH_AUTH_TYPE_URI", OAUTH_AUTH_TYPE_URI, CONST_CS | CONST_PERSISTENT);
-	REGISTER_STRING_CONSTANT("OAUTH_AUTH_TYPE_FORM", OAUTH_AUTH_TYPE_FORM, CONST_CS | CONST_PERSISTENT);
-	REGISTER_STRING_CONSTANT("OAUTH_AUTH_TYPE_NONE", OAUTH_AUTH_TYPE_FORM, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_SIG_METHOD_HMACSHA1", OAUTH_SIG_METHOD_HMACSHA1, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_AUTH_TYPE_AUTHORIZATION", OAUTH_AUTH_TYPE_AUTHORIZATION, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_AUTH_TYPE_URI", OAUTH_AUTH_TYPE_URI, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_AUTH_TYPE_FORM", OAUTH_AUTH_TYPE_FORM, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_AUTH_TYPE_NONE", OAUTH_AUTH_TYPE_FORM, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_GET", OAUTH_HTTP_METHOD_GET, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_POST", OAUTH_HTTP_METHOD_POST, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_PUT", OAUTH_HTTP_METHOD_PUT, CONST_CS | CONST_PERSISTENT);

@@ -60,6 +60,13 @@ try {
 echo "-- set version to 1 --\n";
 var_dump($x->setVersion('1'));
 
+try {
+	echo "-- set auth type to invalid type 99 --\n";
+	var_dump($x->setAuthType(99));
+} catch (Exception $e) {
+	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
+}
+
 ?>
 --EXPECTF--
 -- empty params --
@@ -101,3 +108,5 @@ bool(true)
 EXCEPTION 503: Invalid version
 -- set version to 1 --
 bool(true)
+-- set auth type to invalid type 99 --
+EXCEPTION 503: Invalid auth type

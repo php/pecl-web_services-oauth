@@ -15,6 +15,8 @@ echo "-- using string keys --\n";
 echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/',array('test'=>'hello')),"\n";
 echo "-- using same var in url and params --\n";
 echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/?test=hi',array('test'=>'hello')),"\n";
+echo "-- using null inside params --\n";
+echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/',array('test'=>null)),"\n";
 
 ?>
 --EXPECTF--
@@ -32,3 +34,5 @@ GET&http%3A%2F%2F127.0.0.1%3A12342%2F&1%3Dhello
 GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test%3Dhello
 -- using same var in url and params --
 GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test%3Dhi
+-- using null inside params --
+GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test%3D

@@ -429,49 +429,53 @@ static char *oauth_url_encode(char *url) /* {{{ */
 }
 /* }}} */
 
-/* build url-encoded string from args, optionally starting with & and optionally filter oauth params or non-oauth params */ 
-int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp, int filter)
+/* build url-encoded string from args, optionally starting with & */ 
+int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp)
 {
 	void *cur_val;
 	char *arg_key = NULL, *param_value;
 	zend_hash_key_type cur_key;
 	uint cur_key_len;
-	int numargs = 0;
-	int is_oauth_param = 0;
+	int numargs = 0, hash_key_type;
 	ulong num_index;
 	HashPosition pos;
 
 	if (args) {
 		for (zend_hash_internal_pointer_reset_ex(args, &pos);
-				HASH_KEY_NON_EXISTANT!=zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, &num_index, 0, &pos);
+				HASH_KEY_NON_EXISTANT!=(hash_key_type=zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, &num_index, 0, &pos));
 				zend_hash_move_forward_ex(args, &pos)) {
-			if (!cur_key) {
-				continue;
+			switch (hash_key_type) {
+				case HASH_KEY_IS_STRING:
+					arg_key = oauth_url_encode(ZEND_HASH_KEY_STRVAL(cur_key));
+					break;
+				case HASH_KEY_IS_LONG:
+					// take value of num_index instead
+					arg_key = NULL;
+					break;
+				default:
+					// unicode keys not yet supported
+					continue;
 			}
-			is_oauth_param = !strncmp(OAUTH_PARAM_PREFIX, ZEND_HASH_KEY_STRVAL(cur_key), OAUTH_PARAM_PREFIX_LEN);
-			/* apply filter where applicable */
-			if (filter==PARAMS_FILTER_NONE 
-					|| (filter==PARAMS_FILTER_OAUTH && !is_oauth_param) 
-					|| (filter==PARAMS_FILTER_NON_OAUTH && is_oauth_param)) {
-				if (prepend_amp) {
-					smart_str_appendc(s, '&');
-				}
-				zend_hash_get_current_data_ex(args, (void **)&cur_val, &pos);
-				arg_key = oauth_url_encode(ZEND_HASH_KEY_STRVAL(cur_key));
-				param_value = oauth_url_encode(Z_STRVAL_PP((zval **)cur_val));
+			if (prepend_amp) {
+				smart_str_appendc(s, '&');
+			}
+			zend_hash_get_current_data_ex(args, (void **)&cur_val, &pos);
+			param_value = oauth_url_encode(Z_STRVAL_PP((zval **)cur_val));
 
-				if(arg_key) {
-					smart_str_appends(s, arg_key);
-					efree(arg_key);
-				}
-				smart_str_appendc(s, '=');
-				if (param_value) {
-					smart_str_appends(s, param_value);
-					efree(param_value);
-				}
-				prepend_amp = TRUE;
-				++numargs;
+			if (arg_key) {
+				smart_str_appends(s, arg_key);
+				efree(arg_key);
+			} else {
+				smart_str_append_unsigned(s, num_index);
 			}
+			/* even if param_value is empty, we still show the equals sign */
+			smart_str_appendc(s, '=');
+			if (param_value) {
+				smart_str_appends(s, param_value);
+				efree(param_value);
+			}
+			prepend_amp = TRUE;
+			++numargs;
 		}
 	}
 	return numargs;
@@ -534,9 +538,9 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 			smart_str_appends(&sbuf, urlparts->path);
 			smart_str_0(&sbuf);
 
-			numargs += oauth_http_build_query(&squery, post_args, FALSE, PARAMS_FILTER_NONE);
+			numargs += oauth_http_build_query(&squery, post_args, FALSE);
 
-			numargs += oauth_http_build_query(&squery, extra_args, numargs ? TRUE : FALSE, PARAMS_FILTER_NONE);
+			numargs += oauth_http_build_query(&squery, extra_args, numargs ? TRUE : FALSE);
 
 			if (urlparts->query) {
 				smart_str_appendc(&squery, '&');
@@ -575,7 +579,7 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 					prepend_amp = FALSE;
 
 					/* this one should check if values are non empty */
-					oauth_http_build_query(&squery, decoded_args, FALSE, PARAMS_FILTER_NONE);
+					oauth_http_build_query(&squery, decoded_args, FALSE);
 					smart_str_0(&squery);
 				} else {
 					soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Was not able to get oauth parameters!", NULL TSRMLS_CC);
@@ -1225,7 +1229,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 		switch (Z_TYPE_P(request_params)) {
 		case IS_ARRAY:
 			rargs = HASH_OF(request_params);
-			oauth_http_build_query(&postdata, rargs, FALSE, PARAMS_FILTER_NONE);
+			oauth_http_build_query(&postdata, rargs, FALSE);
 			break;
 		case IS_STRING:
 			smart_str_appendl(&postdata, Z_STRVAL_P(request_params), Z_STRLEN_P(request_params));
@@ -1315,12 +1319,12 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 
 		if (!strcmp(auth_type, OAUTH_AUTH_TYPE_FORM)) {
 			/* append/set post data with oauth parameters */
-			oauth_http_build_query(&payload, oauth_args, payload.len, PARAMS_FILTER_NONE);
+			oauth_http_build_query(&payload, oauth_args, payload.len);
 			smart_str_0(&payload);
 		} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_URI)) {
 			/* extend url request with oauth parameters */
 			if (!is_redirect) {
-				oauth_http_build_query(http_prepare_url_concat(&surl), oauth_args, FALSE, PARAMS_FILTER_NONE);
+				oauth_http_build_query(http_prepare_url_concat(&surl), oauth_args, FALSE);
 			}
 			/* TODO look into merging oauth parameters if they occur in the current url */
 		} else if (!strcmp(auth_type, OAUTH_AUTH_TYPE_AUTHORIZATION)) {
@@ -1851,7 +1855,7 @@ SO_METHOD(setVersion)
 
 	MAKE_STD_ZVAL(zver);
 	ZVAL_STRING(zver, vers, 1);
-	if (soo_set_property(soo, zver, OAUTH_ATTR_OAUTH_VERSION TSRMLS_CC)) {
+	if (SUCCESS==soo_set_property(soo, zver, OAUTH_ATTR_OAUTH_VERSION TSRMLS_CC)) {
 		RETURN_TRUE;
 	}
 
@@ -1913,7 +1917,7 @@ SO_METHOD(setNonce)
 	MAKE_STD_ZVAL(zonce);
 	ZVAL_STRING(zonce, nonce, 1);
 
-	if (soo_set_property(soo, zonce, OAUTH_ATTR_OAUTH_USER_NONCE TSRMLS_CC)) {
+	if (SUCCESS==soo_set_property(soo, zonce, OAUTH_ATTR_OAUTH_USER_NONCE TSRMLS_CC)) {
 		RETURN_TRUE;
 	}
 

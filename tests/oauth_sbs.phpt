@@ -17,6 +17,10 @@ echo "-- using same var in url and params --\n";
 echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/?test=hi',array('test'=>'hello')),"\n";
 echo "-- using null inside params --\n";
 echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/',array('test'=>null)),"\n";
+echo "-- putting oauth_signature inside by mistake --\n";
+echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/',array('oauth_signature'=>'hello world')),"\n";
+echo "-- merging url query and extra params --\n";
+echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/script?arg1=1',array('arg2' => '2')),"\n";
 
 ?>
 --EXPECTF--
@@ -35,4 +39,8 @@ GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test%3Dhello
 -- using same var in url and params --
 GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test%3Dhi
 -- using null inside params --
+GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test
+-- putting oauth_signature inside by mistake --
 GET&http%3A%2F%2F127.0.0.1%3A12342%2F&
+-- merging url query and extra params --
+GET&http%3A%2F%2F127.0.0.1%3A12342%2Fscript&arg1%3D1%26arg2%3D2

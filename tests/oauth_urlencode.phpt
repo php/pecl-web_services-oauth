@@ -1,5 +1,5 @@
 --TEST--
-OAuth standard tests
+OAuth urlencode
 --FILE--
 <?php
 

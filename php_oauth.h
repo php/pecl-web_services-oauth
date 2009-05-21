@@ -36,7 +36,7 @@
 #define OAUTH_AUTH_TYPE_AUTHORIZATION 0x03
 #define OAUTH_AUTH_TYPE_NONE 0x04
 
-#define OAUTH_SIG_METHOD_HMACSHA1 0x01
+#define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
 
 extern zend_module_entry oauth_module_entry;
 #define phpext_oauth_ptr &oauth_module_entry

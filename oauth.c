@@ -430,7 +430,7 @@ static char *oauth_url_encode(char *url) /* {{{ */
 /* build url-encoded string from args, optionally starting with & and optionally filter oauth params or non-oauth params */ 
 int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp, int filter)
 {
-	void *cur_val;
+	zval **cur_val;
 	char *arg_key = NULL, *cur_key = NULL, *param_value;
 	int numargs = 0;
 	int is_oauth_param = 0;
@@ -454,8 +454,11 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp,
 					smart_str_appendc(s, '&');
 				}
 				zend_hash_get_current_data_ex(args, (void **)&cur_val, &pos);
+				SEPARATE_ZVAL(cur_val);
+				convert_to_string_ex(cur_val);
+
 				arg_key = oauth_url_encode(cur_key);
-				param_value = oauth_url_encode(Z_STRVAL_PP((zval **)cur_val));
+				param_value = oauth_url_encode(Z_STRVAL_PP(cur_val));
 
 				if(arg_key) {
 					smart_str_appends(s, arg_key);

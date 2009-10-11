@@ -513,7 +513,7 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 	urlparts = php_url_parse_ex(uri, strlen(uri));
 
 	if (urlparts) {
-		if (!urlparts->host && !urlparts->scheme) {
+		if (!urlparts->host || !urlparts->scheme) {
 			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid url when trying to build base signature string", NULL TSRMLS_CC);
 			php_url_free(urlparts);
 			return NULL;

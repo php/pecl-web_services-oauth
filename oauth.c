@@ -503,7 +503,9 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 					break;
 #endif
 				default:
-					param_value = NULL;
+					SEPARATE_ZVAL(cur_val);
+					convert_to_string_ex(cur_val);
+					param_value = oauth_url_encode(Z_STRVAL_PP(cur_val), Z_STRLEN_PP(cur_val));
 			}
 			if (param_value) {
 				smart_str_appendc(s, '=');

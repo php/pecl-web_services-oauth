@@ -5,6 +5,7 @@
   | Authors: John Jawed <jawed@php.net>                                  |
   |          Felipe Pena <felipe@php.net>                                |
   |          Rasmus Lerdorf <rasmus@php.net>                             |
+  |          Tjerk Meesters <datibbaw@php.net>                           |
   +----------------------------------------------------------------------+
 */
 
@@ -31,15 +32,12 @@
 #define OAUTH_HTTPS_PORT 443
 #define OAUTH_MAX_REDIRS 4L
 #define OAUTH_MAX_HEADER_LEN 512L
-#define OAUTH_AUTH_TYPE_URI "uri"
-#define OAUTH_AUTH_TYPE_FORM "form"
-#define OAUTH_AUTH_TYPE_AUTHORIZATION "authorization"
-#define OAUTH_AUTH_TYPE_NONE "noauth"
-#define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
+#define OAUTH_AUTH_TYPE_URI 0x01
+#define OAUTH_AUTH_TYPE_FORM 0x02
+#define OAUTH_AUTH_TYPE_AUTHORIZATION 0x03
+#define OAUTH_AUTH_TYPE_NONE 0x04
 
-#if LIBCURL_VERSION_NUM >= 0x071304
-#define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS
-#endif
+#define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
 
 extern zend_module_entry oauth_module_entry;
 #define phpext_oauth_ptr &oauth_module_entry
@@ -66,9 +64,8 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_HTTP_METHOD_PUT "PUT"
 #define OAUTH_HTTP_METHOD_HEAD "HEAD"
 
-#define PARAMS_FILTER_OAUTH 1
-#define PARAMS_FILTER_NON_OAUTH 2
-#define PARAMS_FILTER_NONE 0
+#define OAUTH_REQENGINE_STREAMS 1
+#define OAUTH_REQENGINE_CURL 2
 
 #define OAUTH_FETCH_USETOKEN 1
 
@@ -132,16 +129,35 @@ typedef struct {
 	uint sslcheck; /* whether we check for SSL verification or not */
 	uint debug; /* verbose output */
 	uint follow_redirects; /* follow and sign redirects? */
+	uint reqengine; /* streams or curl */
 	zval *this_ptr;
 	zval *debugArr;
 	php_so_debug *debug_info;
 } php_so_object;
 
+#if (PHP_MAJOR_VERSION >= 6)
+#define ZEND_HASH_KEY_STRVAL(key) key.s
+typedef zstr zend_hash_key_type;
+#else
+#define ZEND_HASH_KEY_STRVAL(key) key
+typedef char * zend_hash_key_type;
+#endif
+
 static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC);
 static int soo_set_nonce(php_so_object *soo TSRMLS_DC);
 static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);
 static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC);
-static CURLcode make_req(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+
+static long make_req_streams(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+
+#if HAVE_CURL
+static long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+
+#if LIBCURL_VERSION_NUM >= 0x071304
+#define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS
+#endif
+
+#endif
 
 #ifndef zend_hash_quick_del
 #define HASH_DEL_KEY_QUICK 2

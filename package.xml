@@ -29,6 +29,12 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
     <email>felipe@php.net</email>
     <active>yes</active>
   </developer>
+  <developer>
+    <name>Tjerk Meesters</name>
+    <user>datibbaw</user>
+    <email>datibbaw@php.net</email>
+    <active>yes</active>
+  </developer>
   <date>2009-05-09</date>
   <version>
     <release>0.99.9</release>

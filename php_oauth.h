@@ -5,7 +5,6 @@
   | Authors: John Jawed <jawed@php.net>                                  |
   |          Felipe Pena <felipe@php.net>                                |
   |          Rasmus Lerdorf <rasmus@php.net>                             |
-  |          Tjerk Meesters <datibbaw@php.net>                           |
   +----------------------------------------------------------------------+
 */
 

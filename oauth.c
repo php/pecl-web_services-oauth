@@ -765,7 +765,8 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 
 #define HTTP_RESPONSE_LOCATION(zvalpp) \
 	if (0==strncasecmp(Z_STRVAL_PP(zvalpp), "Location: ", 10)) { \
-		strncpy(soo->last_location_header, Z_STRVAL_PP(zvalpp)+10, OAUTH_MAX_HEADER_LEN); \
+		strncpy(soo->last_location_header, Z_STRVAL_PP(zvalpp)+10, OAUTH_MAX_HEADER_LEN-1); \
+		soo->last_location_header[OAUTH_MAX_HEADER_LEN-1] = '\0'; \
 	}
 
 static long make_req_streams(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC) /* {{{ */
@@ -1026,7 +1027,8 @@ static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
 			header++;
 			++xhead_clen;
 		}
-		strncpy(soo->last_location_header,header,hlen - xhead_clen - 3 /*\r\n\0*/);
+		strncpy(soo->last_location_header, header, hlen - xhead_clen - 3 /*\r\n\0*/);
+		soo->last_location_header[hlen - xhead_clen - 3] = '\0';
 	}
 	return hlen;
 }
@@ -1486,6 +1488,8 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 #endif
 		}
 
+		is_redirect = HTTP_IS_REDIRECT(http_response_code);
+
 		if(soo->debug) {
 			oauth_set_debug_info(soo TSRMLS_CC);
 		}
@@ -1493,7 +1497,6 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 		FREE_ARGS_HASH(oauth_args);
 		smart_str_free(&payload);
 
-		is_redirect = HTTP_IS_REDIRECT(http_response_code) && soo->last_location_header;
 		if (is_redirect) {
 			if (follow_redirects) {
 				if (soo->redirects >= OAUTH_MAX_REDIRS) {

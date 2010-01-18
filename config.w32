@@ -3,7 +3,7 @@
 
 ARG_WITH("oauth", "oAuth support", "no");
 
-if (PHP_CURL != "no") {
+if (PHP_OAUTH != "no") {
 	if (CHECK_LIB("libcurl_a.lib;libcurl.lib", "oauth", PHP_OAUTH) &&
 			CHECK_HEADER_ADD_INCLUDE("curl/easy.h", "CFLAGS_OAUTH") &&
 			CHECK_LIB("ssleay32.lib", "oauth", PHP_OAUTH) &&

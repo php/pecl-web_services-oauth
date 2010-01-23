@@ -122,6 +122,7 @@ typedef struct {
 	zend_object zo;
 	HashTable *properties;
 	smart_str lastresponse;
+	smart_str headers_in;
 	void ***thread_ctx;
 	char last_location_header[OAUTH_MAX_HEADER_LEN];
 	uint redirects;

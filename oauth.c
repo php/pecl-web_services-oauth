@@ -5,6 +5,7 @@
 | Authors: John Jawed <jawed@php.net>                                  |
 |          Felipe Pena <felipe@php.net>                                |
 |          Rasmus Lerdorf <rasmus@php.net>                             |
+|          Tjerk Meesters <datibbaw@php.net>                           |
 +----------------------------------------------------------------------+
 */
 
@@ -68,14 +69,12 @@
 	(http_response_code > 300 && http_response_code < 304)
 
 #define INIT_DEBUG_INFO(a) \
-	INIT_SMART_STR((a)->headers_in); \
 	INIT_SMART_STR((a)->headers_out); \
 	INIT_SMART_STR((a)->body_in); \
 	INIT_SMART_STR((a)->body_out); \
 	INIT_SMART_STR((a)->curl_info);
 
 #define FREE_DEBUG_INFO(a) \
-	smart_str_free(&(a)->headers_in); \
 	smart_str_free(&(a)->headers_out); \
 	smart_str_free(&(a)->body_in); \
 	smart_str_free(&(a)->body_out); \
@@ -223,6 +222,9 @@ static void so_object_free_storage(void *obj TSRMLS_DC) /* {{{ */
 
 	if (soo->lastresponse.c) {
 		smart_str_free(&soo->lastresponse);
+	}
+	if (soo->headers_in.c) {
+		smart_str_free(&soo->headers_in);
 	}
 	efree(obj);
 }
@@ -677,7 +679,7 @@ static void oauth_set_debug_info(php_so_object *soo TSRMLS_DC) {
 		}
 
 		ADD_DEBUG_INFO(debugInfo, "headers_sent", soo->debug_info->headers_out, 1);
-		ADD_DEBUG_INFO(debugInfo, "headers_recv", soo->debug_info->headers_in, 1);
+		ADD_DEBUG_INFO(debugInfo, "headers_recv", soo->headers_in, 1);
 		ADD_DEBUG_INFO(debugInfo, "body_sent", soo->debug_info->body_out, 0);
 		ADD_DEBUG_INFO(debugInfo, "body_recv", soo->debug_info->body_in, 0);
 		ADD_DEBUG_INFO(debugInfo, "info", soo->debug_info->curl_info, 0);
@@ -883,6 +885,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 	php_stream_context_set_option(sc, "http", "ignore_errors", &zerrign);
 
 	smart_str_free(&soo->lastresponse);
+	smart_str_free(&soo->headers_in);
  
 	if ((s = php_stream_open_wrapper_ex((char*)url, "rb", REPORT_ERRORS | ENFORCE_SAFE_MODE, NULL, sc))) {
 		zval *info;
@@ -899,10 +902,8 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 
 			zend_hash_internal_pointer_reset(Z_ARRVAL_P(s->wrapperdata));
 			while (SUCCESS == zend_hash_get_current_data(Z_ARRVAL_P(s->wrapperdata), (void *)&tmp)) {
-				if (soo->debug) {
-					smart_str_appendl(&soo->debug_info->headers_in, Z_STRVAL_PP(tmp), Z_STRLEN_PP(tmp));
-					smart_str_appends(&soo->debug_info->headers_in, "\r\n");
-				}
+				smart_str_appendl(&soo->headers_in, Z_STRVAL_PP(tmp), Z_STRLEN_PP(tmp));
+				smart_str_appends(&soo->headers_in, "\r\n");
 				HTTP_RESPONSE_CODE(tmp);
 				HTTP_RESPONSE_LOCATION(tmp);
 				HTTP_RESPONSE_CAAS(tmp, "Content-Type: ", "content_type");
@@ -919,6 +920,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 			pefree(buf, 0);
 		}
 		smart_str_0(&soo->lastresponse);
+		smart_str_0(&soo->headers_in);
 
 		CAAD("size_download", rb);
 		CAAD("size_upload", payload->len);
@@ -976,9 +978,6 @@ int oauth_debug_handler(CURL *ch, curl_infotype type, char *data, size_t data_le
 		case CURLINFO_TEXT:
 			dest = &sdbg->curl_info;
 			break;
-		case CURLINFO_HEADER_IN:
-			dest = &sdbg->headers_in;
-			break;
 		case CURLINFO_HEADER_OUT:
 			dest = &sdbg->headers_out;
 			break;
@@ -1029,6 +1028,9 @@ static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
 		}
 		strncpy(soo->last_location_header, header, hlen - xhead_clen - 3 /*\r\n\0*/);
 		soo->last_location_header[hlen - xhead_clen - 3] = '\0';
+	}
+	if(strncasecmp(header, "\r\n", 2)) {
+		smart_str_appendl(&soo->headers_in, header, hlen);
 	}
 	return hlen;
 }
@@ -1148,6 +1150,7 @@ static long make_req_curl(php_so_object *soo, const char *url, const smart_str *
 #endif
 
 	smart_str_free(&soo->lastresponse);
+	smart_str_free(&soo->headers_in);
 
 	if(soo->debug) {
 		curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, oauth_debug_handler);
@@ -1155,7 +1158,9 @@ static long make_req_curl(php_so_object *soo, const char *url, const smart_str *
 	}
 
 	cres = curl_easy_perform(curl);
+
 	smart_str_0(&soo->lastresponse);
+	smart_str_0(&soo->headers_in);
 
 	if (curl_headers) {
 		curl_slist_free_all(curl_headers);
@@ -1233,6 +1238,8 @@ static long make_req_curl(php_so_object *soo, const char *url, const smart_str *
 			if (curl_easy_getinfo(curl, CURLINFO_REDIRECT_TIME, &d_code) == CURLE_OK){
 				CAAD("redirect_time", d_code);
 			}
+			
+			CAAS("headers_recv", soo->headers_in.c);
 
 			so_set_response_info(soo->properties, info);
 		}
@@ -1642,6 +1649,8 @@ SO_METHOD(__construct)
 
 	INIT_DEBUG_INFO(soo->debug_info);
 
+	INIT_SMART_STR(soo->headers_in);
+
 	/* set default class members */
 	zend_update_property_null(soo_class_entry, obj, "debugInfo", sizeof("debugInfo") - 1 TSRMLS_CC);
 	zend_update_property_bool(soo_class_entry, obj, "debug", sizeof("debug") - 1, soo->debug TSRMLS_CC);
@@ -1733,6 +1742,8 @@ SO_METHOD(__destruct)
 		efree(soo->debug_info);
 		soo->debug_info = NULL;
 	}
+
+	smart_str_free(&soo->headers_in);
 
 	if(soo->debugArr) {
 		zval_ptr_dtor(&soo->debugArr);

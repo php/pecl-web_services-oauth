@@ -438,6 +438,35 @@ static char *oauth_url_encode(char *url, int url_len) /* {{{ */
 }
 /* }}} */
 
+char* oauth_http_encode_value(zval **v TSRMLS_DC)
+{
+	char *param_value = NULL;
+
+	switch (Z_TYPE_PP(v)) {
+		case IS_STRING:
+			param_value = oauth_url_encode(Z_STRVAL_PP(v), Z_STRLEN_PP(v));
+			break;
+#if (PHP_MAJOR_VERSION >= 6)
+		case IS_UNICODE:
+			{
+				char *temp;
+				int temp_len;
+
+				zend_unicode_to_string(UG(utf8_conv), &temp, &temp_len, Z_USTRVAL_PP(v), Z_USTRLEN_PP(v) TSRMLS_CC);
+				param_value = oauth_url_encode(temp, temp_len);
+				efree(temp);
+			}
+			break;
+#endif
+		default:
+			SEPARATE_ZVAL(v);
+			convert_to_string_ex(v);
+			param_value = oauth_url_encode(Z_STRVAL_PP(v), Z_STRLEN_PP(v));
+	}
+
+	return param_value;
+}
+
 /* build url-encoded string from args, optionally starting with & */ 
 int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp TSRMLS_DC)
 {
@@ -448,6 +477,7 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 	int numargs = 0, hash_key_type;
 	ulong num_index;
 	HashPosition pos;
+	smart_str keyname;
 
 	smart_str_0(s);
 	if (args) {
@@ -479,46 +509,69 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 				default:
 					continue;
 			}
-			if (prepend_amp) {
-				smart_str_appendc(s, '&');
-			}
+			INIT_SMART_STR(keyname);
 			if (arg_key) {
-				smart_str_appends(s, arg_key);
+				smart_str_appends(&keyname, arg_key);
 				efree(arg_key);
 			} else {
-				smart_str_append_unsigned(s, num_index);
+				smart_str_append_unsigned(&keyname, num_index);
 			}
-			switch (Z_TYPE_PP(cur_val)) {
-				case IS_STRING:
-					param_value = oauth_url_encode(Z_STRVAL_PP(cur_val), Z_STRLEN_PP(cur_val));
-					break;
-#if (PHP_MAJOR_VERSION >= 6)
-				case IS_UNICODE:
-					{
-						char *temp;
-						int temp_len;
-	
-						zend_unicode_to_string(UG(utf8_conv), &temp, &temp_len, Z_USTRVAL_PP(cur_val), Z_USTRLEN_PP(cur_val) TSRMLS_CC);
-						param_value = oauth_url_encode(temp, temp_len);
-						efree(temp);
+			if (IS_ARRAY==Z_TYPE_PP(cur_val)) {
+				HashPosition val_pos;
+				zval *ht, **val_cur_val, *fnname, *fnret, *tmp;
+
+				// select sort function
+				MAKE_STD_ZVAL(fnname);
+
+				// make shallow copy
+				MAKE_STD_ZVAL(ht);
+				array_init(ht);
+				zend_hash_copy(HASH_OF(ht), Z_ARRVAL_PP(cur_val), (copy_ctor_func_t)zval_add_ref, (void*)&tmp, sizeof(zval *));
+
+				// set up function call
+				ZVAL_STRING(fnname, "sort", 0);
+				MAKE_STD_ZVAL(fnret);
+
+				call_user_function(EG(function_table), NULL, fnname, fnret, 1, &ht TSRMLS_CC);
+
+				// traverse array
+				zend_hash_internal_pointer_reset_ex(HASH_OF(ht), &val_pos);
+				while (SUCCESS==zend_hash_get_current_data_ex(HASH_OF(ht), (void *)&val_cur_val, &val_pos)) {
+					if (prepend_amp) {
+						smart_str_appendc(s, '&');
 					}
-					break;
-#endif
-				default:
-					SEPARATE_ZVAL(cur_val);
-					convert_to_string_ex(cur_val);
-					param_value = oauth_url_encode(Z_STRVAL_PP(cur_val), Z_STRLEN_PP(cur_val));
+
+					smart_str_append(s, &keyname);
+					param_value = oauth_http_encode_value(val_cur_val);
+					if (param_value) {
+						smart_str_appendc(s, '=');
+						smart_str_appends(s, param_value);
+						efree(param_value);
+					}
+					prepend_amp = TRUE;
+					++numargs;
+					zend_hash_move_forward_ex(HASH_OF(ht), &val_pos);
+				}
+				// clean up
+				FREE_ZVAL(fnname);
+				zval_ptr_dtor(&ht);
+			} else {
+				if (prepend_amp) {
+					smart_str_appendc(s, '&');
+				}
+				smart_str_append(s, &keyname);
+				param_value = oauth_http_encode_value(cur_val);
+				if (param_value) {
+					smart_str_appendc(s, '=');
+					smart_str_appends(s, param_value);
+					efree(param_value);
+				}
+				prepend_amp = TRUE;
+				++numargs;
 			}
-			if (param_value) {
-				smart_str_appendc(s, '=');
-				smart_str_appends(s, param_value);
-				efree(param_value);
-			}
+			smart_str_free(&keyname);
 
 			smart_str_0(s);
-			/* next parameter needs to be prepended with ampersand */
-			prepend_amp = TRUE;
-			++numargs;
 		}
 	}
 	return numargs;
@@ -547,7 +600,7 @@ void get_request_param(char *arg_name, char **return_val, int *return_len TSRMLS
 
 static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC) /* {{{ */
 {
-	zval *func, *exret2, *exargs2[2];
+	zval *func, *exret2, *exargs2[1];
 	char *query;
 	char *s_port = NULL, *bufz = NULL, *sbs_query_part = NULL, *sbs_scheme_part = NULL;
 	php_url *urlparts;
@@ -579,7 +632,7 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 
 			MAKE_STD_ZVAL(exargs2[0]);
 			array_init(exargs2[0]);
-			
+
 			// merge order = oauth_args - extra_args - query
 			if (post_args) {
 				zval *tmp_copy;
@@ -606,12 +659,10 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 #else
 			zend_hash_del(Z_ARRVAL_P(exargs2[0]), OAUTH_PARAM_SIGNATURE, sizeof(OAUTH_PARAM_SIGNATURE));
 #endif
-			MAKE_STD_ZVAL(exargs2[1]);
-			ZVAL_STRING(exargs2[1], "strnatcmp", 0);
-			ZVAL_STRING(func, "uksort", 0);
+			ZVAL_STRING(func, "ksort", 0);
 
 			/* exret2 = uksort(&exargs2[0], "strnatcmp") */
-			call_user_function(EG(function_table), NULL, func, exret2, 2, exargs2 TSRMLS_CC);
+			call_user_function(EG(function_table), NULL, func, exret2, 1, exargs2 TSRMLS_CC);
 			zval_ptr_dtor(&exret2);
 
 			if (Z_TYPE_P(exargs2[0]) == IS_ARRAY) {
@@ -626,7 +677,6 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 			}
 			FREE_ZVAL(func);
 			zval_ptr_dtor(&exargs2[0]);
-			FREE_ZVAL(exargs2[1]);
 
 			sbs_query_part = oauth_url_encode(squery.c, squery.len);
 			sbs_scheme_part = oauth_url_encode(sbuf.c, sbuf.len);
@@ -1581,9 +1631,9 @@ PHP_FUNCTION(oauth_urlencode)
    Get a signature base string */
 PHP_FUNCTION(oauth_get_sbs)
 {
-	char *uri, *http_method;
+	char *uri, *http_method, *sbs;
 	int uri_len, http_method_len;
-	zval *req_params;
+	zval *req_params = NULL;
 	HashTable *rparams = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|a", &http_method, &http_method_len, &uri, &uri_len, &req_params) == FAILURE) {
@@ -1604,7 +1654,11 @@ PHP_FUNCTION(oauth_get_sbs)
 		rparams = HASH_OF(req_params);
 	}
 
-	RETURN_STRING(oauth_generate_sig_base(NULL, http_method, uri, NULL, rparams TSRMLS_CC), 0);
+	if ((sbs = oauth_generate_sig_base(NULL, http_method, uri, NULL, rparams TSRMLS_CC))) {
+		RETURN_STRING(sbs, 0);
+	} else {
+		RETURN_NULL();
+	}
 }
 /* }}} */
 

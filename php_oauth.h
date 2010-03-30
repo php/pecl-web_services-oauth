@@ -37,6 +37,7 @@
 #define OAUTH_AUTH_TYPE_NONE 0x04
 
 #define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
+#define OAUTH_SIG_METHOD_RSASHA1 "RSA-SHA1"
 
 extern zend_module_entry oauth_module_entry;
 #define phpext_oauth_ptr &oauth_module_entry
@@ -132,6 +133,7 @@ typedef struct {
 	uint reqengine; /* streams or curl */
 	zval *this_ptr;
 	zval *debugArr;
+	zval *privatekey;
 	php_so_debug *debug_info;
 } php_so_object;
 
@@ -158,6 +160,8 @@ static long make_req_curl(php_so_object *soo, const char *url, const smart_str *
 #endif
 
 #endif
+
+static void soo_free_privatekey(php_so_object *soo TSRMLS_DC);
 
 #ifndef zend_hash_quick_del
 #define HASH_DEL_KEY_QUICK 2

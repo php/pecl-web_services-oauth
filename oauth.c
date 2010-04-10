@@ -588,7 +588,7 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 					}
 
 					smart_str_append(s, &keyname);
-					param_value = oauth_http_encode_value(val_cur_val);
+					param_value = oauth_http_encode_value(val_cur_val TSRMLS_CC);
 					if (param_value) {
 						smart_str_appendc(s, '=');
 						smart_str_appends(s, param_value);
@@ -606,7 +606,7 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 					smart_str_appendc(s, '&');
 				}
 				smart_str_append(s, &keyname);
-				param_value = oauth_http_encode_value(cur_val);
+				param_value = oauth_http_encode_value(cur_val TSRMLS_CC);
 				if (param_value) {
 					smart_str_appendc(s, '=');
 					smart_str_appends(s, param_value);
@@ -1670,7 +1670,7 @@ SO_METHOD(setRSACertificate)
 	}
 
 	// free private key resources if necessary
-	soo_free_privatekey(soo);
+	soo_free_privatekey(soo TSRMLS_CC);
 
 	MAKE_STD_ZVAL(func);
 	ZVAL_STRING(func, "openssl_get_privatekey", 0);
@@ -1688,7 +1688,7 @@ SO_METHOD(setRSACertificate)
 	if (Z_TYPE_P(soo->privatekey)==IS_RESOURCE) {
 		RETURN_TRUE;
 	} else {
-		soo_free_privatekey(soo);
+		soo_free_privatekey(soo TSRMLS_CC);
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Could not parse RSA certificate", NULL TSRMLS_CC);
 		return;
 	}

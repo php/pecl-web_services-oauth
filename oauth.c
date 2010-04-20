@@ -378,7 +378,6 @@ static char *soo_sign_rsa(php_so_object *soo, char *message TSRMLS_DC)
 	ret = call_user_function(EG(function_table), NULL, func, retval, 3, args TSRMLS_CC);
 
 	if (Z_BVAL_P(retval)) {
-		fprintf(stderr, "signature okay\n");
 		result = php_base64_encode((unsigned char *)Z_STRVAL_P(args[1]), Z_STRLEN_P(args[1]), &retlen);
 		zval_ptr_dtor(&args[1]);
 	} else {
@@ -402,44 +401,12 @@ static char *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, con
 	return NULL;
 }
 
-static int soo_set_nonce(php_so_object *soo TSRMLS_DC) /* {{{ */
-{
-	zval *data_ptr, *zonc;
-	char *uniqid;
-	int sec, usec;
-	struct timeval tv;
-	ulong h = zend_hash_func(OAUTH_ATTR_OAUTH_NONCE, sizeof(OAUTH_ATTR_OAUTH_NONCE));
-
-	if (zend_hash_quick_find(soo->properties, OAUTH_ATTR_OAUTH_USER_NONCE, sizeof(OAUTH_ATTR_OAUTH_NONCE), h, (void *)&data_ptr) == SUCCESS) {
-		Z_ADDREF_P(data_ptr);
-		return soo_set_property(soo, data_ptr, OAUTH_ATTR_OAUTH_NONCE TSRMLS_CC);
-	}
-
-	/* XXX maybe find a better way to generate a nonce... */
-	gettimeofday((struct timeval *) &tv, (struct timezone *) NULL);
-	sec = (int) tv.tv_sec;
-	usec = (int) (tv.tv_usec % 0x100000);
-
-	spprintf(&uniqid, 0, "%ld%08x%05x%.8f", php_rand(TSRMLS_C), sec, usec, php_combined_lcg(TSRMLS_C) * 10);
-
-	MAKE_STD_ZVAL(zonc);
-	ZVAL_STRING(zonc, uniqid, 1);
-	efree(uniqid);
-
-	return soo_set_property(soo, zonc, OAUTH_ATTR_OAUTH_NONCE TSRMLS_CC);
-}
-/* }}} */
-
 static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC) /* {{{ */
 {
 	size_t prop_len = 0;
 	void *data_ptr;
 	ulong h;
 
-	if (!strcmp(prop_name, OAUTH_ATTR_OAUTH_NONCE) && soo_set_nonce(soo TSRMLS_CC) == FAILURE) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Failed generating nonce", NULL TSRMLS_CC);
-		return NULL;
-	}
 	prop_len = strlen(prop_name);
 	h = zend_hash_func(prop_name, prop_len+1);
 
@@ -599,6 +566,7 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 					zend_hash_move_forward_ex(HASH_OF(ht), &val_pos);
 				}
 				// clean up
+				FREE_ZVAL(fnret);
 				FREE_ZVAL(fnname);
 				zval_ptr_dtor(&ht);
 			} else {
@@ -1352,18 +1320,37 @@ static long make_req_curl(php_so_object *soo, const char *url, const smart_str *
 
 static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC) /* {{{ */
 {
-	char *tb;
-	time_t now;
+	char *ts, *nonce;
 
-	now = time(NULL);
-	/* XXX allow caller to set timestamp, if none set, then default to "now" */
-	spprintf(&tb, 0, "%d", (int)now);
+	if (soo->timestamp) {
+		ts = estrdup(soo->timestamp);
+	} else {
+		time_t now = time(NULL);
+		/* XXX allow caller to set timestamp, if none set, then default to "now" */
+		spprintf(&ts, 0, "%d", (int)now);
+	}
+
+	if (soo->nonce) {
+		nonce = estrdup(soo->nonce);
+	} else {
+		struct timeval tv;
+		int sec, usec;
+		/* XXX maybe find a better way to generate a nonce... */
+		gettimeofday((struct timeval *) &tv, (struct timezone *) NULL);
+		sec = (int) tv.tv_sec;
+		usec = (int) (tv.tv_usec % 0x100000);
+		spprintf(&nonce, 0, "%ld%08x%05x%.8f", php_rand(TSRMLS_C), sec, usec, php_combined_lcg(TSRMLS_C) * 10);
+	}
+
 	add_arg_for_req(ht, OAUTH_PARAM_CONSUMER_KEY, Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_CONSUMER_KEY TSRMLS_CC)) TSRMLS_CC);
 	add_arg_for_req(ht, OAUTH_PARAM_SIGNATURE_METHOD, Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_SIGMETHOD TSRMLS_CC)) TSRMLS_CC);
-	add_arg_for_req(ht, OAUTH_PARAM_NONCE, Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_OAUTH_NONCE TSRMLS_CC)) TSRMLS_CC);
-	add_arg_for_req(ht, OAUTH_PARAM_TIMESTAMP, tb TSRMLS_CC);
+
+	add_arg_for_req(ht, OAUTH_PARAM_NONCE, nonce TSRMLS_CC);
+
+	add_arg_for_req(ht, OAUTH_PARAM_TIMESTAMP, ts TSRMLS_CC);
 	add_arg_for_req(ht, OAUTH_PARAM_VERSION, Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_OAUTH_VERSION TSRMLS_CC)) TSRMLS_CC);
-	efree(tb);
+
+	efree(ts); efree(nonce);
 }
 /* }}} */
 
@@ -1788,6 +1775,9 @@ SO_METHOD(__construct)
 	soo->debugArr = NULL;
 	soo->privatekey = NULL;
 
+	soo->nonce = NULL;
+	soo->timestamp = NULL;
+
 	INIT_DEBUG_INFO(soo->debug_info);
 
 	INIT_SMART_STR(soo->headers_in);
@@ -1916,6 +1906,12 @@ SO_METHOD(__destruct)
 		zval_ptr_dtor(&soo->debugArr);
 	}
 	soo_free_privatekey(soo TSRMLS_CC);
+	if (soo->nonce) {
+		efree(soo->nonce);
+	}
+	if (soo->timestamp) {
+		efree(soo->timestamp);
+	}
 }
 /* }}} */
 
@@ -2224,7 +2220,6 @@ SO_METHOD(setNonce)
 	php_so_object *soo;
 	int nonce_len;
 	char *nonce;
-	zval *zonce;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
@@ -2237,16 +2232,39 @@ SO_METHOD(setNonce)
 		RETURN_NULL();
 	}
 
-	MAKE_STD_ZVAL(zonce);
-	ZVAL_STRING(zonce, nonce, 1);
-
-	if (SUCCESS==soo_set_property(soo, zonce, OAUTH_ATTR_OAUTH_USER_NONCE TSRMLS_CC)) {
-		RETURN_TRUE;
+	if (soo->nonce) {
+		efree(soo->nonce);
 	}
+	soo->nonce = estrndup(nonce, nonce_len);
 
-	RETURN_FALSE;
+	RETURN_TRUE;
 }
 /* }}} */
+
+SO_METHOD(setTimestamp)
+{
+	php_so_object *soo;
+	int ts_len;
+	char *ts;
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &ts, &ts_len) == FAILURE) {
+		return;
+	}
+
+	if (ts_len < 1) {
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid timestamp", NULL TSRMLS_CC);
+		RETURN_NULL();
+	}
+
+	if (soo->timestamp) {
+		efree(soo->timestamp);
+	}
+	soo->timestamp = estrndup(ts, ts_len);
+
+	RETURN_TRUE;
+}
 
 /* {{{ proto bool OAuth::setToken(string token, string token_secret)
    Set a request or access token and token secret to be used in subsequent requests */
@@ -2500,6 +2518,11 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setnonce, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_settimestamp, 0, 0, 1)
+	ZEND_ARG_INFO(0, ts)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setcapath, 0, 0, 2)
 	ZEND_ARG_INFO(0, ca_path)
 	ZEND_ARG_INFO(0, ca_info)
@@ -2551,6 +2574,7 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(setVersion,			arginfo_oauth_setversion,		ZEND_ACC_PUBLIC)
 	SO_ME(setAuthType,			arginfo_oauth_setauthtype,		ZEND_ACC_PUBLIC)
 	SO_ME(setNonce,				arginfo_oauth_setnonce,			ZEND_ACC_PUBLIC)
+	SO_ME(setTimestamp,			arginfo_oauth_settimestamp,		ZEND_ACC_PUBLIC)
 	SO_ME(fetch,				arginfo_oauth_fetch,			ZEND_ACC_PUBLIC)
 	SO_ME(enableDebug,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(disableDebug,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)

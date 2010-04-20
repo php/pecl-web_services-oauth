@@ -55,7 +55,6 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_ATTR_AUTHMETHOD "oauth_auth_method"
 #define OAUTH_ATTR_OAUTH_VERSION "oauth_version"
 #define OAUTH_ATTR_OAUTH_NONCE "oauth_nonce"
-#define OAUTH_ATTR_OAUTH_USER_NONCE "oauth_user_nonce"
 #define OAUTH_ATTR_CA_PATH "oauth_ssl_ca_path"
 #define OAUTH_ATTR_CA_INFO "oauth_ssl_ca_info"
 
@@ -134,6 +133,8 @@ typedef struct {
 	zval *this_ptr;
 	zval *debugArr;
 	zval *privatekey;
+	char *nonce;
+	char *timestamp;
 	php_so_debug *debug_info;
 } php_so_object;
 
@@ -146,7 +147,6 @@ typedef char * zend_hash_key_type;
 #endif
 
 static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC);
-static int soo_set_nonce(php_so_object *soo TSRMLS_DC);
 static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);
 static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC);
 

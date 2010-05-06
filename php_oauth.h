@@ -58,6 +58,20 @@
 #define Z_ADDREF_PP(ppz)	Z_ADDREF_P(*(ppz))
 #endif
 
+#if ZEND_MODULE_API_NO >= 20100409
+#ifndef ZEND_ENGINE_2_4
+#define ZEND_ENGINE_2_4
+#endif
+#endif
+
+#ifdef ZEND_ENGINE_2_4
+# define OAUTH_READ_PROPERTY(_obj, _mem, _type) zend_get_std_object_handlers()->read_property(_obj, _mem, _type, NULL TSRMLS_CC)
+# define OAUTH_WRITE_PROPERTY(_obj, _mem, _val) zend_get_std_object_handlers()->write_property(_obj, _mem, _val, NULL TSRMLS_CC)
+#else
+# define OAUTH_READ_PROPERTY(_obj, _mem, _type) zend_get_std_object_handlers()->read_property(_obj, _mem, _type TSRMLS_CC)
+# define OAUTH_WRITE_PROPERTY(_obj, _mem, _val) zend_get_std_object_handlers()->write_property(_obj, _mem, _val TSRMLS_CC)
+#endif
+
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 2) || PHP_MAJOR_VERSION > 5
 # define OAUTH_ARGINFO
 # define OAUTH_IS_CALLABLE_CC TSRMLS_CC

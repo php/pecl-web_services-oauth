@@ -9,7 +9,7 @@
 +----------------------------------------------------------------------+
 */
 
-/* $Id $ */
+/* $Id$ */
 
 #include "php_oauth.h"
 #include "provider.h"
@@ -2505,14 +2505,18 @@ static zend_function_entry so_functions[] = { /* {{{ */
 };
 /* }}} */
 
+#ifdef ZEND_ENGINE_2_4
+static zval *oauth_read_member(zval *obj, zval *mem, int type, const zend_literal *key TSRMLS_DC) /* {{{ */
+#else
 static zval *oauth_read_member(zval *obj, zval *mem, int type TSRMLS_DC) /* {{{ */
+#endif
 {
 	zval *return_value = NULL;
 	php_so_object *soo;
 
 	soo = fetch_so_object(obj TSRMLS_CC);
 
-	return_value = zend_get_std_object_handlers()->read_property(obj, mem, type TSRMLS_CC);
+	return_value = OAUTH_READ_PROPERTY(obj, mem, type);
 
 	if(!strcasecmp(Z_STRVAL_P(mem),"debug")) {
 		convert_to_boolean(return_value);
@@ -2524,7 +2528,11 @@ static zval *oauth_read_member(zval *obj, zval *mem, int type TSRMLS_DC) /* {{{ 
 	return return_value;
 } /* }}} */
 
-static void oauth_write_member(zval *obj, zval *mem, zval *value TSRMLS_DC) /* {{{ */
+#ifdef ZEND_ENGINE_2_4
+static void oauth_write_member(zval *obj, zval *mem, zval *value, const zend_literal *key TSRMLS_DC) /* {{{ */
+#else
+static void oauth_write_member(zval *obj, zval *mem, zval *value TSRMLS_DC) /* {{{ */	
+#endif
 {
 	char *property;
 	php_so_object *soo;
@@ -2537,7 +2545,7 @@ static void oauth_write_member(zval *obj, zval *mem, zval *value TSRMLS_DC) /* {
 	} else if(!strcmp(property,"sslChecks")) {
 		soo->sslcheck = Z_LVAL_P(value);
 	}
-	zend_get_std_object_handlers()->write_property(obj, mem, value TSRMLS_CC);
+	OAUTH_WRITE_PROPERTY(obj, mem, value);
 } /* }}} */
 
 /* {{{ PHP_MINIT_FUNCTION

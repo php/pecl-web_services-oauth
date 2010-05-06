@@ -13,6 +13,46 @@
 #ifndef PHP_OAUTH_H
 #define PHP_OAUTH_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "php.h"
+
+#ifdef PHP_WIN32
+#include "win32/time.h"
+#endif
+
+#include "SAPI.h"
+#include "zend_API.h"
+#include "zend_variables.h"
+#include "ext/standard/head.h"
+#include "php_globals.h"
+#include "php_main.h"
+#include "php_ini.h"
+#include "ext/standard/php_string.h"
+#include "ext/standard/php_rand.h"
+#include "ext/standard/php_smart_str.h"
+#include "ext/standard/info.h"
+#include "ext/standard/php_string.h"
+#include "ext/standard/php_versioning.h"
+#include "ext/standard/url.h"
+#include "php_variables.h"
+#include "zend_exceptions.h"
+#include "zend_interfaces.h"
+#include "php_globals.h"
+#include "ext/standard/file.h"
+#include "ext/standard/base64.h"
+#include "ext/standard/php_lcg.h"
+#include "ext/pcre/php_pcre.h"
+
+#if HAVE_CURL
+#include <curl/curl.h>
+#define CLEANUP_CURL_AND_FORM(f,h)	 \
+	curl_easy_cleanup(h);	 \
+	curl_formfree(f);
+#endif
+
 #ifndef Z_ADDREF_P
 #define Z_ADDREF_P(pz)		(pz)->refcount++
 #define Z_ADDREF_PP(ppz)	Z_ADDREF_P(*(ppz))
@@ -40,6 +80,7 @@
 #define OAUTH_SIG_METHOD_RSASHA1 "RSA-SHA1"
 
 extern zend_module_entry oauth_module_entry;
+
 #define phpext_oauth_ptr &oauth_module_entry
 
 #define PHP_OAUTH_API
@@ -55,6 +96,7 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_ATTR_AUTHMETHOD "oauth_auth_method"
 #define OAUTH_ATTR_OAUTH_VERSION "oauth_version"
 #define OAUTH_ATTR_OAUTH_NONCE "oauth_nonce"
+#define OAUTH_ATTR_OAUTH_USER_NONCE "oauth_user_nonce"
 #define OAUTH_ATTR_CA_PATH "oauth_ssl_ca_path"
 #define OAUTH_ATTR_CA_INFO "oauth_ssl_ca_info"
 
@@ -83,7 +125,6 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_PARAM_TIMESTAMP "oauth_timestamp"
 #define OAUTH_PARAM_NONCE "oauth_nonce"
 #define OAUTH_PARAM_VERSION "oauth_version"
-
 #define OAUTH_PARAM_TOKEN "oauth_token"
 #define OAUTH_PARAM_ASH "oauth_session_handle"
 #define OAUTH_PARAM_VERIFIER "oauth_verifier"
@@ -130,11 +171,11 @@ typedef struct {
 	uint debug; /* verbose output */
 	uint follow_redirects; /* follow and sign redirects? */
 	uint reqengine; /* streams or curl */
+	char *nonce;
+	char *timestamp;
 	zval *this_ptr;
 	zval *debugArr;
 	zval *privatekey;
-	char *nonce;
-	char *timestamp;
 	php_so_debug *debug_info;
 } php_so_object;
 
@@ -146,28 +187,84 @@ typedef zstr zend_hash_key_type;
 typedef char * zend_hash_key_type;
 #endif
 
-static inline zval **soo_get_property(php_so_object *soo, char *prop_name TSRMLS_DC);
-static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_name TSRMLS_DC);
-static void make_standard_query(HashTable *ht, php_so_object *soo TSRMLS_DC);
-
-static long make_req_streams(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
-
-#if HAVE_CURL
-static long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
-
-#if LIBCURL_VERSION_NUM >= 0x071304
-#define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS
+#ifndef zend_parse_parameters_none
+#define zend_parse_parameters_none()    \
+	zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "")
 #endif
 
-#endif
-
-static void soo_free_privatekey(php_so_object *soo TSRMLS_DC);
+void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *response, char *additional_info TSRMLS_DC);
+char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC);
 
 #ifndef zend_hash_quick_del
 #define HASH_DEL_KEY_QUICK 2
 #define zend_hash_quick_del(ht, arKey, nKeyLength, h) \
        zend_hash_del_key_or_index(ht, arKey, nKeyLength, h, HASH_DEL_KEY_QUICK)
 #endif
+
+#define SO_ME(func, arg_info, flags) PHP_ME(oauth, func, arg_info, flags)
+#define SO_MALIAS(func, alias, arg_info, flags) PHP_MALIAS(oauth, func, alias, arg_info, flags)
+#define SO_METHOD(func) PHP_METHOD(oauth, func)
+#define FREE_ARGS_HASH(a)	\
+	if (a) { \
+		zend_hash_destroy(a);	\
+		FREE_HASHTABLE(a); \
+	}
+
+#define INIT_SMART_STR(a) \
+	(a).len = 0; \
+	(a).c = NULL;
+
+#define HTTP_IS_REDIRECT(http_response_code) \
+	(http_response_code > 300 && http_response_code < 304)
+
+#define INIT_DEBUG_INFO(a) \
+	INIT_SMART_STR((a)->headers_out); \
+	INIT_SMART_STR((a)->body_in); \
+	INIT_SMART_STR((a)->body_out); \
+	INIT_SMART_STR((a)->curl_info);
+
+#define FREE_DEBUG_INFO(a) \
+	smart_str_free(&(a)->headers_out); \
+	smart_str_free(&(a)->body_in); \
+	smart_str_free(&(a)->body_out); \
+	smart_str_free(&(a)->curl_info); 
+
+/* this and code that uses it is from ext/curl/interface.c */
+#define CAAL(s, v) add_assoc_long_ex(info, s, sizeof(s), (long) v);
+#define CAAD(s, v) add_assoc_double_ex(info, s, sizeof(s), (double) v);
+#define CAAS(s, v) add_assoc_string_ex(info, s, sizeof(s), (char *) (v ? v : ""), 1);
+
+#define ADD_DEBUG_INFO(a, k, s, t) \
+	if(s.len) { \
+		smart_str_0(&(s)); \
+		if(t) { \
+			tmp = php_trim((s).c, (s).len, NULL, 0, NULL, 3 TSRMLS_CC); \
+			add_assoc_string((a), k, tmp, 1); \
+			efree(tmp); \
+		} else { \
+			add_assoc_string((a), k, (s).c, 1); \
+		} \
+	}
+
+#ifndef TRUE
+#define TRUE 1
+#define FALSE 0
+#endif
+
+#define OAUTH_OK SUCCESS
+
+#if HAVE_CURL
+static long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+#if LIBCURL_VERSION_NUM >= 0x071304
+#define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS
+#endif
+#endif
+
+
+void soo_free_privatekey(php_so_object *soo TSRMLS_DC);
+char *soo_sign_hmac(php_so_object *soo, char *message, char *cs, char *ts TSRMLS_DC);
+char *oauth_url_decode(char *url, int url_len);
+char *oauth_url_encode(char *url, int url_len);
 
 #endif
 

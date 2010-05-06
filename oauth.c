@@ -9,98 +9,10 @@
 +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "php.h"
-
-#ifdef PHP_WIN32
-#include "win32/time.h"
-#endif
-
-#include "SAPI.h"
-#include "zend_API.h"
-#include "zend_variables.h"
-#include "ext/standard/head.h"
-#include "php_globals.h"
-#include "php_main.h"
-#include "php_ini.h"
-#include "ext/standard/php_string.h"
-#include "ext/standard/php_rand.h"
-#include "ext/standard/php_smart_str.h"
-#include "ext/standard/info.h"
-#include "ext/standard/php_string.h"
-#include "ext/standard/php_versioning.h"
-#include "ext/standard/url.h"
-#include "php_variables.h"
-#include "zend_exceptions.h"
-#include "zend_interfaces.h"
-#include "php_globals.h"
-#include "ext/standard/file.h"
-#include "ext/standard/base64.h"
-#include "ext/standard/php_lcg.h"
-
-#if HAVE_CURL
-#include <curl/curl.h>
-#define CLEANUP_CURL_AND_FORM(f,h)	 \
-	curl_easy_cleanup(h);	 \
-	curl_formfree(f);
-#endif
+/* $Id $ */
 
 #include "php_oauth.h"
-
-#define SO_ME(func, arg_info, flags) PHP_ME(oauth, func, arg_info, flags)
-#define SO_MALIAS(func, alias, arg_info, flags) PHP_MALIAS(oauth, func, alias, arg_info, flags)
-#define SO_METHOD(func) PHP_METHOD(oauth, func)
-#define FREE_ARGS_HASH(a)	\
-	if (a) { \
-		zend_hash_destroy(a);	\
-		FREE_HASHTABLE(a); \
-	}
-
-#define INIT_SMART_STR(a) \
-	(a).len = 0; \
-	(a).c = NULL;
-
-#define HTTP_IS_REDIRECT(http_response_code) \
-	(http_response_code > 300 && http_response_code < 304)
-
-#define INIT_DEBUG_INFO(a) \
-	INIT_SMART_STR((a)->headers_out); \
-	INIT_SMART_STR((a)->body_in); \
-	INIT_SMART_STR((a)->body_out); \
-	INIT_SMART_STR((a)->curl_info);
-
-#define FREE_DEBUG_INFO(a) \
-	smart_str_free(&(a)->headers_out); \
-	smart_str_free(&(a)->body_in); \
-	smart_str_free(&(a)->body_out); \
-	smart_str_free(&(a)->curl_info); 
-
-/* this and code that uses it is from ext/curl/interface.c */
-#define CAAL(s, v) add_assoc_long_ex(info, s, sizeof(s), (long) v);
-#define CAAD(s, v) add_assoc_double_ex(info, s, sizeof(s), (double) v);
-#define CAAS(s, v) add_assoc_string_ex(info, s, sizeof(s), (char *) (v ? v : ""), 1);
-
-#define ADD_DEBUG_INFO(a, k, s, t) \
-	if(s.len) { \
-		smart_str_0(&(s)); \
-		if(t) { \
-			tmp = php_trim((s).c, (s).len, NULL, 0, NULL, 3 TSRMLS_CC); \
-			add_assoc_string((a), k, tmp, 1); \
-			efree(tmp); \
-		} else { \
-			add_assoc_string((a), k, (s).c, 1); \
-		} \
-	}
-
-#ifndef TRUE
-#define TRUE 1
-#define FALSE 0
-#endif
+#include "provider.h"
 
 static zend_class_entry *soo_class_entry;
 static zend_class_entry *soo_exception_ce;
@@ -269,7 +181,7 @@ static zend_object_value new_so_object(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 }
 /* }}} */
 
-void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *response TSRMLS_DC) /* {{{ */
+void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *response, char *additional_info TSRMLS_DC) /* {{{ */
 {
 	zval *ex;
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 2)
@@ -289,8 +201,12 @@ void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *respo
 	if (response) {
 		zend_update_property_string(dex, ex, "lastResponse", sizeof("lastResponse")-1, response TSRMLS_CC);
 	}
-	if(soo->debug && soo->debugArr) {
+	if(soo && soo->debug && soo->debugArr) {
 		zend_update_property(dex, ex, "debugInfo", sizeof("debugInfo") - 1, soo->debugArr TSRMLS_CC);
+	}
+
+	if(additional_info) {
+		zend_update_property_string(dex, ex, "additionalInfo", sizeof("additionalInfo")-1, additional_info TSRMLS_CC);
 	}
 	
 	zend_update_property_string(dex, ex, "message", sizeof("message")-1, msg TSRMLS_CC);
@@ -308,7 +224,7 @@ static void oauth_prop_hash_dtor(php_so_object *soo TSRMLS_DC) /* {{{ */
 }
 /* }}} */
 
-static char *soo_sign_hmac(php_so_object *soo, char *message, zval *cs, zval *ts TSRMLS_DC) /* {{{ */
+char *soo_sign_hmac(php_so_object *soo, char *message, char *cs, char *ts TSRMLS_DC) /* {{{ */
 {
 	zval *args[4],*retval,*func;
 	char *tret;
@@ -320,14 +236,14 @@ static char *soo_sign_hmac(php_so_object *soo, char *message, zval *cs, zval *ts
 
 	if (!zend_is_callable(func, 0, NULL OAUTH_IS_CALLABLE_CC)) {
 		FREE_ZVAL(func);
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "HMAC signature generation failed, is ext/hash installed?", NULL TSRMLS_CC);
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "HMAC signature generation failed, is ext/hash installed?", NULL, NULL TSRMLS_CC);
 		return NULL;
 	}
 
 	if (ts) {
-		spprintf(&tret, 0, "%s&%s", Z_STRVAL_P(cs), Z_STRVAL_P(ts));
+		spprintf(&tret, 0, "%s&%s", cs, ts);
 	} else {
-		spprintf(&tret, 0, "%s&", Z_STRVAL_P(cs));
+		spprintf(&tret, 0, "%s&", cs);
 	}
 
 	MAKE_STD_ZVAL(retval);
@@ -394,7 +310,7 @@ static char *soo_sign_rsa(php_so_object *soo, char *message TSRMLS_DC)
 static char *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const char *algo TSRMLS_DC)
 {
 	if (0==strcmp(algo, OAUTH_SIG_METHOD_HMACSHA1)) {
-		return soo_sign_hmac(soo, message, cs, ts TSRMLS_CC);
+		return soo_sign_hmac(soo, message, Z_STRVAL_P(cs), Z_STRVAL_P(ts) TSRMLS_CC);
 	} else if (0==strcmp(algo, OAUTH_SIG_METHOD_RSASHA1)) {
 		return soo_sign_rsa(soo, message TSRMLS_CC);
 	}
@@ -430,7 +346,29 @@ static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_na
 }
 /* }}} */
 
-static char *oauth_url_encode(char *url, int url_len) /* {{{ */
+char *oauth_url_decode(char *url, int url_len) /* {{{ */
+{
+	char *ret, *out;
+	int ret_len, out_len;
+
+	if(url) {
+		if(url_len < 0) {
+			url_len = strlen(url);
+		}
+		out = estrndup(url, url_len);
+		out_len = php_raw_url_decode(out, url_len);
+	}
+
+	if(out_len) {
+		ret = php_str_to_str_ex(out, out_len, "~", sizeof("~")-1, "%7E", sizeof("%7E")-1, &ret_len, 0, NULL);
+		efree(out);
+		return ret;
+	}
+	return NULL;
+}
+/* }}} */
+
+char *oauth_url_encode(char *url, int url_len) /* {{{ */
 {
 	char *urlencoded = NULL, *ret;
 	int out_len, ret_len;
@@ -612,7 +550,7 @@ void get_request_param(char *arg_name, char **return_val, int *return_len TSRMLS
  * in POST/GET or Authorization header, the precendence is defined by: OAuth Core 1.0 section 9.1.1
  */
 
-static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC) /* {{{ */
+char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC) /* {{{ */
 {
 	zval *func, *exret2, *exargs2[1];
 	char *query;
@@ -624,7 +562,7 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 
 	if (urlparts) {
 		if (!urlparts->host && !urlparts->scheme) {
-			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid url when trying to build base signature string", NULL TSRMLS_CC);
+			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid url when trying to build base signature string", NULL, NULL TSRMLS_CC);
 			php_url_free(urlparts);
 			return NULL;
 		}
@@ -686,7 +624,7 @@ static char *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 					oauth_http_build_query(&squery, HASH_OF(exargs2[0]), FALSE TSRMLS_CC);
 					smart_str_0(&squery);
 				} else {
-					soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Was not able to get oauth parameters!", NULL TSRMLS_CC);
+					soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Was not able to get oauth parameters!", NULL, NULL TSRMLS_CC);
 				}
 			}
 			FREE_ZVAL(func);
@@ -996,7 +934,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 		char *bufz;
 
 		spprintf(&bufz, 0, "making the request failed (%s)", "dunno why");
-		soo_handle_error(soo, -1, bufz, soo->lastresponse.c TSRMLS_CC);
+		soo_handle_error(soo, -1, bufz, soo->lastresponse.c, NULL TSRMLS_CC);
 		efree(bufz);
 	}
 
@@ -1309,7 +1247,7 @@ static long make_req_curl(php_so_object *soo, const char *url, const smart_str *
 		}
 	} else {
 		spprintf(&bufz, 0, "making the request failed (%s)", curl_easy_strerror(cres));
-		soo_handle_error(soo, -1, bufz, soo->lastresponse.c TSRMLS_CC);
+		soo_handle_error(soo, -1, bufz, soo->lastresponse.c, NULL TSRMLS_CC);
 		efree(bufz);
 	}
 	curl_easy_cleanup(curl);
@@ -1439,7 +1377,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 	final_http_method = oauth_get_http_method(soo, method TSRMLS_CC);
 
 	if (OAUTH_AUTH_TYPE_FORM==auth_type && strcasecmp(final_http_method, OAUTH_HTTP_METHOD_POST)) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "auth type is set to HTTP POST with a non-POST http method, use setAuthType to put OAuth parameters somewhere else in the request", NULL TSRMLS_CC);
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "auth type is set to HTTP POST with a non-POST http method, use setAuthType to put OAuth parameters somewhere else in the request", NULL, NULL TSRMLS_CC);
 	}
 
 	follow_redirects = soo->follow_redirects;
@@ -1501,7 +1439,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 		sbs = oauth_generate_sig_base(soo, final_http_method, surl.c, oauth_args, rargs TSRMLS_CC);
 		if (!sbs) {
 			FREE_ARGS_HASH(oauth_args);
-			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url, unable to generate signature base string", NULL TSRMLS_CC);
+			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url, unable to generate signature base string", NULL, NULL TSRMLS_CC);
 			break;
 		}
 
@@ -1599,7 +1537,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 						ZVAL_STRING(zret, "", 1);
 					}
 					so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
-					soo_handle_error(soo, http_response_code, bufz, soo->lastresponse.c TSRMLS_CC);
+					soo_handle_error(soo, http_response_code, bufz, soo->lastresponse.c, NULL TSRMLS_CC);
 					efree(bufz);
 					/* set http_response_code to error value */
 					http_response_code = -1;
@@ -1622,7 +1560,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 				ZVAL_STRING(zret, "", 1);
 			}
 			so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
-			soo_handle_error(soo, http_response_code, bufz, soo->lastresponse.c TSRMLS_CC);
+			soo_handle_error(soo, http_response_code, bufz, soo->lastresponse.c, NULL TSRMLS_CC);
 			efree(bufz);
 			/* set http_response_code to error value */
 			http_response_code = -1;
@@ -1676,7 +1614,7 @@ SO_METHOD(setRSACertificate)
 		RETURN_TRUE;
 	} else {
 		soo_free_privatekey(soo TSRMLS_CC);
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Could not parse RSA certificate", NULL TSRMLS_CC);
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Could not parse RSA certificate", NULL, NULL TSRMLS_CC);
 		return;
 	}
 }
@@ -1756,13 +1694,13 @@ SO_METHOD(__construct)
 	}
 
 	if(!ck_len) {
-		soo_handle_error(soo, -1, "The consumer key cannot be empty", NULL TSRMLS_CC);
+		soo_handle_error(soo, -1, "The consumer key cannot be empty", NULL, NULL TSRMLS_CC);
 //		php_error(E_ERROR, "the consumer key cannot be empty");
 		return;
 	}
 
 	if(!cs_len) {
-		soo_handle_error(soo, -1, "The consumer secret cannot be empty", NULL TSRMLS_CC);
+		soo_handle_error(soo, -1, "The consumer secret cannot be empty", NULL, NULL TSRMLS_CC);
 //		php_error(E_ERROR, "the consumer secret cannot be empty");
 		return;
 	}
@@ -1851,7 +1789,7 @@ SO_METHOD(__construct)
 }
 /* }}} */
 
-static void soo_free_privatekey(php_so_object *soo TSRMLS_DC)
+void soo_free_privatekey(php_so_object *soo TSRMLS_DC)
 {
 	zval *func, *retval;
 	zval *args[1];
@@ -1998,7 +1936,7 @@ SO_METHOD(getRequestToken)
 	}
 
 	if (url_len < 1) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid request token url length", NULL TSRMLS_CC);
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid request token url length", NULL, NULL TSRMLS_CC);
 		RETURN_FALSE;
 	}
 
@@ -2166,7 +2104,7 @@ SO_METHOD(setVersion)
 	}
 
 	if (ver_len < 1) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid version", NULL TSRMLS_CC);
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid version", NULL, NULL TSRMLS_CC);
 		RETURN_NULL();
 	}
 
@@ -2205,7 +2143,7 @@ SO_METHOD(setAuthType)
 				RETURN_TRUE;
 			}
 		default:
-			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid auth type", NULL TSRMLS_CC);
+			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid auth type", NULL, NULL TSRMLS_CC);
 			RETURN_NULL();
 	}
 
@@ -2228,7 +2166,7 @@ SO_METHOD(setNonce)
 	}
 
 	if (nonce_len < 1) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid nonce", NULL TSRMLS_CC);
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid nonce", NULL, NULL TSRMLS_CC);
 		RETURN_NULL();
 	}
 
@@ -2254,7 +2192,7 @@ SO_METHOD(setTimestamp)
 	}
 
 	if (ts_len < 1) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid timestamp", NULL TSRMLS_CC);
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid timestamp", NULL, NULL TSRMLS_CC);
 		RETURN_NULL();
 	}
 
@@ -2313,7 +2251,7 @@ SO_METHOD(setRequestEngine)
 			soo->reqengine = reqengine;
 			break;
 		default:
-			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid request engine specified", NULL TSRMLS_CC);
+			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid request engine specified", NULL, NULL TSRMLS_CC);
 	}
 }
 /* }}} */
@@ -2336,7 +2274,7 @@ SO_METHOD(fetch)
 	}
 
 	if (fetchurl_len < 1) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url length", NULL TSRMLS_CC);
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url length", NULL, NULL TSRMLS_CC);
 		RETURN_NULL();
 	}
 
@@ -2375,7 +2313,7 @@ SO_METHOD(getAccessToken)
 	}
 
 	if (aturi_len < 1) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid access token url length", NULL TSRMLS_CC);
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid access token url length", NULL, NULL TSRMLS_CC);
 		RETURN_FALSE;
 	}
 
@@ -2671,6 +2609,21 @@ PHP_MINIT_FUNCTION(oauth)
 	REGISTER_STRING_CONSTANT("OAUTH_HTTP_METHOD_HEAD", OAUTH_HTTP_METHOD_HEAD, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("OAUTH_REQENGINE_STREAMS", OAUTH_REQENGINE_STREAMS, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("OAUTH_REQENGINE_CURL", OAUTH_REQENGINE_CURL, CONST_CS | CONST_PERSISTENT);
+
+	oauth_provider_register_class(TSRMLS_C);
+	REGISTER_LONG_CONSTANT("OAUTH_OK", OAUTH_OK, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_BAD_NONCE", OAUTH_BAD_NONCE, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_BAD_TIMESTAMP", OAUTH_BAD_TIMESTAMP, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_CONSUMER_KEY_UNKNOWN", OAUTH_CONSUMER_KEY_UNKNOWN, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_CONSUMER_KEY_REFUSED", OAUTH_CONSUMER_KEY_REFUSED, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_INVALID_SIGNATURE", OAUTH_INVALID_SIGNATURE, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_TOKEN_USED", OAUTH_TOKEN_USED, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_TOKEN_EXPIRED", OAUTH_TOKEN_EXPIRED, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_TOKEN_REVOKED", OAUTH_TOKEN_REVOKED, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_TOKEN_REJECTED", OAUTH_TOKEN_REJECTED, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_VERIFIER_INVALID", OAUTH_VERIFIER_INVALID, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_PARAMETER_ABSENT", OAUTH_PARAMETER_ABSENT, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_SIGNATURE_METHOD_REJECTED", OAUTH_SIGNATURE_METHOD_REJECTED, CONST_CS | CONST_PERSISTENT);
 	return SUCCESS;
 }
 /* }}} */

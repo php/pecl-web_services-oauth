@@ -338,7 +338,7 @@ SOP_METHOD(__construct)
 		return;
 	}
 
-	if(Z_TYPE_P(params)==IS_ARRAY) {
+	if (params && Z_TYPE_P(params)==IS_ARRAY) {
 		param_count = zend_hash_num_elements(Z_ARRVAL_P(params));
 	} else {
 		param_count = 0;

@@ -254,7 +254,7 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 #define OAUTH_OK SUCCESS
 
 #if HAVE_CURL
-static long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
 #if LIBCURL_VERSION_NUM >= 0x071304
 #define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS
 #endif

@@ -285,10 +285,10 @@ static char *soo_sign_rsa(php_so_object *soo, char *message TSRMLS_DC)
 	MAKE_STD_ZVAL(args[0]);
 	MAKE_STD_ZVAL(args[1]);
 
-	// TODO: add support for other algorithms instead of OPENSSL_ALGO_SHA1
+	/* TODO: add support for other algorithms instead of OPENSSL_ALGO_SHA1 */
 
 	ZVAL_STRING(args[0], message, 0);
-	// args[1] is filled by function
+	/* args[1] is filled by function */
 	args[2] = soo->privatekey;
 
 	ret = call_user_function(EG(function_table), NULL, func, retval, 3, args TSRMLS_CC);
@@ -449,21 +449,21 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 				HashPosition val_pos;
 				zval *ht, **val_cur_val, *fnname, *fnret, *tmp;
 
-				// select sort function
+				/* select sort function */
 				MAKE_STD_ZVAL(fnname);
 
-				// make shallow copy
+				/* make shallow copy */
 				MAKE_STD_ZVAL(ht);
 				array_init(ht);
 				zend_hash_copy(HASH_OF(ht), Z_ARRVAL_PP(cur_val), (copy_ctor_func_t)zval_add_ref, (void*)&tmp, sizeof(zval *));
 
-				// set up function call
+				/* set up function call */
 				ZVAL_STRING(fnname, "sort", 0);
 				MAKE_STD_ZVAL(fnret);
 
 				call_user_function(EG(function_table), NULL, fnname, fnret, 1, &ht TSRMLS_CC);
 
-				// traverse array
+				/* traverse array */
 				zend_hash_internal_pointer_reset_ex(HASH_OF(ht), &val_pos);
 				while (SUCCESS==zend_hash_get_current_data_ex(HASH_OF(ht), (void *)&val_cur_val, &val_pos)) {
 					if (prepend_amp) {
@@ -481,7 +481,7 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 					++numargs;
 					zend_hash_move_forward_ex(HASH_OF(ht), &val_pos);
 				}
-				// clean up
+				/* clean up */
 				FREE_ZVAL(fnret);
 				FREE_ZVAL(fnname);
 				zval_ptr_dtor(&ht);
@@ -1015,7 +1015,7 @@ static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
 	return hlen;
 }
 
-static long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC) /* {{{ */
+long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC) /* {{{ */
 {
 	CURLcode cres, ctres, crres;
 	CURL *curl;
@@ -2426,7 +2426,7 @@ ZEND_END_ARG_INFO()
 OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setauthtype, 0, 0, 1)
 	ZEND_ARG_INFO(0, auth_type)
-ZEND_END_ARG_INFO();
+ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setnonce, 0, 0, 1)
@@ -2668,7 +2668,7 @@ zend_module_entry oauth_module_entry = {
 /* }}} */
 
 #if COMPILE_DL_OAUTH
-ZEND_GET_MODULE(oauth);
+ZEND_GET_MODULE(oauth)
 #endif
 
 /**

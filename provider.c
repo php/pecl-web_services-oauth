@@ -386,7 +386,6 @@ SOP_METHOD(__construct)
 				if(call_user_function(EG(function_table), NULL, apache_get_headers, retval, 0, NULL TSRMLS_CC)) {
 					php_error_docref(NULL TSRMLS_CC, E_ERROR, "Failed to get HTTP Request headers");
 				}
-				//zend_print_zval_r(retval, 0 TSRMLS_CC);
 				if(SUCCESS == zend_hash_find(HASH_OF(retval), "Authorization", sizeof("Authorization"), (void **) &tmpzval)) {
 					auth_header = *tmpzval;
 					authorization_header = estrdup(Z_STRVAL_P(auth_header));
@@ -413,7 +412,7 @@ SOP_METHOD(__construct)
 			}
 		}
 		if(!authorization_header || oauth_provider_parse_auth_header(sop, authorization_header TSRMLS_CC)==NULL) {
-			// throw invalid oauth creds exception
+			soo_handle_error(NULL, OAUTH_SIGNATURE_METHOD_REJECTED, "Unknown signature method", NULL, NULL TSRMLS_CC);
 		}
 	}
 	/* let constructor params override any values that may have been found in auth headers */

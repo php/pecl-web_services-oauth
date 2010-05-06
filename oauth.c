@@ -346,28 +346,6 @@ static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_na
 }
 /* }}} */
 
-char *oauth_url_decode(char *url, int url_len) /* {{{ */
-{
-	char *ret, *out;
-	int ret_len, out_len;
-
-	if(url) {
-		if(url_len < 0) {
-			url_len = strlen(url);
-		}
-		out = estrndup(url, url_len);
-		out_len = php_raw_url_decode(out, url_len);
-	}
-
-	if(out_len) {
-		ret = php_str_to_str_ex(out, out_len, "~", sizeof("~")-1, "%7E", sizeof("%7E")-1, &ret_len, 0, NULL);
-		efree(out);
-		return ret;
-	}
-	return NULL;
-}
-/* }}} */
-
 char *oauth_url_encode(char *url, int url_len) /* {{{ */
 {
 	char *urlencoded = NULL, *ret;

@@ -263,7 +263,6 @@ static long make_req_curl(php_so_object *soo, const char *url, const smart_str *
 
 void soo_free_privatekey(php_so_object *soo TSRMLS_DC);
 char *soo_sign_hmac(php_so_object *soo, char *message, char *cs, char *ts TSRMLS_DC);
-char *oauth_url_decode(char *url, int url_len);
 char *oauth_url_encode(char *url, int url_len);
 
 #endif

@@ -675,7 +675,7 @@ SOP_METHOD(reportProblem)
 	zval *exception, *code, *sbs, *missing_params;
 	zend_class_entry *ex_ce;
 	zend_bool is_exception = FALSE;
-	bool out_malloced = 0;
+	zend_bool out_malloced = 0;
 	char *out, *tmp_out, *http_header_line;
 	size_t pr_len;
 	ulong lcode;

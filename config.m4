@@ -2,8 +2,8 @@ dnl
 dnl $Id$
 dnl
 
-PHP_ARG_WITH(oauth, for oauth support,
-[  --with-oauth		Include oauth support])
+PHP_ARG_ENABLE(oauth, for oauth support,
+[  --enable-oauth          Include oauth support])
 
 if test "$PHP_OAUTH" != "no"; then
   PHP_SUBST(OAUTH_SHARED_LIBADD)

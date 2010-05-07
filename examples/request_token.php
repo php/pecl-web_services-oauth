@@ -10,5 +10,6 @@ try {
     /* note: on the redirect there is no need to pass anything other than the oauth_token parameter */
 	header("Location: https://www.foo.tld/oauth/authorize?oauth_token={$arrayResp["oauth_token"]}");
 } catch(OAuthException $E) {
+	print_r($E);
 	echo "Response: ". $E->lastResponse . "\n";
 }

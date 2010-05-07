@@ -139,7 +139,7 @@ static inline int oauth_provider_set_param_value(HashTable *ht, char *key, zval 
 
 	key_len = strlen(key);
 	h = zend_hash_func(key, key_len+1);
-	zval_addref_p(*val);
+	Z_ADDREF_P(*val);
 	return zend_hash_quick_update(ht, key, key_len+1, h, val, sizeof(zval **), NULL);
 }
 /* }}} */
@@ -235,7 +235,7 @@ static void oauth_provider_register_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /
 	memcpy(cb->fcall_info, &fci, sizeof(zend_fcall_info));
 	cb->fcall_info_cache = fci_cache;
 
-	zval_addref_p(cb->fcall_info->function_name);
+	Z_ADDREF_P(cb->fcall_info->function_name);
 
 	switch(type) {
 		case OAUTH_PROVIDER_CONSUMER_CB:
@@ -673,7 +673,6 @@ SOP_METHOD(reportProblem)
 {
 	zval *exception, *code, *sbs, *missing_params;
 	zend_class_entry *ex_ce;
-	zend_bool is_exception = FALSE;
 	zend_bool out_malloced = 0;
 	char *out, *tmp_out, *http_header_line;
 	size_t pr_len;
@@ -681,21 +680,14 @@ SOP_METHOD(reportProblem)
 	uint http_code;
 	sapi_header_line ctr = {0};
 
-	if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &exception)==FAILURE) {
-		return;
-	}
-
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 2)
 	ex_ce = zend_exception_get_default();
 #else
 	ex_ce = zend_exception_get_default(TSRMLS_C);
 #endif
 
-	is_exception = instanceof_function((const zend_class_entry *)Z_OBJCE_P(exception), (const zend_class_entry *)ex_ce TSRMLS_CC);
-
-	if(!is_exception) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Argument to OAuthProvider::reportProblem() is not an instanceof Exception");
-		RETURN_NULL();
+	if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O", &exception, ex_ce)==FAILURE) {
+		return;
 	}
 
 	/* XXX good candidate for refactoring */

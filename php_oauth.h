@@ -201,6 +201,10 @@ typedef zstr zend_hash_key_type;
 typedef char * zend_hash_key_type;
 #endif
 
+#ifndef Z_ADDREF_P
+#define Z_ADDREF_P(x) ZVAL_ADDREF(x)
+#endif
+
 #ifndef zend_parse_parameters_none
 #define zend_parse_parameters_none()    \
 	zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "")

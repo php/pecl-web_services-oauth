@@ -605,7 +605,7 @@ SOP_METHOD(checkOAuthRequest)
 	consumer_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET) - 1, 1 TSRMLS_CC);
 	if(!Z_BVAL_P(is_req_token_api)) {
 		token_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET) - 1, 1 TSRMLS_CC);
-		signature = soo_sign_hmac(NULL, sbs, Z_STRVAL_P(consumer_secret), Z_STRVAL_P(token_secret) TSRMLS_CC);
+		signature = soo_sign_hmac(NULL, sbs, consumer_secret ? Z_STRVAL_P(consumer_secret) : "", token_secret ? Z_STRVAL_P(token_secret) : "" TSRMLS_CC);
 	} else {
 		signature = soo_sign_hmac(NULL, sbs, Z_STRVAL_P(consumer_secret), NULL TSRMLS_CC);
 	}

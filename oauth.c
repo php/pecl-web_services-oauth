@@ -310,7 +310,7 @@ static char *soo_sign_rsa(php_so_object *soo, char *message TSRMLS_DC)
 static char *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const char *algo TSRMLS_DC)
 {
 	if (0==strcmp(algo, OAUTH_SIG_METHOD_HMACSHA1)) {
-		return soo_sign_hmac(soo, message, Z_STRVAL_P(cs), Z_STRVAL_P(ts) TSRMLS_CC);
+		return soo_sign_hmac(soo, message, cs ? Z_STRVAL_P(cs) : "", ts ? Z_STRVAL_P(ts) : "" TSRMLS_CC);
 	} else if (0==strcmp(algo, OAUTH_SIG_METHOD_RSASHA1)) {
 		return soo_sign_rsa(soo, message TSRMLS_CC);
 	}

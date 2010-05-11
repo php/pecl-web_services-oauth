@@ -1677,11 +1677,11 @@ SO_METHOD(__construct)
 		return;
 	}
 
-	if(!cs_len) {
-		soo_handle_error(soo, -1, "The consumer secret cannot be empty", NULL, NULL TSRMLS_CC);
+//	if(!cs_len) {
+//		soo_handle_error(soo, -1, "The consumer secret cannot be empty", NULL, NULL TSRMLS_CC);
 //		php_error(E_ERROR, "the consumer secret cannot be empty");
-		return;
-	}
+//		return;
+//	}
 
 	memset(soo->last_location_header, 0, OAUTH_MAX_HEADER_LEN);
 	soo->redirects = 0;
@@ -1728,14 +1728,16 @@ SO_METHOD(__construct)
 		return;
 	}
 
+	MAKE_STD_ZVAL(zcs);
 	if (cs_len > 0) {
-		MAKE_STD_ZVAL(zcs);
 		ZVAL_STRING(zcs, oauth_url_encode(cs, cs_len), 0);
-
-		if (soo_set_property(soo, zcs, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC) != SUCCESS) {
-			return;
-		}
+	} else {
+		ZVAL_EMPTY_STRING(zcs);
 	}
+	if (soo_set_property(soo, zcs, OAUTH_ATTR_CONSUMER_SECRET TSRMLS_CC) != SUCCESS) {
+		return;
+	}
+
 	MAKE_STD_ZVAL(zsm);
 	ZVAL_STRING(zsm, sig_method, 1);
 	if (soo_set_property(soo, zsm, OAUTH_ATTR_SIGMETHOD TSRMLS_CC) != SUCCESS) {

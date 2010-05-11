@@ -28,6 +28,13 @@ function skip_if_php_major($version)
 	}
 }
 
+function skip_if_not_ext($ext)
+{
+	if (!extension_loaded($ext)) {
+		die("skip OpenSSL not loaded");
+	}
+}
+
 function has_bug($bugid)
 {
 	switch ($bugid) {

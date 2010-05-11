@@ -402,18 +402,23 @@ SOP_METHOD(__construct)
 
 			/* first look in _SERVER */
 			if (!PG(http_globals)[TRACK_VARS_SERVER]
-					|| zend_hash_find(PG(http_globals)[TRACK_VARS_SERVER]->value.ht, "HTTP_AUTHORIZATION", sizeof("HTTP_AUTHORIZATION"), (void **) &authorization_header)==FAILURE) {
+					|| zend_hash_find(PG(http_globals)[TRACK_VARS_SERVER]->value.ht, "HTTP_AUTHORIZATION", sizeof("HTTP_AUTHORIZATION"), (void **) &tmpzval)==FAILURE) {
 				/* well that didn't work out, so let's check out _ENV */
 				if (!PG(http_globals)[TRACK_VARS_ENV]
-						|| zend_hash_find(PG(http_globals)[TRACK_VARS_ENV]->value.ht, "HTTP_AUTHORIZATION", sizeof("HTTP_AUTHORIZATION"), (void **) &authorization_header)==FAILURE) {
+						|| zend_hash_find(PG(http_globals)[TRACK_VARS_ENV]->value.ht, "HTTP_AUTHORIZATION", sizeof("HTTP_AUTHORIZATION"), (void **) &tmpzval)==FAILURE) {
 					/* not found, [bf]ail */
 					return;
 				}
 			}
+			auth_header = *tmpzval;
+			authorization_header = estrdup(Z_STRVAL_P(auth_header));
 		}
-		if(!authorization_header || oauth_provider_parse_auth_header(sop, authorization_header TSRMLS_CC)==NULL) {
+		if(!authorization_header || oauth_provider_parse_auth_header(sop, authorization_header TSRMLS_CC)!=SUCCESS) {
+			efree(authorization_header);
 			soo_handle_error(NULL, OAUTH_SIGNATURE_METHOD_REJECTED, "Unknown signature method", NULL, NULL TSRMLS_CC);
+			return;
 		}
+		efree(authorization_header);
 	}
 	/* let constructor params override any values that may have been found in auth headers */
 	if(param_count) {

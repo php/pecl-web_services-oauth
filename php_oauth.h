@@ -80,7 +80,7 @@
 # define OAUTH_IS_CALLABLE_CC
 #endif
 
-#define OAUTH_EXT_VER "0.99.9"
+#define OAUTH_EXT_VER "1.0-dev"
 #define OAUTH_HTTP_PORT 80
 #define OAUTH_HTTPS_PORT 443
 #define OAUTH_MAX_REDIRS 4L

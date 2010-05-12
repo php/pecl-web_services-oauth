@@ -118,6 +118,7 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_HTTP_METHOD_POST "POST"
 #define OAUTH_HTTP_METHOD_PUT "PUT"
 #define OAUTH_HTTP_METHOD_HEAD "HEAD"
+#define OAUTH_HTTP_METHOD_DELETE "DELETE"
 
 #define OAUTH_REQENGINE_STREAMS 1
 #define OAUTH_REQENGINE_CURL 2

@@ -346,6 +346,23 @@ static char *oauth_provider_get_http_verb(TSRMLS_D) /* {{{ */
 }
 /* }}} */
 
+static char *oauth_provider_get_current_uri(TSRMLS_D)
+{
+	zval **host = NULL, **port = NULL, **uri = NULL;
+
+	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_HOST", sizeof("HTTP_HOST"), (void**)&host);
+	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "SERVER_PORT", sizeof("SERVER_PORT"), (void**)&port);
+	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "REQUEST_URI", sizeof("REQUEST_URI"), (void**)&uri);
+
+	if (host && port && uri) {
+		char *tmp;
+		spprintf(&tmp, 0, "http%s://%s%s", Z_LVAL_PP(port)==443?"s":"", Z_STRVAL_PP(host), Z_STRVAL_PP(uri));
+		return tmp;
+	}
+
+	return NULL;
+}
+
 /* {{{ proto void OAuthProvider::__construct()
    Instantiate a new OAuthProvider object */
 SOP_METHOD(__construct)
@@ -532,18 +549,18 @@ SOP_METHOD(isRequestTokenEndpoint)
 }
 /* }}} */
 
-/* {{{ proto void OAuthProvider::checkOAuthRequest(string url [, string request_method]) */
+/* {{{ proto void OAuthProvider::checkOAuthRequest([string url [, string request_method]]) */
 SOP_METHOD(checkOAuthRequest)
 {
 	zval *retval = NULL, **param, *pthis, *is_req_token_api, *token_secret, *consumer_secret, *req_signature, *sig_method;
 	php_oauth_provider *sop;
 	ulong missing_param_count = 0, mp_count = 1;
-	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *sbs = NULL, *signature = NULL;
+	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *sbs = NULL, *signature = NULL, *current_uri = NULL;
 	HashPosition hpos;
 	HashTable *sbs_vars = NULL;
 	int http_verb_len = 0, uri_len = 0;
 
-	if(zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|s", &pthis, oauthprovider, &uri, &uri_len, &http_verb, &http_verb_len)==FAILURE) {
+	if(zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O|ss", &pthis, oauthprovider, &uri, &uri_len, &http_verb, &http_verb_len)==FAILURE) {
 		return;
 	}
 
@@ -552,6 +569,7 @@ SOP_METHOD(checkOAuthRequest)
 	if(!http_verb_len) {
 		http_verb = oauth_provider_get_http_verb(TSRMLS_C);
 	}
+
 
 	if(!http_verb) {
 		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Failed to detect HTTP method, set a HTTP method via OAuthProvider::checkOAuthRequest()");
@@ -564,7 +582,6 @@ SOP_METHOD(checkOAuthRequest)
 	ALLOC_HASHTABLE(sbs_vars);
 	zend_hash_init(sbs_vars, 0, NULL, ZVAL_PTR_DTOR, 0);
 
-	/* XXX should implement a method which lets the caller override POST/GET/Authorization vars used here, so something like OAuthProvider::setParam($name, $val) which updates the sop->oauth_params hash */
 	if(PG(http_globals)[TRACK_VARS_GET]) {
 		zval *tmp_copy;
 		zend_hash_merge(sbs_vars, HASH_OF(PG(http_globals)[TRACK_VARS_GET]), (copy_ctor_func_t)zval_add_ref, (void *)&tmp_copy, sizeof(zval *), 0);
@@ -644,6 +661,9 @@ SOP_METHOD(checkOAuthRequest)
 	}
 
 	/* now for the signature stuff */
+	if (!uri) {
+		uri = current_uri = oauth_provider_get_current_uri(TSRMLS_C);
+	}
 	sbs = oauth_generate_sig_base(NULL, http_verb, uri, sbs_vars, NULL TSRMLS_CC);
 
 	consumer_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET) - 1, 1 TSRMLS_CC);
@@ -659,6 +679,9 @@ SOP_METHOD(checkOAuthRequest)
 		soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, sbs TSRMLS_CC);
 	}
 
+	if (current_uri) {
+		efree(current_uri);
+	}
 	efree(sbs);
 	efree(signature);
 	FREE_ARGS_HASH(sbs_vars);
@@ -916,6 +939,12 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_noparams, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_check, 0, 0, 0)
+ZEND_ARG_INFO(0, uri)
+ZEND_ARG_INFO(0, method)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_handler, 0, 0, 1)
 ZEND_ARG_INFO(0, function_name)
 ZEND_END_ARG_INFO()
@@ -949,7 +978,7 @@ static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		SOP_ME(callconsumerHandler,	arginfo_oauth_provider_noparams,		ZEND_ACC_PUBLIC)
 		SOP_ME(calltokenHandler,	arginfo_oauth_provider_noparams,		ZEND_ACC_PUBLIC)
 		SOP_ME(callTimestampNonceHandler,	arginfo_oauth_provider_noparams,		ZEND_ACC_PUBLIC)
-		SOP_ME(checkOAuthRequest,	arginfo_oauth_provider_noparams,		ZEND_ACC_PUBLIC)
+		SOP_ME(checkOAuthRequest,	arginfo_oauth_provider_check,		ZEND_ACC_PUBLIC)
 		SOP_ME(isRequestTokenEndpoint,	arginfo_oauth_provider_req_token,		ZEND_ACC_PUBLIC)
 		SOP_ME(reportProblem,	arginfo_oauth_provider_reportproblem,		ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_FINAL)
 		SOP_ME(addRequiredParameter,	arginfo_oauth_provider_set_req_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)

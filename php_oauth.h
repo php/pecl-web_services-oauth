@@ -54,8 +54,12 @@
 #endif
 
 #ifndef Z_ADDREF_P
-#define Z_ADDREF_P(pz)		(pz)->refcount++
+#define Z_ADDREF_P(pz)		(++(pz)->refcount)
 #define Z_ADDREF_PP(ppz)	Z_ADDREF_P(*(ppz))
+#endif
+
+#ifndef Z_DELREF_P
+#define Z_DELREF_P(pz)		(--(pz)->refcount)
 #endif
 
 #if ZEND_MODULE_API_NO >= 20100409

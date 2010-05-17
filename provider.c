@@ -147,11 +147,10 @@ static inline int oauth_provider_set_param_value(HashTable *ht, char *key, zval 
 static int *oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_header TSRMLS_DC) /* {{{ */
 {
 	pcre_cache_entry *pce;
-	zval *subpats = NULL, *return_value = NULL, **oauth_params = NULL, **item_param = NULL, **item_val = NULL, **current_param = NULL, **oauth_vals = NULL, **current_val = NULL;
+	zval *subpats = NULL, *return_value = NULL, **item_param = NULL, **current_param = NULL, **current_val = NULL;
 	HashPosition hpos;
-	ulong num_key = 0;
 	/* the following regex is also used at http://oauth.googlecode.com/svn/code/php/OAuth.php to help ensure uniform behavior between libs, credit goes to the original author(s) */
-	char *key = NULL, *regex = "/((oauth_([-_a-z]*))=(\"([^\"]*)\"|([^,]*)),?)/";
+	char *regex = "/(oauth_[a-z_-]*)=(?:\"([^\"]*)\"|([^,]*))/";
 
 	if(!auth_header || strncasecmp(auth_header, "oauth", 4) || !sop) {
 		return NULL;
@@ -163,55 +162,64 @@ static int *oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth
 		return NULL;
 	}
 
-	ALLOC_ZVAL(return_value);
+/*	ALLOC_ZVAL(return_value);*/
 	MAKE_STD_ZVAL(return_value);
 
-	ALLOC_ZVAL(subpats);
+/*	ALLOC_ZVAL(subpats);*/
 	MAKE_STD_ZVAL(subpats);
-	array_init(subpats);
 
-	php_pcre_match_impl(pce, auth_header, strlen(auth_header), return_value, subpats, 1, 1, (1<<8), 0 TSRMLS_CC);
+	php_pcre_match_impl(
+		pce,
+		auth_header, 
+		strlen(auth_header), 
+		return_value, 
+		subpats, 
+		1, /* global */
+		1, /* use flags */
+		2, /* PREG_SET_ORDER */ 
+		0 
+		TSRMLS_CC
+	);
 
-	/* oauth param value subpat */
-	if(zend_hash_index_find(Z_ARRVAL_P(subpats), 5, (void **)&oauth_vals)==FAILURE) {
+	if (0==Z_LVAL_P(return_value)) {
 		return NULL;
 	}
 
-	if(zend_hash_index_find(Z_ARRVAL_P(subpats), 2, (void **)&oauth_params)==SUCCESS) {
-		zend_hash_internal_pointer_reset_ex(Z_ARRVAL_PP(oauth_params), &hpos);
-		/* walk the oauth param names */
-		do {
-			if(zend_hash_get_current_key_ex(Z_ARRVAL_PP(oauth_params), &key, NULL, &num_key, 0, &hpos)==HASH_KEY_IS_LONG) {
-				if(zend_hash_get_current_data_ex(Z_ARRVAL_PP(oauth_params), (void **)&item_param, &hpos)!=FAILURE) {
-					/* get the actual param name subpat (item = Array
-					 * (
-					 *     [0] => oauth_consumer_key
-					 *	   ...
-					 * )
-					 */
-					zend_hash_index_find(Z_ARRVAL_PP(item_param), 0, (void **)&current_param);
+	zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(subpats), &hpos);
+	/* walk the oauth param names */
+	do {
+		if (SUCCESS==zend_hash_get_current_data_ex(Z_ARRVAL_P(subpats), (void **)&item_param, &hpos)) {
+			zval *decoded_val;
+			char *tmp;
+			int decoded_len;
+			/*
+			 * item = array(
+			 * 	1 => param name
+			 *	2 => quoted value
+			 *	3 => unquoted value (defined if matched)
+			 * )
+			 */
+			zend_hash_index_find(Z_ARRVAL_PP(item_param), 1, (void **)&current_param);
 
-					/* get the parameter's value subpat (val = Array
-					 *  (
-					 *     [0] => 0685bd9184jfhq22
-					 *     ...
-					 *  )
-					 * */
-					zend_hash_index_find(Z_ARRVAL_PP(oauth_vals), num_key, (void **)&item_val);
-					zend_hash_index_find(Z_ARRVAL_PP(item_val), 0, (void **)&current_val);
-					if(oauth_provider_set_param_value(sop->oauth_params, Z_STRVAL_PP(current_param), current_val)==FAILURE) {
-						return NULL;
-					}
-				}
+			if (FAILURE==zend_hash_index_find(Z_ARRVAL_PP(item_param), 3, (void**)&current_val)) {
+				zend_hash_index_find(Z_ARRVAL_PP(item_param), 2, (void**)&current_val);
 			}
-		} while(zend_hash_move_forward_ex(Z_ARRVAL_PP(oauth_params), &hpos)==SUCCESS);
-	}
-	/*while(*auth_header) {
-	  if(*auth_header!=' ' && *auth_header!='\n' && *auth_header!='\t' && *auth_header!='\r') {
-	  fprintf(stdout, "auth header: %s\n", auth_header);
-	  }
-	  auth_header++;
-	  }*/
+
+			tmp = estrndup(Z_STRVAL_PP(current_val), Z_STRLEN_PP(current_val));
+			decoded_len = php_url_decode(tmp, Z_STRLEN_PP(current_val));
+			MAKE_STD_ZVAL(decoded_val);
+			ZVAL_STRINGL(decoded_val, tmp, decoded_len, 0);
+
+			if (oauth_provider_set_param_value(sop->oauth_params, Z_STRVAL_PP(current_param), &decoded_val)==FAILURE) {
+				return NULL;
+			}
+			Z_DELREF_P(decoded_val);
+		}
+	} while (SUCCESS==zend_hash_move_forward_ex(Z_ARRVAL_P(subpats), &hpos));
+
+	zval_ptr_dtor(&return_value);
+	zval_ptr_dtor(&subpats);
+
 	return SUCCESS;
 }
 /* }}} */
@@ -414,7 +422,9 @@ SOP_METHOD(__construct)
 			authorization_header = estrdup(Z_STRVAL_P(auth_header));
 		}
 		if(!authorization_header || oauth_provider_parse_auth_header(sop, authorization_header TSRMLS_CC)!=SUCCESS) {
-			efree(authorization_header);
+			if (authorization_header) {
+				efree(authorization_header);
+			}
 			soo_handle_error(NULL, OAUTH_SIGNATURE_METHOD_REJECTED, "Unknown signature method", NULL, NULL TSRMLS_CC);
 			return;
 		}
@@ -505,7 +515,7 @@ SOP_METHOD(checkOAuthRequest)
 	zval *retval = NULL, **param, *pthis, *is_req_token_api, *token_secret, *consumer_secret, *req_signature, *sig_method;
 	php_oauth_provider *sop;
 	ulong missing_param_count = 0, mp_count = 1;
-	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *sbs = NULL, *signature = NULL, *signature_encoded = NULL;
+	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *sbs = NULL, *signature = NULL;
 	HashPosition hpos;
 	HashTable *sbs_vars = NULL;
 	int http_verb_len = 0, uri_len = 0;
@@ -615,16 +625,13 @@ SOP_METHOD(checkOAuthRequest)
 		signature = soo_sign_hmac(NULL, sbs, Z_STRVAL_P(consumer_secret), NULL TSRMLS_CC);
 	}
 
-	signature_encoded = oauth_url_encode(signature, strlen(signature));
-
 	req_signature = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE, sizeof(OAUTH_PROVIDER_SIGNATURE) - 1, 1 TSRMLS_CC);
-	if(!Z_STRLEN_P(req_signature) || strcmp(signature_encoded, Z_STRVAL_P(req_signature))) {
+	if(!Z_STRLEN_P(req_signature) || strcmp(signature, Z_STRVAL_P(req_signature))) {
 		soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, sbs TSRMLS_CC);
 	}
 
 	efree(sbs);
 	efree(signature);
-	efree(signature_encoded);
 	FREE_ARGS_HASH(sbs_vars);
 }
 /* }}} */

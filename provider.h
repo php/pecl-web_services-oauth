@@ -119,6 +119,8 @@ extern int oauth_provider_register_class(TSRMLS_D);
 #define OAUTH_PROVIDER_NONCE "nonce"
 #define OAUTH_PROVIDER_TIMESTAMP "timestamp"
 #define OAUTH_PROVIDER_VERSION "version"
+#define OAUTH_PROVIDER_CALLBACK "callback"
+#define OAUTH_PROVIDER_VERIFIER "verifier"
 
 #define OAUTH_BAD_NONCE (1<<2)
 #define OAUTH_BAD_TIMESTAMP (1<<3)

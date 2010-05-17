@@ -145,7 +145,7 @@ static inline int oauth_provider_set_param_value(HashTable *ht, char *key, zval 
 }
 /* }}} */
 
-static int *oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_header TSRMLS_DC) /* {{{ */
+static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_header TSRMLS_DC) /* {{{ */
 {
 	pcre_cache_entry *pce;
 	zval *subpats = NULL, *return_value = NULL, **item_param = NULL, **current_param = NULL, **current_val = NULL;
@@ -154,19 +154,16 @@ static int *oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth
 	char *regex = "/(oauth_[a-z_-]*)=(?:\"([^\"]*)\"|([^,]*))/";
 
 	if(!auth_header || strncasecmp(auth_header, "oauth", 4) || !sop) {
-		return NULL;
+		return FAILURE;
 	}
 	/* pass "OAuth " */
 	auth_header += 5;
 
 	if ((pce = pcre_get_compiled_regex_cache(regex, sizeof(regex)-1 TSRMLS_CC)) == NULL) {
-		return NULL;
+		return FAILURE;
 	}
 
-/*	ALLOC_ZVAL(return_value);*/
 	MAKE_STD_ZVAL(return_value);
-
-/*	ALLOC_ZVAL(subpats);*/
 	MAKE_STD_ZVAL(subpats);
 
 	php_pcre_match_impl(
@@ -183,7 +180,7 @@ static int *oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth
 	);
 
 	if (0==Z_LVAL_P(return_value)) {
-		return NULL;
+		return FAILURE;
 	}
 
 	zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(subpats), &hpos);
@@ -212,7 +209,7 @@ static int *oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth
 			ZVAL_STRINGL(decoded_val, tmp, decoded_len, 0);
 
 			if (oauth_provider_set_param_value(sop->oauth_params, Z_STRVAL_PP(current_param), &decoded_val)==FAILURE) {
-				return NULL;
+				return FAILURE;
 			}
 			Z_DELREF_P(decoded_val);
 		}
@@ -422,17 +419,19 @@ SOP_METHOD(__construct)
 			auth_header = *tmpzval;
 			authorization_header = estrdup(Z_STRVAL_P(auth_header));
 		}
-		if(!authorization_header || oauth_provider_parse_auth_header(sop, authorization_header TSRMLS_CC)!=SUCCESS) {
-			if (authorization_header) {
-				efree(authorization_header);
+		if (authorization_header) {
+			int ret = oauth_provider_parse_auth_header(sop, authorization_header TSRMLS_CC);
+
+			efree(authorization_header);
+
+			if (FAILURE==ret) {
+				soo_handle_error(NULL, OAUTH_SIGNATURE_METHOD_REJECTED, "Unknown signature method", NULL, NULL TSRMLS_CC);
+				return;
 			}
-			soo_handle_error(NULL, OAUTH_SIGNATURE_METHOD_REJECTED, "Unknown signature method", NULL, NULL TSRMLS_CC);
-			return;
 		}
-		efree(authorization_header);
 	}
 	/* let constructor params override any values that may have been found in auth headers */
-	if(param_count) {
+	if (param_count) {
 		zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(params), &hpos);
 		do {
 			if(zend_hash_get_current_key_ex(Z_ARRVAL_P(params), &key, NULL, &num_key, 0, &hpos)==HASH_KEY_IS_STRING) {

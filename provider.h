@@ -88,6 +88,7 @@ typedef struct {
 	/* oauth params which might be passed in requests */
 	HashTable *oauth_params;
 	HashTable *required_params;
+	HashTable *custom_params;
 	zval *zrequired_params;
 	zval *this_ptr;
 	php_oauth_provider_fcall *consumer_handler;

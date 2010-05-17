@@ -89,6 +89,27 @@ static int oauth_provider_add_required_param(HashTable *ht, char *required_param
 }
 /* }}} */
 
+static void oauth_provider_apply_custom_param(HashTable *ht, HashTable *custom) /* {{{ */
+{
+	HashPosition custompos;
+	zval **entry;
+	char *key;
+	uint key_len;
+	ulong num_key;
+
+	zend_hash_internal_pointer_reset_ex(custom, &custompos);
+	do {
+		if (SUCCESS==zend_hash_get_current_data_ex(custom, (void**)&entry, &custompos) && HASH_KEY_IS_STRING==zend_hash_get_current_key_ex(custom, &key, &key_len, &num_key, 0, &custompos)) {
+			if (IS_NULL==Z_TYPE_PP(entry)) {
+				zend_hash_del(ht, key, key_len);
+			} else {
+				zend_hash_update(ht, key, key_len, entry, sizeof(zval **), NULL);
+			}
+		}
+	} while (SUCCESS==zend_hash_move_forward_ex(custom, &custompos));
+}
+/* }}} */
+
 static void oauth_provider_check_required_params(HashTable *required_params, HashTable *params, HashTable *missing_params TSRMLS_DC) /* {{{ */
 {
 	HashPosition hpos, reqhpos, paramhpos;
@@ -361,6 +382,8 @@ SOP_METHOD(__construct)
 	zend_hash_init(sop->missing_params, 0, NULL, ZVAL_PTR_DTOR, 0);
 	ALLOC_HASHTABLE(sop->required_params);
 	zend_hash_init(sop->required_params, 0, NULL, ZVAL_PTR_DTOR, 0);
+	ALLOC_HASHTABLE(sop->custom_params);
+	zend_hash_init(sop->custom_params, 0, NULL, ZVAL_PTR_DTOR, 0);
 
 	sop->consumer_handler = NULL;
 	sop->token_handler = NULL;
@@ -554,6 +577,12 @@ SOP_METHOD(checkOAuthRequest)
 		zval *tmp_copy;
 		zend_hash_merge(sbs_vars, sop->oauth_params, (copy_ctor_func_t)zval_add_ref, (void *)&tmp_copy, sizeof(zval *), 0);
 	}
+
+	if (zend_hash_num_elements(sop->custom_params)) {
+		/* apply custom params */
+		oauth_provider_apply_custom_param(sbs_vars, sop->custom_params);
+	}
+
 	zend_hash_internal_pointer_reset_ex(sbs_vars, &hpos);
 
 	/* set the standard stuff present in every request if its found in sbs_vars, IE if we find oauth_consumer_key, set $oauth->consumer_key */
@@ -655,6 +684,30 @@ SOP_METHOD(addRequiredParameter)
 	}
 
 	RETURN_FALSE;
+}
+/* }}} */
+
+/* {{{ proto void OAuthProvider::setParam(string $key, mixed $val) */
+SOP_METHOD(setParam)
+{
+	zval *pthis, *param_val = NULL;
+	char *param_key;
+	ulong param_key_len;
+	php_oauth_provider *sop;
+
+	if (FAILURE==zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|z/", &pthis, oauthprovider, &param_key, &param_key_len, &param_val)) {
+		return;
+	}
+
+	sop = fetch_sop_object(pthis TSRMLS_CC);
+
+	if (!param_val) {
+		RETURN_BOOL(SUCCESS==zend_hash_del(sop->custom_params, param_key, param_key_len+1));
+	} else {
+		Z_ADDREF_P(param_val);
+
+		RETURN_BOOL(SUCCESS==zend_hash_add(sop->custom_params, param_key, param_key_len+1, &param_val, sizeof(zval **), NULL));
+	}
 }
 /* }}} */
 
@@ -820,6 +873,7 @@ static void oauth_provider_free_storage(void *obj TSRMLS_DC) /* {{{ */
 	FREE_ARGS_HASH(sop->missing_params);
 	FREE_ARGS_HASH(sop->oauth_params);
 	FREE_ARGS_HASH(sop->required_params);
+	FREE_ARGS_HASH(sop->custom_params);
 	efree(sop);
 }
 /* }}} */
@@ -881,6 +935,12 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_set_req_param, 0, 0, 1)
 ZEND_ARG_INFO(0, req_params)
 ZEND_END_ARG_INFO()
 
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_set_param, 0, 0, 1)
+ZEND_ARG_INFO(0, param_key)
+ZEND_ARG_INFO(0, param_val)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		SOP_ME(__construct,			arginfo_oauth_provider__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)
 		SOP_ME(consumerHandler,	arginfo_oauth_provider_handler,		ZEND_ACC_PUBLIC)
@@ -893,6 +953,7 @@ static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		SOP_ME(isRequestTokenEndpoint,	arginfo_oauth_provider_req_token,		ZEND_ACC_PUBLIC)
 		SOP_ME(reportProblem,	arginfo_oauth_provider_reportproblem,		ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_FINAL)
 		SOP_ME(addRequiredParameter,	arginfo_oauth_provider_set_req_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
+		SOP_ME(setParam, 		arginfo_oauth_provider_set_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
 		SOP_ME(removeRequiredParameter,	arginfo_oauth_provider_set_req_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
 		PHP_MALIAS(oauthprovider,	is2LeggedEndpoint, isRequestTokenEndpoint, arginfo_oauth_provider_req_token, ZEND_ACC_PUBLIC)
 		{NULL, NULL, NULL}

@@ -89,6 +89,7 @@ typedef struct {
 	HashTable *oauth_params;
 	HashTable *required_params;
 	HashTable *custom_params;
+	HashTable *endpoint_paths;
 	zval *zrequired_params;
 	zval *this_ptr;
 	php_oauth_provider_fcall *consumer_handler;
@@ -135,5 +136,7 @@ extern int oauth_provider_register_class(TSRMLS_D);
 #define OAUTH_VERIFIER_INVALID (1<<11)
 #define OAUTH_PARAMETER_ABSENT (1<<12)
 #define OAUTH_SIGNATURE_METHOD_REJECTED (1<<13)
+
+enum { OAUTH_PROVIDER_PATH_REQUEST, OAUTH_PROVIDER_PATH_ACCESS, OAUTH_PROVIDER_PATH_AUTH };
 
 #endif

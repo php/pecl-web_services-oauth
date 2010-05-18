@@ -110,6 +110,44 @@ static void oauth_provider_apply_custom_param(HashTable *ht, HashTable *custom) 
 }
 /* }}} */
 
+static int oauth_provider_token_required(zval *provider_obj, char* uri TSRMLS_DC)
+{
+	zval *is_req_token_api;
+
+	is_req_token_api = zend_read_property(Z_OBJCE_P(provider_obj), provider_obj, "request_token_endpoint", sizeof("request_token_endpoint") - 1, 1 TSRMLS_CC);
+
+	if (!Z_BVAL_P(is_req_token_api)) {
+		zval **reqtoken_path;
+		php_oauth_provider *sop;
+
+		sop = fetch_sop_object(provider_obj TSRMLS_CC);
+		// do uri matching on the relative path
+		if (SUCCESS==zend_hash_index_find(sop->endpoint_paths, OAUTH_PROVIDER_PATH_REQUEST, (void**)&reqtoken_path)) {
+			int uri_matched = 0;
+
+			if (Z_STRVAL_PP(reqtoken_path)[0]=='/') {
+				// match against relative url
+				php_url *urlparts = php_url_parse_ex(uri, strlen(uri));
+				uri_matched = urlparts && 0==strncmp(urlparts->path, Z_STRVAL_PP(reqtoken_path), Z_STRLEN_PP(reqtoken_path));
+				php_url_free(urlparts);
+			} else {
+				// match against full uri
+				uri_matched = 0==strncmp(uri, Z_STRVAL_PP(reqtoken_path), Z_STRLEN_PP(reqtoken_path));
+			}
+
+			// token required if no match was found
+			if (uri_matched) {
+				ZVAL_BOOL(is_req_token_api, 1);
+				return 0;
+			}
+		}
+
+		// no matches, token required
+		return 1;
+	}
+	return 0;
+}
+
 static void oauth_provider_check_required_params(HashTable *required_params, HashTable *params, HashTable *missing_params TSRMLS_DC) /* {{{ */
 {
 	HashPosition hpos, reqhpos, paramhpos;
@@ -132,7 +170,6 @@ static void oauth_provider_check_required_params(HashTable *required_params, Has
 	} while(zend_hash_move_forward_ex(required_params, &hpos)==SUCCESS);
 }
 /* }}} */
-
 
 static void oauth_provider_set_std_params(zval *provider_obj, HashTable *sbs_vars TSRMLS_DC) /* {{{ */
 {
@@ -401,6 +438,8 @@ SOP_METHOD(__construct)
 	zend_hash_init(sop->required_params, 0, NULL, ZVAL_PTR_DTOR, 0);
 	ALLOC_HASHTABLE(sop->custom_params);
 	zend_hash_init(sop->custom_params, 0, NULL, ZVAL_PTR_DTOR, 0);
+	ALLOC_HASHTABLE(sop->endpoint_paths);
+	zend_hash_init(sop->endpoint_paths, 0, NULL, ZVAL_PTR_DTOR, 0);
 
 	sop->consumer_handler = NULL;
 	sop->token_handler = NULL;
@@ -545,20 +584,38 @@ SOP_METHOD(isRequestTokenEndpoint)
 	sop = fetch_sop_object(pthis TSRMLS_CC);
 
 	zend_update_property_bool(Z_OBJCE_P(pthis), pthis, "request_token_endpoint", sizeof("request_token_endpoint") - 1, req_api TSRMLS_CC);
-	oauth_provider_remove_required_param(sop->required_params, "oauth_token");
 }
 /* }}} */
+
+SOP_METHOD(setRequestTokenPath)
+{
+	zval *pthis, *tmp;
+	php_oauth_provider *sop;
+	char *path;
+	int path_len;
+
+	if (FAILURE==zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os", &pthis, oauthprovider, &path, &path_len)) {
+		return;
+	}
+
+	sop = fetch_sop_object(pthis TSRMLS_CC);
+
+	MAKE_STD_ZVAL(tmp);
+	ZVAL_STRINGL(tmp, path, path_len, 1);
+
+	RETURN_BOOL(SUCCESS==zend_hash_index_update(sop->endpoint_paths, OAUTH_PROVIDER_PATH_REQUEST, (void *)&tmp, sizeof(zval *), NULL));
+}
 
 /* {{{ proto void OAuthProvider::checkOAuthRequest([string url [, string request_method]]) */
 SOP_METHOD(checkOAuthRequest)
 {
-	zval *retval = NULL, **param, *pthis, *is_req_token_api, *token_secret, *consumer_secret, *req_signature, *sig_method;
+	zval *retval = NULL, **param, *pthis, *token_secret, *consumer_secret, *req_signature, *sig_method;
 	php_oauth_provider *sop;
 	ulong missing_param_count = 0, mp_count = 1;
 	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *sbs = NULL, *signature = NULL, *current_uri = NULL;
 	HashPosition hpos;
 	HashTable *sbs_vars = NULL;
-	int http_verb_len = 0, uri_len = 0;
+	int http_verb_len = 0, uri_len = 0, is_token_required = 0;
 
 	if(zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O|ss", &pthis, oauthprovider, &uri, &uri_len, &http_verb, &http_verb_len)==FAILURE) {
 		return;
@@ -575,9 +632,6 @@ SOP_METHOD(checkOAuthRequest)
 		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Failed to detect HTTP method, set a HTTP method via OAuthProvider::checkOAuthRequest()");
 		return;
 	}
-
-	/* if we are in an API which issues a request token, there are is no token handler called */
-	is_req_token_api = zend_read_property(Z_OBJCE_P(pthis), pthis, "request_token_endpoint", sizeof("request_token_endpoint") - 1, 1 TSRMLS_CC);
 
 	ALLOC_HASHTABLE(sbs_vars);
 	zend_hash_init(sbs_vars, 0, NULL, ZVAL_PTR_DTOR, 0);
@@ -605,6 +659,17 @@ SOP_METHOD(checkOAuthRequest)
 	/* set the standard stuff present in every request if its found in sbs_vars, IE if we find oauth_consumer_key, set $oauth->consumer_key */
 	oauth_provider_set_std_params(pthis, sbs_vars TSRMLS_CC);
 
+	if (!uri) {
+		// get current uri
+		uri = current_uri = oauth_provider_get_current_uri(TSRMLS_C);
+	}
+
+	/* if we are in an API which issues a request token, there are is no token handler called */
+	if (!(is_token_required=oauth_provider_token_required(pthis, uri TSRMLS_CC))) {
+		// by default, oauth_token is required; remove from the required list
+		oauth_provider_remove_required_param(sop->required_params, "oauth_token");
+	}
+
 	oauth_provider_check_required_params(sop->required_params, sbs_vars, sop->missing_params TSRMLS_CC);
 
 	missing_param_count = zend_hash_num_elements(sop->missing_params);
@@ -617,12 +682,15 @@ SOP_METHOD(checkOAuthRequest)
 		} while(zend_hash_move_forward_ex(sop->missing_params, &hpos)==SUCCESS);
 		soo_handle_error(NULL, OAUTH_PARAMETER_ABSENT, "Missing required parameters", NULL, additional_info TSRMLS_CC);
 		FREE_ARGS_HASH(sbs_vars);
+		OAUTH_PROVIDER_FREE_STRING(current_uri);
 		return;
 	}
 
 	sig_method = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE_METHOD, sizeof(OAUTH_PROVIDER_SIGNATURE_METHOD) - 1, 1 TSRMLS_CC);
 	if(!sig_method || !Z_STRLEN_P(sig_method) || (strcasecmp(Z_STRVAL_P(sig_method), "HMAC-SHA1") && strcasecmp(Z_STRVAL_P(sig_method), "HMAC_SHA1"))) {
 		soo_handle_error(NULL, OAUTH_SIGNATURE_METHOD_REJECTED, "Unknown signature method", NULL, NULL TSRMLS_CC);
+		FREE_ARGS_HASH(sbs_vars);
+		OAUTH_PROVIDER_FREE_STRING(current_uri);
 		return;
 	}
 
@@ -633,6 +701,7 @@ SOP_METHOD(checkOAuthRequest)
 		soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid nonce/timestamp combination", NULL, additional_info TSRMLS_CC);
 		zval_ptr_dtor(&retval);
 		FREE_ARGS_HASH(sbs_vars);
+		OAUTH_PROVIDER_FREE_STRING(current_uri);
 		return;
 	}
 	zval_ptr_dtor(&retval);
@@ -643,31 +712,29 @@ SOP_METHOD(checkOAuthRequest)
 		soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid consumer key", NULL, additional_info TSRMLS_CC);
 		zval_ptr_dtor(&retval);
 		FREE_ARGS_HASH(sbs_vars);
+		OAUTH_PROVIDER_FREE_STRING(current_uri);
 		return;
 	}
 	zval_ptr_dtor(&retval);
 
-	if(!Z_BVAL_P(is_req_token_api)) {
+	if (is_token_required) {
 		retval = oauth_provider_call_cb(INTERNAL_FUNCTION_PARAM_PASSTHRU, OAUTH_PROVIDER_TOKEN_CB);
-
 		convert_to_long(retval);
 		if(Z_LVAL_P(retval)!=OAUTH_OK) {
 			soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid token", NULL, additional_info TSRMLS_CC);
 			zval_ptr_dtor(&retval);
 			FREE_ARGS_HASH(sbs_vars);
+			OAUTH_PROVIDER_FREE_STRING(current_uri);
 			return;
 		}
 		zval_ptr_dtor(&retval);
 	}
 
 	/* now for the signature stuff */
-	if (!uri) {
-		uri = current_uri = oauth_provider_get_current_uri(TSRMLS_C);
-	}
 	sbs = oauth_generate_sig_base(NULL, http_verb, uri, sbs_vars, NULL TSRMLS_CC);
 
 	consumer_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET) - 1, 1 TSRMLS_CC);
-	if(!Z_BVAL_P(is_req_token_api)) {
+	if (is_token_required) {
 		token_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET) - 1, 1 TSRMLS_CC);
 		signature = soo_sign_hmac(NULL, sbs, consumer_secret ? Z_STRVAL_P(consumer_secret) : "", token_secret ? Z_STRVAL_P(token_secret) : "" TSRMLS_CC);
 	} else {
@@ -679,9 +746,7 @@ SOP_METHOD(checkOAuthRequest)
 		soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, sbs TSRMLS_CC);
 	}
 
-	if (current_uri) {
-		efree(current_uri);
-	}
+	OAUTH_PROVIDER_FREE_STRING(current_uri);
 	efree(sbs);
 	efree(signature);
 	FREE_ARGS_HASH(sbs_vars);
@@ -897,6 +962,7 @@ static void oauth_provider_free_storage(void *obj TSRMLS_DC) /* {{{ */
 	FREE_ARGS_HASH(sop->oauth_params);
 	FREE_ARGS_HASH(sop->required_params);
 	FREE_ARGS_HASH(sop->custom_params);
+	FREE_ARGS_HASH(sop->endpoint_paths);
 	efree(sop);
 }
 /* }}} */
@@ -970,6 +1036,11 @@ ZEND_ARG_INFO(0, param_key)
 ZEND_ARG_INFO(0, param_val)
 ZEND_END_ARG_INFO()
 
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_set_path, 0, 0, 1)
+ZEND_ARG_INFO(0, path)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		SOP_ME(__construct,			arginfo_oauth_provider__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)
 		SOP_ME(consumerHandler,	arginfo_oauth_provider_handler,		ZEND_ACC_PUBLIC)
@@ -980,6 +1051,7 @@ static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		SOP_ME(callTimestampNonceHandler,	arginfo_oauth_provider_noparams,		ZEND_ACC_PUBLIC)
 		SOP_ME(checkOAuthRequest,	arginfo_oauth_provider_check,		ZEND_ACC_PUBLIC)
 		SOP_ME(isRequestTokenEndpoint,	arginfo_oauth_provider_req_token,		ZEND_ACC_PUBLIC)
+		SOP_ME(setRequestTokenPath,	arginfo_oauth_provider_set_path,	ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
 		SOP_ME(reportProblem,	arginfo_oauth_provider_reportproblem,		ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_FINAL)
 		SOP_ME(addRequiredParameter,	arginfo_oauth_provider_set_req_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
 		SOP_ME(setParam, 		arginfo_oauth_provider_set_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)

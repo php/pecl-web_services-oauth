@@ -261,8 +261,8 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 				zend_hash_index_find(Z_ARRVAL_PP(item_param), 2, (void**)&current_val);
 			}
 
-			tmp = estrndup(Z_STRVAL_PP(current_val), Z_STRLEN_PP(current_val));
-			decoded_len = php_url_decode(tmp, Z_STRLEN_PP(current_val));
+			tmp = oauth_url_decode(Z_STRVAL_PP(current_val), Z_STRLEN_PP(current_val));
+			decoded_len = strlen(tmp);
 			MAKE_STD_ZVAL(decoded_val);
 			ZVAL_STRINGL(decoded_val, tmp, decoded_len, 0);
 

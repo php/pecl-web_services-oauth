@@ -43,7 +43,8 @@
 #define OAUTH_PROVIDER_FREE_STRING(a) \
 	if(a) { \
 		efree(a); \
-	} 
+		a = NULL; \
+	}
 
 #define OAUTH_PROVIDER_FREE_CB(c) \
 	if(c) { \
@@ -76,6 +77,12 @@
 		oauth_provider_set_param_member(provider_obj, m, *dest_entry TSRMLS_CC); \
 	}
 
+enum { OAUTH_PROVIDER_PATH_REQUEST, OAUTH_PROVIDER_PATH_ACCESS, OAUTH_PROVIDER_PATH_AUTH };
+
+#define OAUTH_PROVIDER_SET_ENDPOINT(epp, path) \
+	OAUTH_PROVIDER_FREE_STRING(epp)	\
+	epp = estrdup(path);
+
 typedef struct {
 	zend_fcall_info *fcall_info;
 	zend_fcall_info_cache fcall_info_cache;
@@ -89,7 +96,7 @@ typedef struct {
 	HashTable *oauth_params;
 	HashTable *required_params;
 	HashTable *custom_params;
-	HashTable *endpoint_paths;
+	char *endpoint_paths[3];
 	zval *zrequired_params;
 	zval *this_ptr;
 	php_oauth_provider_fcall *consumer_handler;
@@ -137,6 +144,5 @@ extern int oauth_provider_register_class(TSRMLS_D);
 #define OAUTH_PARAMETER_ABSENT (1<<12)
 #define OAUTH_SIGNATURE_METHOD_REJECTED (1<<13)
 
-enum { OAUTH_PROVIDER_PATH_REQUEST, OAUTH_PROVIDER_PATH_ACCESS, OAUTH_PROVIDER_PATH_AUTH };
 
 #endif

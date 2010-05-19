@@ -117,22 +117,22 @@ static int oauth_provider_token_required(zval *provider_obj, char* uri TSRMLS_DC
 	is_req_token_api = zend_read_property(Z_OBJCE_P(provider_obj), provider_obj, "request_token_endpoint", sizeof("request_token_endpoint") - 1, 1 TSRMLS_CC);
 
 	if (!Z_BVAL_P(is_req_token_api)) {
-		zval **reqtoken_path;
 		php_oauth_provider *sop;
 
 		sop = fetch_sop_object(provider_obj TSRMLS_CC);
 		// do uri matching on the relative path
-		if (SUCCESS==zend_hash_index_find(sop->endpoint_paths, OAUTH_PROVIDER_PATH_REQUEST, (void**)&reqtoken_path)) {
+		if (sop->endpoint_paths[OAUTH_PROVIDER_PATH_REQUEST]) {
+			const char *reqtoken_path = sop->endpoint_paths[OAUTH_PROVIDER_PATH_REQUEST];
 			int uri_matched = 0;
 
-			if (Z_STRVAL_PP(reqtoken_path)[0]=='/') {
+			if (reqtoken_path[0]=='/') {
 				// match against relative url
 				php_url *urlparts = php_url_parse_ex(uri, strlen(uri));
-				uri_matched = urlparts && 0==strncmp(urlparts->path, Z_STRVAL_PP(reqtoken_path), Z_STRLEN_PP(reqtoken_path));
+				uri_matched = urlparts && 0==strncmp(urlparts->path, reqtoken_path, strlen(reqtoken_path));
 				php_url_free(urlparts);
 			} else {
 				// match against full uri
-				uri_matched = 0==strncmp(uri, Z_STRVAL_PP(reqtoken_path), Z_STRLEN_PP(reqtoken_path));
+				uri_matched = 0==strncmp(uri, reqtoken_path, strlen(reqtoken_path));
 			}
 
 			// token required if no match was found
@@ -438,8 +438,7 @@ SOP_METHOD(__construct)
 	zend_hash_init(sop->required_params, 0, NULL, ZVAL_PTR_DTOR, 0);
 	ALLOC_HASHTABLE(sop->custom_params);
 	zend_hash_init(sop->custom_params, 0, NULL, ZVAL_PTR_DTOR, 0);
-	ALLOC_HASHTABLE(sop->endpoint_paths);
-	zend_hash_init(sop->endpoint_paths, 0, NULL, ZVAL_PTR_DTOR, 0);
+	memset(sop->endpoint_paths, 0, sizeof(sop->endpoint_paths));
 
 	sop->consumer_handler = NULL;
 	sop->token_handler = NULL;
@@ -589,7 +588,7 @@ SOP_METHOD(isRequestTokenEndpoint)
 
 SOP_METHOD(setRequestTokenPath)
 {
-	zval *pthis, *tmp;
+	zval *pthis;
 	php_oauth_provider *sop;
 	char *path;
 	int path_len;
@@ -600,10 +599,9 @@ SOP_METHOD(setRequestTokenPath)
 
 	sop = fetch_sop_object(pthis TSRMLS_CC);
 
-	MAKE_STD_ZVAL(tmp);
-	ZVAL_STRINGL(tmp, path, path_len, 1);
+	OAUTH_PROVIDER_SET_ENDPOINT(sop->endpoint_paths[OAUTH_PROVIDER_PATH_REQUEST], path)
 
-	RETURN_BOOL(SUCCESS==zend_hash_index_update(sop->endpoint_paths, OAUTH_PROVIDER_PATH_REQUEST, (void *)&tmp, sizeof(zval *), NULL));
+	RETURN_TRUE;
 }
 
 /* {{{ proto void OAuthProvider::checkOAuthRequest([string url [, string request_method]]) */
@@ -962,7 +960,11 @@ static void oauth_provider_free_storage(void *obj TSRMLS_DC) /* {{{ */
 	FREE_ARGS_HASH(sop->oauth_params);
 	FREE_ARGS_HASH(sop->required_params);
 	FREE_ARGS_HASH(sop->custom_params);
-	FREE_ARGS_HASH(sop->endpoint_paths);
+
+	OAUTH_PROVIDER_FREE_STRING(sop->endpoint_paths[OAUTH_PROVIDER_PATH_REQUEST]);
+	OAUTH_PROVIDER_FREE_STRING(sop->endpoint_paths[OAUTH_PROVIDER_PATH_ACCESS]);
+	OAUTH_PROVIDER_FREE_STRING(sop->endpoint_paths[OAUTH_PROVIDER_PATH_AUTH]);
+
 	efree(sop);
 }
 /* }}} */

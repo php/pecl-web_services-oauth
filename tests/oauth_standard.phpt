@@ -83,10 +83,16 @@ object(OAuth)#2 (0) {
 EXCEPTION -1: The consumer key cannot be empty
 NULL
 -- empty consumer secret --
-EXCEPTION -1: The consumer secret cannot be empty
-NULL
+object(OAuth)#2 (3) {
+  ["debugInfo"]=>
+  NULL
+  ["debug"]=>
+  bool(false)
+  ["sslChecks"]=>
+  bool(false)
+}
 -- normal constructor --
-object(OAuth)#1 (3) {
+object(OAuth)#3 (3) {
   ["debugInfo"]=>
   NULL
   ["debug"]=>

@@ -563,7 +563,7 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 			MAKE_STD_ZVAL(exargs2[0]);
 			array_init(exargs2[0]);
 
-			// merge order = oauth_args - extra_args - query
+			/* merge order = oauth_args - extra_args - query */
 			if (post_args) {
 				zval *tmp_copy;
 				zend_hash_merge(HASH_OF(exargs2[0]), post_args, (copy_ctor_func_t) zval_add_ref, (void *)&tmp_copy, sizeof(zval *), 0);
@@ -1308,11 +1308,11 @@ static void oauth_apply_url_redirect(smart_str *surl, const char *location) /* {
 {
 	php_url *urlparts;
 
-	// determine whether location is relative
+	/* determine whether location is relative */
 	if ('/'==*location) {
 		urlparts = php_url_parse_ex(surl->c, surl->len);
 
-		// rebuild url from scratch
+		/* rebuild url from scratch */
 		smart_str_free(surl);
 		if (urlparts->scheme) {
 			smart_str_appends(surl, urlparts->scheme);
@@ -1528,7 +1528,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 				}
 			}
 		} else if (http_response_code < 0) {
-			// exception would have been thrown already
+			/* exception would have been thrown already */
 		} else if (http_response_code < 200 || http_response_code > 206) {
 			spprintf(&bufz, 0, "Invalid auth/bad request (got a %ld, expected HTTP/1.1 20X or a redirect)", http_response_code);
 			MAKE_STD_ZVAL(zret);
@@ -1572,7 +1572,7 @@ SO_METHOD(setRSACertificate)
 		return;
 	}
 
-	// free private key resources if necessary
+	/* free private key resources if necessary */
 	soo_free_privatekey(soo TSRMLS_CC);
 
 	MAKE_STD_ZVAL(func);
@@ -1673,16 +1673,15 @@ SO_METHOD(__construct)
 
 	if(!ck_len) {
 		soo_handle_error(soo, -1, "The consumer key cannot be empty", NULL, NULL TSRMLS_CC);
-//		php_error(E_ERROR, "the consumer key cannot be empty");
 		return;
 	}
-
-//	if(!cs_len) {
-//		soo_handle_error(soo, -1, "The consumer secret cannot be empty", NULL, NULL TSRMLS_CC);
-//		php_error(E_ERROR, "the consumer secret cannot be empty");
-//		return;
-//	}
-
+/*
+	if(!cs_len) {
+		soo_handle_error(soo, -1, "The consumer secret cannot be empty", NULL, NULL TSRMLS_CC);
+		php_error(E_ERROR, "the consumer secret cannot be empty");
+		return;
+	}
+*/
 	memset(soo->last_location_header, 0, OAUTH_MAX_HEADER_LEN);
 	soo->redirects = 0;
 	soo->debug = 0;
@@ -1926,7 +1925,7 @@ SO_METHOD(getRequestToken)
 		if (callback_url_len > 0) {
 			add_arg_for_req(args, OAUTH_PARAM_CALLBACK, callback_url TSRMLS_CC);
 		} else {
-			// empty callback url specified, treat as 1.0a
+			/* empty callback url specified, treat as 1.0a */
 			add_arg_for_req(args, OAUTH_PARAM_CALLBACK, OAUTH_CALLBACK_OOB TSRMLS_CC);
 		}
 	}

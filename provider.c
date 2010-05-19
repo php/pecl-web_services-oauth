@@ -120,29 +120,29 @@ static int oauth_provider_token_required(zval *provider_obj, char* uri TSRMLS_DC
 		php_oauth_provider *sop;
 
 		sop = fetch_sop_object(provider_obj TSRMLS_CC);
-		// do uri matching on the relative path
+		/* do uri matching on the relative path */
 		if (sop->endpoint_paths[OAUTH_PROVIDER_PATH_REQUEST]) {
 			const char *reqtoken_path = sop->endpoint_paths[OAUTH_PROVIDER_PATH_REQUEST];
 			int uri_matched = 0;
 
 			if (reqtoken_path[0]=='/') {
-				// match against relative url
+				/* match against relative url */
 				php_url *urlparts = php_url_parse_ex(uri, strlen(uri));
 				uri_matched = urlparts && 0==strncmp(urlparts->path, reqtoken_path, strlen(reqtoken_path));
 				php_url_free(urlparts);
 			} else {
-				// match against full uri
+				/* match against full uri */
 				uri_matched = 0==strncmp(uri, reqtoken_path, strlen(reqtoken_path));
 			}
 
-			// token required if no match was found
+			/* token required if no match was found */
 			if (uri_matched) {
 				ZVAL_BOOL(is_req_token_api, 1);
 				return 0;
 			}
 		}
 
-		// no matches, token required
+		/* no matches, token required */
 		return 1;
 	}
 	return 0;
@@ -658,13 +658,13 @@ SOP_METHOD(checkOAuthRequest)
 	oauth_provider_set_std_params(pthis, sbs_vars TSRMLS_CC);
 
 	if (!uri) {
-		// get current uri
+		/* get current uri */
 		uri = current_uri = oauth_provider_get_current_uri(TSRMLS_C);
 	}
 
 	/* if we are in an API which issues a request token, there are is no token handler called */
 	if (!(is_token_required=oauth_provider_token_required(pthis, uri TSRMLS_CC))) {
-		// by default, oauth_token is required; remove from the required list
+		/* by default, oauth_token is required; remove from the required list */
 		oauth_provider_remove_required_param(sop->required_params, "oauth_token");
 	}
 

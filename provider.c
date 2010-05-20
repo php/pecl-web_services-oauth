@@ -385,15 +385,20 @@ static char *oauth_provider_get_http_verb(TSRMLS_D) /* {{{ */
 
 static char *oauth_provider_get_current_uri(TSRMLS_D)
 {
-	zval **host = NULL, **port = NULL, **uri = NULL;
+	zval **host = NULL, **port = NULL, **uri = NULL, **proto;
 
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_HOST", sizeof("HTTP_HOST"), (void**)&host);
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "SERVER_PORT", sizeof("SERVER_PORT"), (void**)&port);
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "REQUEST_URI", sizeof("REQUEST_URI"), (void**)&uri);
+	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_X_FORWARDED_PROTO", sizeof("HTTP_X_FORWARDED_PROTO"), (void **)&proto);
 
 	if (host && port && uri) {
 		char *tmp;
-		spprintf(&tmp, 0, "http%s://%s%s", Z_LVAL_PP(port)==443?"s":"", Z_STRVAL_PP(host), Z_STRVAL_PP(uri));
+		if(proto) {	
+			spprintf(&tmp, 0, "%s://%s%s", Z_STRVAL_PP(proto), Z_STRVAL_PP(host), Z_STRVAL_PP(uri));
+		} else {
+			spprintf(&tmp, 0, "http%s://%s%s", Z_LVAL_PP(port)==443?"s":"", Z_STRVAL_PP(host), Z_STRVAL_PP(uri));
+		}
 		return tmp;
 	}
 

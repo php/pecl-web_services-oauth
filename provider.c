@@ -385,7 +385,7 @@ static char *oauth_provider_get_http_verb(TSRMLS_D) /* {{{ */
 
 static char *oauth_provider_get_current_uri(TSRMLS_D)
 {
-	zval **host = NULL, **port = NULL, **uri = NULL, **proto;
+	zval **host = NULL, **port = NULL, **uri = NULL, **proto = NULL;
 
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_HOST", sizeof("HTTP_HOST"), (void**)&host);
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "SERVER_PORT", sizeof("SERVER_PORT"), (void**)&port);

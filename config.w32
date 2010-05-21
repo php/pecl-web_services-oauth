@@ -13,7 +13,7 @@ if (PHP_OAUTH != "no") {
 		&& (((PHP_ZLIB=="no") && (CHECK_LIB("zlib_a.lib", "oauth", PHP_OAUTH) ||  CHECK_LIB("zlib.lib", "oauth", PHP_OAUTH))) || 
 			(PHP_ZLIB_SHARED && CHECK_LIB("zlib.lib", "oauth", PHP_OAUTH)) || (PHP_ZLIB == "yes" && (!PHP_ZLIB_SHARED)))
 		) {
-		EXTENSION("oauth", "oauth.c", true);
+		EXTENSION("oauth", "oauth.c provider.c", true);
 		ADD_FLAG("CFLAGS_OAUTH", "/D CURL_STATICLIB");
 	} else {
 		WARNING("oauth not enabled; libraries and headers not found");

@@ -224,7 +224,7 @@ static void oauth_prop_hash_dtor(php_so_object *soo TSRMLS_DC) /* {{{ */
 }
 /* }}} */
 
-char *soo_sign_hmac(php_so_object *soo, char *message, char *cs, char *ts TSRMLS_DC) /* {{{ */
+static char *soo_sign_hmac(php_so_object *soo, char *message, const char *cs, const char *ts, const oauth_sig_context *ctx TSRMLS_DC) /* {{{ */
 {
 	zval *args[4],*retval,*func;
 	char *tret;
@@ -240,11 +240,8 @@ char *soo_sign_hmac(php_so_object *soo, char *message, char *cs, char *ts TSRMLS
 		return NULL;
 	}
 
-	if (ts) {
-		spprintf(&tret, 0, "%s&%s", cs, ts);
-	} else {
-		spprintf(&tret, 0, "%s&", cs);
-	}
+	/* cs and ts would at best be empty, so this should be safe ;-) */
+	spprintf(&tret, 0, "%s&%s", cs, ts);
 
 	MAKE_STD_ZVAL(retval);
 	MAKE_STD_ZVAL(args[0]);
@@ -252,7 +249,7 @@ char *soo_sign_hmac(php_so_object *soo, char *message, char *cs, char *ts TSRMLS
 	MAKE_STD_ZVAL(args[2]);
 	MAKE_STD_ZVAL(args[3]);
 
-	ZVAL_STRING(args[0], "sha1", 0);
+	ZVAL_STRING(args[0], ctx->hash_algo, 0);
 	ZVAL_STRING(args[1], message, 0);
 	ZVAL_STRING(args[2], tret, 0);
 	ZVAL_BOOL(args[3], 1);
@@ -272,11 +269,16 @@ char *soo_sign_hmac(php_so_object *soo, char *message, char *cs, char *ts TSRMLS
 }
 /* }}} */
 
-static char *soo_sign_rsa(php_so_object *soo, char *message TSRMLS_DC)
+static char *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_context *ctx TSRMLS_DC)
 {
 	zval *args[3], *func, *retval;
 	unsigned char *result;
 	int ret, retlen;
+
+	/* check for empty private key */
+	if (!ctx->privatekey) {
+		return NULL;
+	}
 
 	MAKE_STD_ZVAL(func);
 	ZVAL_STRING(func, "openssl_sign", 0);
@@ -289,7 +291,7 @@ static char *soo_sign_rsa(php_so_object *soo, char *message TSRMLS_DC)
 
 	ZVAL_STRING(args[0], message, 0);
 	/* args[1] is filled by function */
-	args[2] = soo->privatekey;
+	args[2] = ctx->privatekey;
 
 	ret = call_user_function(EG(function_table), NULL, func, retval, 3, args TSRMLS_CC);
 
@@ -307,12 +309,30 @@ static char *soo_sign_rsa(php_so_object *soo, char *message TSRMLS_DC)
 	return (char *)result;
 }
 
-static char *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const char *algo TSRMLS_DC)
+oauth_sig_context *oauth_create_sig_context(const char *sigmethod)
 {
-	if (0==strcmp(algo, OAUTH_SIG_METHOD_HMACSHA1)) {
-		return soo_sign_hmac(soo, message, cs ? Z_STRVAL_P(cs) : "", ts ? Z_STRVAL_P(ts) : "" TSRMLS_CC);
-	} else if (0==strcmp(algo, OAUTH_SIG_METHOD_RSASHA1)) {
-		return soo_sign_rsa(soo, message TSRMLS_CC);
+	oauth_sig_context *ctx;
+
+	OAUTH_SIGCTX_INIT(ctx);
+	if (0==strcmp(sigmethod, OAUTH_SIG_METHOD_HMACSHA1)) {
+		OAUTH_SIGCTX_HMAC(ctx, "sha1");
+	} else if (0==strcmp(sigmethod, OAUTH_SIG_METHOD_HMACSHA256)) {
+		OAUTH_SIGCTX_HMAC(ctx, "sha256");
+	} else if (0==strcmp(sigmethod, OAUTH_SIG_METHOD_RSASHA1)) {
+		OAUTH_SIGCTX_RSA(ctx, "sha1");
+	}
+
+	return ctx;
+}
+
+char *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx TSRMLS_DC)
+{
+	const char *csec = cs?Z_STRVAL_P(cs):"", *tsec = ts?Z_STRVAL_P(ts):"";
+
+	if (OAUTH_SIGCTX_TYPE_HMAC==ctx->type) {
+		return soo_sign_hmac(soo, message, csec, tsec, ctx TSRMLS_CC);
+	} else if (OAUTH_SIGCTX_TYPE_RSA==ctx->type) {
+		return soo_sign_rsa(soo, message, ctx TSRMLS_CC);
 	}
 	return NULL;
 }
@@ -534,7 +554,7 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 	char *query;
 	char *s_port = NULL, *bufz = NULL, *sbs_query_part = NULL, *sbs_scheme_part = NULL;
 	php_url *urlparts;
-	smart_str sbuf = {0}, squery = {0};
+	smart_str sbuf = {0};
 
 	urlparts = php_url_parse_ex(uri, strlen(uri));
 
@@ -557,6 +577,7 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 		}
 
 		if (urlparts->path) {
+			smart_str squery = {0};
 			smart_str_appends(&sbuf, urlparts->path);
 			smart_str_0(&sbuf);
 
@@ -621,9 +642,10 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 			if(sbs_scheme_part) {
 				efree(sbs_scheme_part);
 			}
-			smart_str_free(&sbuf);
 			smart_str_free(&squery);
 		}
+
+		smart_str_free(&sbuf);
 
 		php_url_free(urlparts);
 
@@ -631,7 +653,7 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 			if(soo->debug_info->sbs) {
 				efree(soo->debug_info->sbs);
 			}
-			soo->debug_info->sbs = estrdup(bufz);
+			soo->debug_info->sbs = bufz?estrdup(bufz):NULL;
 		}
 		return bufz;
 	}
@@ -1340,7 +1362,7 @@ Prepares the request elements to be used by make_req(); this should allow for su
 */
 static long oauth_fetch(php_so_object *soo, const char *url, const char *method, zval *request_params, zval *request_headers, HashTable *init_oauth_args, int fetch_flags TSRMLS_DC) /* {{{ */
 {
-	char *sbs = NULL, *sig = NULL, *bufz = NULL, *sig_method = NULL;
+	char *sbs = NULL, *sig = NULL, *bufz = NULL;
 	const char *final_http_method;
 	zval **token = NULL, **cs;
 	zval *ts = NULL, **token_secret = NULL;
@@ -1433,11 +1455,11 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 		}
 
 		/* sign the request */
-		sig_method = Z_STRVAL_PP(soo_get_property(soo, OAUTH_ATTR_SIGMETHOD TSRMLS_CC));
-		sig = soo_sign(soo, sbs, *cs, ts, sig_method TSRMLS_CC);
+		sig = soo_sign(soo, sbs, *cs, ts, soo->sig_ctx TSRMLS_CC);
 		efree(sbs);
 		if (!sig) {
 			FREE_ARGS_HASH(oauth_args);
+			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Signature generation failed", NULL, NULL TSRMLS_CC);
 			break;
 		}
 
@@ -1562,7 +1584,7 @@ SO_METHOD(setRSACertificate)
 {
 	char *key;
 	int key_len;
-	zval *args[1], *func;
+	zval *args[1], *func, *retval;
 
 	php_so_object *soo;
 
@@ -1572,26 +1594,24 @@ SO_METHOD(setRSACertificate)
 		return;
 	}
 
-	/* free private key resources if necessary */
-	soo_free_privatekey(soo TSRMLS_CC);
-
 	MAKE_STD_ZVAL(func);
 	ZVAL_STRING(func, "openssl_get_privatekey", 0);
 
 	MAKE_STD_ZVAL(args[0]);
 	ZVAL_STRINGL(args[0], key, key_len, 0);
 
-	MAKE_STD_ZVAL(soo->privatekey);
+	MAKE_STD_ZVAL(retval);
 
-	call_user_function(EG(function_table), NULL, func, soo->privatekey, 1, args TSRMLS_CC);
+	call_user_function(EG(function_table), NULL, func, retval, 1, args TSRMLS_CC);
 
 	FREE_ZVAL(args[0]);
 	FREE_ZVAL(func);
 
-	if (Z_TYPE_P(soo->privatekey)==IS_RESOURCE) {
+	if (Z_TYPE_P(retval)==IS_RESOURCE) {
+		OAUTH_SIGCTX_SET_PRIVATEKEY(soo->sig_ctx, retval);
 		RETURN_TRUE;
 	} else {
-		soo_free_privatekey(soo TSRMLS_CC);
+		zval_ptr_dtor(&retval);
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Could not parse RSA certificate", NULL, NULL TSRMLS_CC);
 		return;
 	}
@@ -1688,10 +1708,10 @@ SO_METHOD(__construct)
 	soo->debug_info = emalloc(sizeof(php_so_debug));
 	soo->debug_info->sbs = NULL;
 	soo->debugArr = NULL;
-	soo->privatekey = NULL;
 
 	soo->nonce = NULL;
 	soo->timestamp = NULL;
+	soo->sig_ctx = NULL;
 
 	INIT_DEBUG_INFO(soo->debug_info);
 
@@ -1707,6 +1727,8 @@ SO_METHOD(__construct)
 	if (!sig_method_len) {
 		sig_method = OAUTH_SIG_METHOD_HMACSHA1;
 	}
+
+	soo->sig_ctx = oauth_create_sig_context(sig_method);
 
 	if (!auth_method) {
 		auth_method = OAUTH_AUTH_TYPE_AUTHORIZATION;
@@ -1768,21 +1790,17 @@ SO_METHOD(__construct)
 }
 /* }}} */
 
-void soo_free_privatekey(php_so_object *soo TSRMLS_DC)
+void oauth_free_privatekey(zval *privatekey TSRMLS_DC)
 {
 	zval *func, *retval;
 	zval *args[1];
 
-	if (!soo->privatekey) {
-		return;
-	}
-
-	if (Z_TYPE_P(soo->privatekey)==IS_RESOURCE) {
+	if (Z_TYPE_P(privatekey)==IS_RESOURCE) {
 		MAKE_STD_ZVAL(retval);
 		MAKE_STD_ZVAL(func);
 
 		ZVAL_STRING(func, "openssl_freekey", 0);
-		args[0] = soo->privatekey;
+		args[0] = privatekey;
 
 		call_user_function(EG(function_table), NULL, func, retval, 1, args TSRMLS_CC);
 
@@ -1790,8 +1808,7 @@ void soo_free_privatekey(php_so_object *soo TSRMLS_DC)
 		FREE_ZVAL(retval);
 	}
 
-	FREE_ZVAL(soo->privatekey);
-	soo->privatekey = NULL;
+	zval_ptr_dtor(&privatekey);
 }
 
 /* {{{ proto void OAuth::__destruct(void)
@@ -1822,7 +1839,7 @@ SO_METHOD(__destruct)
 	if(soo->debugArr) {
 		zval_ptr_dtor(&soo->debugArr);
 	}
-	soo_free_privatekey(soo TSRMLS_CC);
+	OAUTH_SIGCTX_FREE(soo->sig_ctx);
 	if (soo->nonce) {
 		efree(soo->nonce);
 	}
@@ -2585,6 +2602,7 @@ PHP_MINIT_FUNCTION(oauth)
 	zend_declare_property_null(soo_exception_ce, "debugInfo", sizeof("debugInfo")-1, ZEND_ACC_PUBLIC TSRMLS_CC);
 
 	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_HMACSHA1", OAUTH_SIG_METHOD_HMACSHA1, CONST_CS | CONST_PERSISTENT);
+	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_HMACSHA256", OAUTH_SIG_METHOD_HMACSHA256, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_RSASHA1", OAUTH_SIG_METHOD_RSASHA1, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("OAUTH_AUTH_TYPE_AUTHORIZATION", OAUTH_AUTH_TYPE_AUTHORIZATION, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("OAUTH_AUTH_TYPE_URI", OAUTH_AUTH_TYPE_URI, CONST_CS | CONST_PERSISTENT);

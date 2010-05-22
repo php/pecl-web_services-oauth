@@ -95,6 +95,7 @@
 #define OAUTH_AUTH_TYPE_NONE 0x04
 
 #define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
+#define OAUTH_SIG_METHOD_HMACSHA256 "HMAC-SHA256"
 #define OAUTH_SIG_METHOD_RSASHA1 "RSA-SHA1"
 
 extern zend_module_entry oauth_module_entry;
@@ -169,6 +170,50 @@ PHP_MINFO_FUNCTION(oauth);
 #define OAUTH(v) (oauth_globals.v)
 #endif
 
+typedef enum { OAUTH_SIGCTX_TYPE_NONE, OAUTH_SIGCTX_TYPE_HMAC, OAUTH_SIGCTX_TYPE_RSA } oauth_sigctx_type;
+
+typedef struct {
+	oauth_sigctx_type	type;
+	char				*hash_algo;
+	zval				*privatekey;
+} oauth_sig_context;
+
+#define OAUTH_SIGCTX_INIT(ctx) { \
+		(ctx) = emalloc(sizeof(*(ctx))); \
+		(ctx)->type = OAUTH_SIGCTX_TYPE_NONE; \
+		(ctx)->hash_algo = NULL; \
+		(ctx)->privatekey = NULL; \
+	}
+
+#define OAUTH_SIGCTX_HMAC(ctx, algo) { \
+		(ctx)->type = OAUTH_SIGCTX_TYPE_HMAC; \
+		(ctx)->hash_algo = algo; \
+	}
+
+#define OAUTH_SIGCTX_FREE_PRIVATEKEY(ctx) { \
+		if ((ctx)->privatekey) { \
+			oauth_free_privatekey((ctx)->privatekey TSRMLS_CC); \
+			(ctx)->privatekey = NULL; \
+		} \
+	}
+
+#define OAUTH_SIGCTX_SET_PRIVATEKEY(ctx, privkey) { \
+		OAUTH_SIGCTX_FREE_PRIVATEKEY(ctx) \
+		(ctx)->privatekey = privkey; \
+	}
+
+#define OAUTH_SIGCTX_RSA(ctx, algo) { \
+		(ctx)->type = OAUTH_SIGCTX_TYPE_RSA; \
+		(ctx)->hash_algo = algo; \
+	}
+
+#define OAUTH_SIGCTX_FREE(ctx) { \
+		if (ctx) { \
+			OAUTH_SIGCTX_FREE_PRIVATEKEY(ctx) \
+			efree((ctx)); \
+		} \
+	}
+
 typedef struct {
 	char		*sbs;
 	smart_str	headers_in;
@@ -194,7 +239,7 @@ typedef struct {
 	char *timestamp;
 	zval *this_ptr;
 	zval *debugArr;
-	zval *privatekey;
+	oauth_sig_context *sig_ctx;
 	php_so_debug *debug_info;
 } php_so_object;
 
@@ -284,8 +329,9 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload
 #endif
 
 
-void soo_free_privatekey(php_so_object *soo TSRMLS_DC);
-char *soo_sign_hmac(php_so_object *soo, char *message, char *cs, char *ts TSRMLS_DC);
+void oauth_free_privatekey(zval *privatekey TSRMLS_DC);
+char *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx TSRMLS_DC);
+oauth_sig_context *oauth_create_sig_context(const char *sigmethod);
 char *oauth_url_encode(char *url, int url_len);
 
 #endif

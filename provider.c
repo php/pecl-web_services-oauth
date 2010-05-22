@@ -612,7 +612,8 @@ SOP_METHOD(setRequestTokenPath)
 /* {{{ proto void OAuthProvider::checkOAuthRequest([string url [, string request_method]]) */
 SOP_METHOD(checkOAuthRequest)
 {
-	zval *retval = NULL, **param, *pthis, *token_secret, *consumer_secret, *req_signature, *sig_method;
+	zval *retval = NULL, **param, *pthis, *token_secret = NULL, *consumer_secret, *req_signature, *sig_method;
+	oauth_sig_context *sig_ctx = NULL;
 	php_oauth_provider *sop;
 	ulong missing_param_count = 0, mp_count = 1;
 	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *sbs = NULL, *signature = NULL, *current_uri = NULL;
@@ -690,12 +691,19 @@ SOP_METHOD(checkOAuthRequest)
 	}
 
 	sig_method = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE_METHOD, sizeof(OAUTH_PROVIDER_SIGNATURE_METHOD) - 1, 1 TSRMLS_CC);
-	if(!sig_method || !Z_STRLEN_P(sig_method) || (strcasecmp(Z_STRVAL_P(sig_method), "HMAC-SHA1") && strcasecmp(Z_STRVAL_P(sig_method), "HMAC_SHA1"))) {
+	do {
+		if (sig_method && Z_STRLEN_P(sig_method)) {
+			sig_ctx = oauth_create_sig_context(Z_STRVAL_P(sig_method));
+			if (OAUTH_SIGCTX_TYPE_NONE!=sig_ctx->type) {
+				break;
+			}
+			OAUTH_SIGCTX_FREE(sig_ctx);
+		}
 		soo_handle_error(NULL, OAUTH_SIGNATURE_METHOD_REJECTED, "Unknown signature method", NULL, NULL TSRMLS_CC);
 		FREE_ARGS_HASH(sbs_vars);
 		OAUTH_PROVIDER_FREE_STRING(current_uri);
 		return;
-	}
+	} while (0);
 
 	retval = oauth_provider_call_cb(INTERNAL_FUNCTION_PARAM_PASSTHRU, OAUTH_PROVIDER_TSNONCE_CB);
 
@@ -739,19 +747,18 @@ SOP_METHOD(checkOAuthRequest)
 	consumer_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET) - 1, 1 TSRMLS_CC);
 	if (is_token_required) {
 		token_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET) - 1, 1 TSRMLS_CC);
-		signature = soo_sign_hmac(NULL, sbs, consumer_secret ? Z_STRVAL_P(consumer_secret) : "", token_secret ? Z_STRVAL_P(token_secret) : "" TSRMLS_CC);
-	} else {
-		signature = soo_sign_hmac(NULL, sbs, Z_STRVAL_P(consumer_secret), NULL TSRMLS_CC);
 	}
+	signature = soo_sign(NULL, sbs, consumer_secret, token_secret, sig_ctx TSRMLS_CC);
 
 	req_signature = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE, sizeof(OAUTH_PROVIDER_SIGNATURE) - 1, 1 TSRMLS_CC);
-	if(!Z_STRLEN_P(req_signature) || strcmp(signature, Z_STRVAL_P(req_signature))) {
+	if (!signature || !Z_STRLEN_P(req_signature) || strcmp(signature, Z_STRVAL_P(req_signature))) {
 		soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, sbs TSRMLS_CC);
 	}
 
+	OAUTH_SIGCTX_FREE(sig_ctx);
 	OAUTH_PROVIDER_FREE_STRING(current_uri);
 	efree(sbs);
-	efree(signature);
+	OAUTH_PROVIDER_FREE_STRING(signature);
 	FREE_ARGS_HASH(sbs_vars);
 }
 /* }}} */

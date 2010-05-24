@@ -416,6 +416,66 @@ char* oauth_http_encode_value(zval **v TSRMLS_DC)
 	return param_value;
 }
 
+static int oauth_strcmp(zval *first, zval *second TSRMLS_DC)
+{
+	zval result;
+
+	if (FAILURE==string_compare_function(&result, first, second TSRMLS_CC)) {
+		return 0;
+	}
+
+	if (Z_LVAL(result) < 0) {
+		return -1;
+	} else if (Z_LVAL(result) > 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
+static int oauth_compare_value(const void *a, const void *b TSRMLS_DC)
+{
+	Bucket *f, *s;
+	zval *first, *second;
+
+	f = *(Bucket **)a;
+	s = *(Bucket **)b;
+
+	first = *(zval **)f->pData;
+	second = *(zval **)s->pData;
+
+	return oauth_strcmp(first, second TSRMLS_CC);
+}
+
+static int oauth_compare_key(const void *a, const void *b TSRMLS_DC)
+{
+	Bucket *f, *s;
+	zval first, second;
+
+	f = *(Bucket **)a;
+	s = *(Bucket **)b;
+
+	if (f->nKeyLength == 0) {
+		Z_TYPE(first) = IS_LONG;
+		Z_LVAL(first) = f->h;
+	} else {
+		Z_TYPE(first) = IS_STRING;
+		Z_STRVAL(first) = f->arKey;
+		Z_STRLEN(first) = f->nKeyLength - 1;
+	}
+
+	if (s->nKeyLength == 0) {
+		Z_TYPE(second) = IS_LONG;
+		Z_LVAL(second) = s->h;
+	} else {
+		Z_TYPE(second) = IS_STRING;
+		Z_STRVAL(second) = s->arKey;
+		Z_STRLEN(second) = s->nKeyLength - 1;
+	}
+
+	return oauth_strcmp(&first, &second TSRMLS_CC);
+}
+
 /* build url-encoded string from args, optionally starting with & */ 
 int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp TSRMLS_DC)
 {
@@ -467,25 +527,16 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 			}
 			if (IS_ARRAY==Z_TYPE_PP(cur_val)) {
 				HashPosition val_pos;
-				zval *ht, **val_cur_val, *fnname, *fnret, *tmp;
-
-				/* select sort function */
-				MAKE_STD_ZVAL(fnname);
+				zval **val_cur_val;
 
 				/* make shallow copy */
-				MAKE_STD_ZVAL(ht);
-				array_init(ht);
-				zend_hash_copy(HASH_OF(ht), Z_ARRVAL_PP(cur_val), (copy_ctor_func_t)zval_add_ref, (void*)&tmp, sizeof(zval *));
-
-				/* set up function call */
-				ZVAL_STRING(fnname, "sort", 0);
-				MAKE_STD_ZVAL(fnret);
-
-				call_user_function(EG(function_table), NULL, fnname, fnret, 1, &ht TSRMLS_CC);
+				SEPARATE_ZVAL(cur_val);
+				/* sort array based on string comparison */
+				zend_hash_sort(Z_ARRVAL_PP(cur_val), zend_qsort, oauth_compare_value, 1 TSRMLS_CC);
 
 				/* traverse array */
-				zend_hash_internal_pointer_reset_ex(HASH_OF(ht), &val_pos);
-				while (SUCCESS==zend_hash_get_current_data_ex(HASH_OF(ht), (void *)&val_cur_val, &val_pos)) {
+				zend_hash_internal_pointer_reset_ex(Z_ARRVAL_PP(cur_val), &val_pos);
+				while (SUCCESS==zend_hash_get_current_data_ex(Z_ARRVAL_PP(cur_val), (void **)&val_cur_val, &val_pos)) {
 					if (prepend_amp) {
 						smart_str_appendc(s, '&');
 					}
@@ -499,12 +550,9 @@ int oauth_http_build_query(smart_str *s, HashTable *args, zend_bool prepend_amp 
 					}
 					prepend_amp = TRUE;
 					++numargs;
-					zend_hash_move_forward_ex(HASH_OF(ht), &val_pos);
+					zend_hash_move_forward_ex(Z_ARRVAL_PP(cur_val), &val_pos);
 				}
 				/* clean up */
-				FREE_ZVAL(fnret);
-				FREE_ZVAL(fnname);
-				zval_ptr_dtor(&ht);
 			} else {
 				if (prepend_amp) {
 					smart_str_appendc(s, '&');
@@ -550,7 +598,7 @@ void get_request_param(char *arg_name, char **return_val, int *return_len TSRMLS
 
 char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC) /* {{{ */
 {
-	zval *func, *exret2, *exargs2[1];
+	zval *params;
 	char *query;
 	char *s_port = NULL, *bufz = NULL, *sbs_query_part = NULL, *sbs_scheme_part = NULL;
 	php_url *urlparts;
@@ -581,53 +629,39 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 			smart_str_appends(&sbuf, urlparts->path);
 			smart_str_0(&sbuf);
 
-			MAKE_STD_ZVAL(exargs2[0]);
-			array_init(exargs2[0]);
+			MAKE_STD_ZVAL(params);
+			array_init(params);
 
 			/* merge order = oauth_args - extra_args - query */
 			if (post_args) {
 				zval *tmp_copy;
-				zend_hash_merge(HASH_OF(exargs2[0]), post_args, (copy_ctor_func_t) zval_add_ref, (void *)&tmp_copy, sizeof(zval *), 0);
+				zend_hash_merge(Z_ARRVAL_P(params), post_args, (copy_ctor_func_t) zval_add_ref, (void *)&tmp_copy, sizeof(zval *), 0);
 			}
 
 			if (extra_args) {
 				zval *tmp_copy;
-				zend_hash_merge(HASH_OF(exargs2[0]), extra_args, (copy_ctor_func_t) zval_add_ref, (void *)&tmp_copy, sizeof(zval *), 0);
+				zend_hash_merge(Z_ARRVAL_P(params), extra_args, (copy_ctor_func_t) zval_add_ref, (void *)&tmp_copy, sizeof(zval *), 0);
 			}
 
 			if (urlparts->query) {
 				query = estrdup(urlparts->query);
-				oauth_parse_str(query, exargs2[0] TSRMLS_CC);
+				oauth_parse_str(query, params TSRMLS_CC);
 				efree(query);
 			}
 
-			MAKE_STD_ZVAL(func);
-			MAKE_STD_ZVAL(exret2);
-
 			/* remove oauth_signature if it's in the hash */
 #if (PHP_MAJOR_VERSION >= 6)
-			zend_ascii_hash_del(Z_ARRVAL_P(exargs2[0]), OAUTH_PARAM_SIGNATURE, sizeof(OAUTH_PARAM_SIGNATURE));
+			zend_ascii_hash_del(Z_ARRVAL_P(params), OAUTH_PARAM_SIGNATURE, sizeof(OAUTH_PARAM_SIGNATURE));
 #else
-			zend_hash_del(Z_ARRVAL_P(exargs2[0]), OAUTH_PARAM_SIGNATURE, sizeof(OAUTH_PARAM_SIGNATURE));
+			zend_hash_del(Z_ARRVAL_P(params), OAUTH_PARAM_SIGNATURE, sizeof(OAUTH_PARAM_SIGNATURE));
 #endif
-			ZVAL_STRING(func, "ksort", 0);
 
 			/* exret2 = uksort(&exargs2[0], "strnatcmp") */
-			call_user_function(EG(function_table), NULL, func, exret2, 1, exargs2 TSRMLS_CC);
-			zval_ptr_dtor(&exret2);
+			zend_hash_sort(Z_ARRVAL_P(params), zend_qsort, oauth_compare_key, 0 TSRMLS_CC);
 
-			if (Z_TYPE_P(exargs2[0]) == IS_ARRAY) {
-				/* time to re-invent the query */
-				if (Z_ARRVAL_P(exargs2[0])) {
-					/* this one should check if values are non empty */
-					oauth_http_build_query(&squery, HASH_OF(exargs2[0]), FALSE TSRMLS_CC);
-					smart_str_0(&squery);
-				} else {
-					soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Was not able to get oauth parameters!", NULL, NULL TSRMLS_CC);
-				}
-			}
-			FREE_ZVAL(func);
-			zval_ptr_dtor(&exargs2[0]);
+			oauth_http_build_query(&squery, Z_ARRVAL_P(params), FALSE TSRMLS_CC);
+			smart_str_0(&squery);
+			zval_ptr_dtor(&params);
 
 			sbs_query_part = oauth_url_encode(squery.c, squery.len);
 			sbs_scheme_part = oauth_url_encode(sbuf.c, sbuf.len);

@@ -1159,6 +1159,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload
 	/* Other notes: if there is a redirect the POST becomes a GET request, see curl_easy_setopt(3) and the CURLOPT_POSTREDIR option for more information */
 	curl_headers = curl_slist_append(curl_headers, "Expect:");
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curl_headers);
+	curl_easy_setopt(curl, CURLOPT_USERAGENT, OAUTH_USER_AGENT);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, soo_read_response);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, soo);
 	if(!sslcheck) {

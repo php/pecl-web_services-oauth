@@ -166,6 +166,9 @@ static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ *
 	nos->zo.guards = NULL;
 #else
 	zend_object_std_init(&nos->zo, ce TSRMLS_CC);
+#ifdef ZEND_ENGINE_2_4
+	object_properties_init(&nos->zo, ce);
+#endif
 #endif
 
 	return nos;

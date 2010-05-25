@@ -88,7 +88,7 @@
 #define __stringify(x...)      __stringify_1(x)
 #define __OAUTH_EXT_VER 1.0-dev
 #define OAUTH_EXT_VER __stringify(__OAUTH_EXT_VER)
-#define OAUTH_USER_AGENT "PHP-OAuth/" __stringify(__OAUTH_EXT_VER)
+#define OAUTH_USER_AGENT "PECL-OAuth/" __stringify(__OAUTH_EXT_VER)
 #define OAUTH_HTTP_PORT 80
 #define OAUTH_HTTPS_PORT 443
 #define OAUTH_MAX_REDIRS 4L

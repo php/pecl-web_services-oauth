@@ -13,6 +13,14 @@
 #include "php_oauth.h"
 #include "provider.h"
 
+#if PHP_WIN32
+#include <Wincrypt.h>
+#include <Ntsecapi.h>
+#endif
+
+/* Provides O_RDONLY */
+#include "fcntl.h" 
+
 static zend_object_handlers oauth_provider_obj_hndlrs;
 static zend_class_entry *oauthprovider;
 
@@ -831,6 +839,71 @@ SOP_METHOD(removeRequiredParameter)
 }
 /* }}} */
 
+/* {{{ proto string OAuthProvider::generateToken(int $size[, bool $string = false]) */
+SOP_METHOD(generateToken)
+{
+	long size, reaped = 0;
+	int strong = 0;
+	char *iv = NULL;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|b", &size, &strong)==FAILURE) {
+		return;
+	}
+
+	if (size < 1 || size > INT_MAX) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot generate token with a size of less than 1 or greater than %d", INT_MAX);
+		return;
+	}
+
+	iv = ecalloc(size+1, 1);
+
+	do {
+#if PHP_WIN32
+/*
+ * The Windows port has been ripped from the mcrypt extension; thanks guys! ;-)
+ */
+		HCRYPTPROV hCryptProv;
+		BYTE *iv_b = (BYTE *) iv;
+
+		if (!CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+			break;
+		}
+		if (!CryptGenRandom(hCryptProv, size, iv_b)) {
+			break;
+		}
+		reaped = size;
+#else
+		int fd;
+
+		fd = open(strong?"/dev/random":"/dev/urandom", O_RDONLY);
+		if (fd < 0) {
+			break;
+		}
+		while (reaped < size) {
+			register int n;
+			n = read(fd, iv + reaped, size - reaped);
+			if (n < 0) {
+				break;
+			}
+			reaped += n;
+		}
+		close(fd);
+#endif
+	} while (0);
+
+	if (reaped < size) {
+		if (strong) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Could not gather enough random data, falling back on rand()");
+		}
+		while (reaped < size) {
+			iv[reaped++] = (char) (255.0 * php_rand(TSRMLS_C) / RAND_MAX);
+		}
+	}
+
+	RETURN_STRINGL(iv, size, 0);
+}
+/* }}} */
+
 /* {{{ proto void OAuthProvider::reportProblem(Exception $e) */
 SOP_METHOD(reportProblem)
 {
@@ -1055,6 +1128,12 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_set_path, 0, 0, 1)
 ZEND_ARG_INFO(0, path)
 ZEND_END_ARG_INFO()
 
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_gen_token, 0, 0, 1)
+ZEND_ARG_INFO(0, size)
+ZEND_ARG_INFO(0, strong)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		SOP_ME(__construct,			arginfo_oauth_provider__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)
 		SOP_ME(consumerHandler,	arginfo_oauth_provider_handler,		ZEND_ACC_PUBLIC)
@@ -1066,8 +1145,9 @@ static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		SOP_ME(checkOAuthRequest,	arginfo_oauth_provider_check,		ZEND_ACC_PUBLIC)
 		SOP_ME(isRequestTokenEndpoint,	arginfo_oauth_provider_req_token,		ZEND_ACC_PUBLIC)
 		SOP_ME(setRequestTokenPath,	arginfo_oauth_provider_set_path,	ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
-		SOP_ME(reportProblem,	arginfo_oauth_provider_reportproblem,		ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_FINAL)
 		SOP_ME(addRequiredParameter,	arginfo_oauth_provider_set_req_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
+		SOP_ME(generateToken,		arginfo_oauth_provider_gen_token,		ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_FINAL)
+		SOP_ME(reportProblem,	arginfo_oauth_provider_reportproblem,		ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_FINAL)
 		SOP_ME(setParam, 		arginfo_oauth_provider_set_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
 		SOP_ME(removeRequiredParameter,	arginfo_oauth_provider_set_req_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
 		PHP_MALIAS(oauthprovider,	is2LeggedEndpoint, isRequestTokenEndpoint, arginfo_oauth_provider_req_token, ZEND_ACC_PUBLIC)

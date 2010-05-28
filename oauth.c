@@ -293,6 +293,8 @@ static char *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_con
 	/* TODO: add support for other algorithms instead of OPENSSL_ALGO_SHA1 */
 
 	ZVAL_STRING(args[0], message, 0);
+	/* Bug 17545 - segfault when zval_dtor is attempted on this argument */
+	ZVAL_EMPTY_STRING(args[1]);
 	/* args[1] is filled by function */
 	args[2] = ctx->privatekey;
 

@@ -157,6 +157,7 @@ static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ *
 	php_so_object *nos;
 
 	nos = ecalloc(1, sizeof(php_so_object));
+	nos->signature = NULL;
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
 	ALLOC_HASHTABLE(nos->zo.properties);
@@ -1494,9 +1495,24 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 			}
 		}
 
+		if(soo->signature) {
+			efree(soo->signature);
+		}
 		/* sign the request */
 		sig = soo_sign(soo, sbs, *cs, ts, soo->sig_ctx TSRMLS_CC);
+		soo->signature = sig;
 		efree(sbs);
+
+		if(fetch_flags & OAUTH_FETCH_SIGONLY) {
+			FREE_ARGS_HASH(oauth_args);
+			smart_str_free(&surl);
+			smart_str_free(&postdata);
+			if(need_to_free_rheaders) {
+				FREE_ARGS_HASH(rheaders);
+			}
+			return SUCCESS;
+		}
+
 		if (!sig) {
 			FREE_ARGS_HASH(oauth_args);
 			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Signature generation failed", NULL, NULL TSRMLS_CC);
@@ -1505,7 +1521,6 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 
 		/* and add signature to the oauth parameters */
 		add_arg_for_req(oauth_args, OAUTH_PARAM_SIGNATURE, sig TSRMLS_CC);
-		efree(sig);
 
 		if (!strcmp(final_http_method, OAUTH_HTTP_METHOD_GET)) {
 			/* GET request means to extend the url, but not for redirects obviously */
@@ -1885,6 +1900,9 @@ SO_METHOD(__destruct)
 	}
 	if (soo->timestamp) {
 		efree(soo->timestamp);
+	}
+	if(soo->signature) {
+		efree(soo->signature);
 	}
 }
 /* }}} */
@@ -2292,6 +2310,34 @@ SO_METHOD(setRequestEngine)
 }
 /* }}} */
 
+/* {{{ proto bool OAuth::generateSignature(string http_method, string url [, string|array extra_parameters ])
+   Generate a signature based on the final HTTP method, URL and a string/array of parameters */
+SO_METHOD(generateSignature)
+{
+	php_so_object *soo;
+	int url_len, http_method_len = 0;
+	char *url;
+	zval *request_args = NULL;
+	char *http_method = NULL;
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|z", &http_method, &http_method_len, &url, &url_len, &request_args) == FAILURE) {
+		return;
+	}
+
+	if (url_len < 1) {
+		RETURN_BOOL(FALSE);
+	}
+
+	if (oauth_fetch(soo, url, http_method, request_args, NULL, NULL, (OAUTH_FETCH_USETOKEN | OAUTH_FETCH_SIGONLY) TSRMLS_CC) < 0) {
+		RETURN_BOOL(FALSE);
+	} else {
+		RETURN_STRING(soo->signature, 1);
+	}
+}
+/* }}} */
+
 /* {{{ proto bool OAuth::fetch(string protected_resource_url [, string|array extra_parameters [, string request_type [, array request_headers]]])
    fetch a protected resource, pass in extra_parameters (array(name => value) or "custom body") */
 SO_METHOD(fetch)
@@ -2533,6 +2579,13 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setrsacertificate, 0, 0, 1)
 	ZEND_ARG_INFO(0, cert)
 ZEND_END_ARG_INFO()
 
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_gensig, 0, 0, 1)
+	ZEND_ARG_INFO(0, http_method)
+	ZEND_ARG_INFO(0, url)
+	ZEND_ARG_INFO(0, extra_parameters) /* ARRAY_INFO(1, arg, 0) */
+ZEND_END_ARG_INFO()
+
 /* }}} */
 
 
@@ -2558,6 +2611,7 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(disableRedirects,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(setCAPath,			arginfo_oauth_setcapath,		ZEND_ACC_PUBLIC)
 	SO_ME(getCAPath,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(generateSignature,	arginfo_oauth_gensig,			ZEND_ACC_PUBLIC)
 	SO_ME(__destruct,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };

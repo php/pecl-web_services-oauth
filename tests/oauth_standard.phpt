@@ -67,6 +67,9 @@ try {
 	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
 }
 
+echo "-- generate a signature --\n";
+var_dump(is_string($x->generateSignature('GET', 'http://www.friendface.com/foo', array('param' => 'value'))));
+
 ?>
 --EXPECTF--
 -- empty params --
@@ -116,3 +119,5 @@ EXCEPTION 503: Invalid version
 bool(true)
 -- set auth type to invalid type 99 --
 EXCEPTION 503: Invalid auth type
+-- generate a signature --
+bool(true)

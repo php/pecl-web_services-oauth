@@ -133,6 +133,7 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_REQENGINE_CURL 2
 
 #define OAUTH_FETCH_USETOKEN 1
+#define OAUTH_FETCH_SIGONLY 2
 
 #define OAUTH_DEFAULT_VERSION "1.0"
 
@@ -241,6 +242,7 @@ typedef struct {
 	uint reqengine; /* streams or curl */
 	char *nonce;
 	char *timestamp;
+	char *signature;
 	zval *this_ptr;
 	zval *debugArr;
 	oauth_sig_context *sig_ctx;

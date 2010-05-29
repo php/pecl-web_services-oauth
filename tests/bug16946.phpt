@@ -1,7 +1,7 @@
 --TEST--
 OAuth getRequestToken
 --SKIPIF--
-<?php require 'server.inc'; http_server_skipif('tcp://127.0.0.1:12342'); ?>
+<?php require 'server.inc'; http_server_skipif('tcp://127.0.0.1:12342'); skip_if_not_ext('curl'); ?>
 --FILE--
 <?php
 require 'server.inc';
@@ -35,16 +35,19 @@ array(2) {
   string(4) "4567"
 }
 string(%d) "GET /test HTTP/%f
+User-Agent: PECL-OAuth/%f%s
 Host: 127.0.0.1:12342
 Accept: */*
 Authorization: OAuth oauth_consumer_key="1234",oauth_signature_method="HMAC-SHA1",oauth_nonce="%s.%d",oauth_timestamp="%d",oauth_version="1.0",oauth_signature="%s"
 
 GET /some_url_that_goes_nowhere_and_could_be_very_long.html?bla=bla&mekker=mekker HTTP/%f
+User-Agent: PECL-OAuth/%f%s
 Host: 127.0.0.1:12342
 Accept: */*
 Authorization: OAuth oauth_consumer_key="1234",oauth_signature_method="HMAC-SHA1",oauth_nonce="%s.%d",oauth_timestamp="%d",oauth_version="1.0",oauth_signature="%s"
 
 GET /some_other_url.html HTTP/%f
+User-Agent: PECL-OAuth/%f%s
 Host: 127.0.0.1:12342
 Accept: */*
 Authorization: OAuth oauth_consumer_key="1234",oauth_signature_method="HMAC-SHA1",oauth_nonce="%s.%d",oauth_timestamp="%d",oauth_version="1.0",oauth_signature="%s"

@@ -31,7 +31,14 @@ function skip_if_php_major($version)
 function skip_if_not_ext($ext)
 {
 	if (!extension_loaded($ext)) {
-		die("skip OpenSSL not loaded");
+		die("skip $ext not loaded");
+	}
+}
+
+function skip_if_not_constant($constant)
+{
+	if (!defined($constant)) {
+		die("skip $constant not defined");
 	}
 }
 

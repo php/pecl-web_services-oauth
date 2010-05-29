@@ -24,6 +24,7 @@ if test "$PHP_OAUTH" != "no"; then
     AC_MSG_RESULT(cURL not found, cURL support disabled)
   else
     PHP_ADD_LIBRARY(curl,,OAUTH_SHARED_LIBADD)
+    AC_DEFINE(OAUTH_USE_CURL, 1, [Whether cURL is present and should be used])
   fi
 
   PHP_ADD_EXTENSION_DEP(oauth, hash)

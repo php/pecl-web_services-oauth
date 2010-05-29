@@ -1,7 +1,14 @@
 --TEST--
 OAuth getRequestToken
 --SKIPIF--
-<?php require 'server.inc'; http_server_skipif('tcp://127.0.0.1:12342'); skip_if_not_ext('curl'); ?>
+<?php 
+
+require 'skip.inc';
+skip_if_not_constant('OAUTH_REQENGINE_CURL');
+require 'server.inc';
+http_server_skipif('tcp://127.0.0.1:12342');
+
+?>
 --FILE--
 <?php
 require 'server.inc';

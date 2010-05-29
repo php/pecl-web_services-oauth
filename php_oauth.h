@@ -47,7 +47,7 @@
 #include "ext/pcre/php_pcre.h"
 #include "php_network.h"
 
-#if HAVE_CURL
+#if OAUTH_USE_CURL
 #include <curl/curl.h>
 #define CLEANUP_CURL_AND_FORM(f,h)	 \
 	curl_easy_cleanup(h);	 \
@@ -329,7 +329,7 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 
 #define OAUTH_OK SUCCESS
 
-#if HAVE_CURL
+#if OAUTH_USE_CURL
 long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
 #if LIBCURL_VERSION_NUM >= 0x071304
 #define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS

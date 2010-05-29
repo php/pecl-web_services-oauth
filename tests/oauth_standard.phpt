@@ -70,6 +70,15 @@ try {
 echo "-- generate a signature --\n";
 var_dump(is_string($x->generateSignature('GET', 'http://www.friendface.com/foo', array('param' => 'value'))));
 
+echo "-- set a timeout (100 ms) --\n";
+var_dump($x->setTimeout(100));
+
+echo "-- set an invalid timeout --\n";
+try {
+$x->setTimeout(-1);
+} catch (Exception $E) {
+echo "EXCEPTION {$E->getCode()}: {$E->getMessage()}\n";
+}
 ?>
 --EXPECTF--
 -- empty params --
@@ -133,3 +142,7 @@ bool(true)
 EXCEPTION 503: Invalid auth type
 -- generate a signature --
 bool(true)
+-- set a timeout (100 ms) --
+bool(true)
+-- set an invalid timeout --
+EXCEPTION 503: Invalid timeout

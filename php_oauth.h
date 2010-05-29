@@ -45,6 +45,7 @@
 #include "ext/standard/base64.h"
 #include "ext/standard/php_lcg.h"
 #include "ext/pcre/php_pcre.h"
+#include "php_network.h"
 
 #if HAVE_CURL
 #include <curl/curl.h>
@@ -240,6 +241,7 @@ typedef struct {
 	uint debug; /* verbose output */
 	uint follow_redirects; /* follow and sign redirects? */
 	uint reqengine; /* streams or curl */
+	long timeout; /* timeout in milliseconds */
 	char *nonce;
 	char *timestamp;
 	char *signature;

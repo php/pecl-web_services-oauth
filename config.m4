@@ -11,6 +11,20 @@ if test "$PHP_OAUTH" != "no"; then
   PHP_NEW_EXTENSION(oauth, oauth.c provider.c, $ext_shared)
   CFLAGS="$CFLAGS -Wall -g"
 
-dnl  PHP_ADD_EXTENSION_DEP(oauth, curl)
+  AC_MSG_CHECKING(for cURL in default path)
+  for i in /usr/local /usr; do
+    if test -r $i/include/curl/easy.h; then
+      CURL_DIR=$i
+      AC_MSG_RESULT(found in $i)
+      break
+    fi
+  done
+
+  if test -z "$CURL_DIR"; then
+    AC_MSG_RESULT(cURL not found, cURL support disabled)
+  else
+    PHP_ADD_LIBRARY(curl,,OAUTH_SHARED_LIBADD)
+  fi
+
   PHP_ADD_EXTENSION_DEP(oauth, hash)
 fi

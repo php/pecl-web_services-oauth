@@ -158,6 +158,7 @@ static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ *
 
 	nos = ecalloc(1, sizeof(php_so_object));
 	nos->signature = NULL;
+	nos->timeout = 0;
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3)
 	ALLOC_HASHTABLE(nos->zo.properties);
@@ -820,6 +821,9 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 	long response_code = -1;
 	php_stream *s;
 	int set_form_content_type = 0;
+	php_netstream_data_t *sock;
+	struct timeval tv;
+	int secs = 0;
 
 	sc = php_stream_context_alloc();
 
@@ -928,7 +932,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 
 	smart_str_free(&soo->lastresponse);
 	smart_str_free(&soo->headers_in);
- 
+
 	if ((s = php_stream_open_wrapper_ex((char*)url, "rb", REPORT_ERRORS | ENFORCE_SAFE_MODE, NULL, sc))) {
 		zval *info;
 		char *buf;
@@ -955,6 +959,14 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 			if (HTTP_IS_REDIRECT(response_code) && soo->last_location_header) {
 				CAAS("redirect_url", soo->last_location_header);
 			}
+		}
+
+		if(soo->timeout) {
+			sock = (php_netstream_data_t*)s->abstract;
+			secs = soo->timeout / 1000;
+			tv.tv_sec = secs;
+			tv.tv_usec = ((soo->timeout - (secs * 1000)) * 1000) % 1000000;
+			sock->timeout = tv;
 		}
 
 		if ((rb = php_stream_copy_to_mem(s, (void*)&buf, PHP_STREAM_COPY_ALL, 0)) > 0) {
@@ -1190,6 +1202,13 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload
 
 #if LIBCURL_VERSION_NUM >= 0x071304
 	curl_easy_setopt(curl, CURLOPT_PROTOCOLS, OAUTH_PROTOCOLS_ALLOWED);
+#endif
+
+#if LIBCURL_VERSION_NUM > 0x071002
+	if(soo->timeout) {
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, soo->timeout);
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, soo->timeout);
+	}
 #endif
 
 	smart_str_free(&soo->lastresponse);
@@ -2205,6 +2224,30 @@ SO_METHOD(setAuthType)
 }
 /* }}} */
 
+/* {{{ proto bool OAuth::setTimeout(int milliseconds)
+   Set the timeout, in milliseconds, for requests */
+SO_METHOD(setTimeout)
+{
+	php_so_object *soo;
+	long timeout;
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &timeout) == FAILURE) {
+		return;
+	}
+
+	if (timeout < 0) {
+		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid timeout", NULL, NULL TSRMLS_CC);
+		RETURN_NULL();
+	}
+
+	soo->timeout = timeout;
+
+	RETURN_TRUE;
+}
+/* }}} */
+
 /* {{{ proto bool OAuth::setNonce(string nonce)
    Set oauth_nonce for subsequent requests, if none is set a random nonce will be generated using uniqid */
 SO_METHOD(setNonce)
@@ -2543,6 +2586,11 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_settimestamp, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_settimeout, 0, 0, 1)
+	ZEND_ARG_INFO(0, timeout_in_milliseconds)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setcapath, 0, 0, 2)
 	ZEND_ARG_INFO(0, ca_path)
 	ZEND_ARG_INFO(0, ca_info)
@@ -2612,6 +2660,7 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(setCAPath,			arginfo_oauth_setcapath,		ZEND_ACC_PUBLIC)
 	SO_ME(getCAPath,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(generateSignature,	arginfo_oauth_gensig,			ZEND_ACC_PUBLIC)
+	SO_ME(setTimeout,			arginfo_oauth_settimeout,		ZEND_ACC_PUBLIC)
 	SO_ME(__destruct,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };

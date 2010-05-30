@@ -9,14 +9,8 @@ http://pear.php.net/dtd/package-2.0.xsd">
   <description>
 OAuth is an authorization protocol built on top of HTTP which allows applications to securely access data without having to store usernames and passwords.
 
-Requirements: ext/hash and libcurl (with https support if you plan to access resources over https).
+Requirements: ext/hash
   </description>
-  <lead>
-    <name>Rasmus Lerdorf</name>
-    <user>rasmus</user>
-    <email>rasmus@php.net</email>
-    <active>yes</active>
-  </lead>
   <lead>
     <name>John Jawed</name>
     <user>jawed</user>
@@ -35,10 +29,16 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
     <email>datibbaw@php.net</email>
     <active>yes</active>
   </developer>
+  <lead>
+    <name>Rasmus Lerdorf</name>
+    <user>rasmus</user>
+    <email>rasmus@php.net</email>
+    <active>yes</active>
+  </lead>
   <date>2009-05-09</date>
   <version>
-    <release>0.99.9</release>
-    <api>0.99.9</api>
+    <release>1.0.0</release>
+    <api>1.0.0</api>
   </version>
   <stability>
     <release>beta</release>
@@ -46,18 +46,22 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-	  - Added 1.0a support (based on implementer Draft 2, http://oauth.googlecode.com/svn/spec/core/1.0a/drafts/2/oauth-core-1_0a.html)
-	  - Added support for empty parameters
-	  - Added oauth_callback support to getRequestToken
-	  - Added oauth_verifier support to getAccessToken
-	  - Fixed build failures for PHP5.1
+    - Added php streams support (libcurl is no longer required)
+    - Added OAuthProvider support (http://php.net/oauthprovider)
+    - Added RSA-SHA1 signature support
+    - Added SHA256 signature support
+    - Added OAuth::setTimeout, OAuth::generateSignature, OAuth::setRequestEngine
+    - Send the User-Agent header for pecl/oauth
+    - Lots of other improvements...
   </notes>
   <contents>
 	  <dir name="/">
 		  <file name="config.m4" role="src" />
 		  <file name="config.w32" role="src" />
 		  <file name="oauth.c" role="src" />
+		  <file name="provider.c" role="src" />
 		  <file name="php_oauth.h" role="src" />
+		  <file name="provider.h" role="src" />
 		  <file name="LICENSE" role="doc" />
           <dir name="examples">
 			  <file name="config.inc.php" role="doc" />
@@ -102,6 +106,13 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
 			  <file name="access_token.php" role="doc" />
 			  <file name="getContactInfo.php" role="doc" />
 		  </dir>
+          <dir name="examples/wepay">
+			  <file name="README" role="doc" />
+			  <file name="config.inc.php" role="doc" />
+			  <file name="request_token.php" role="doc" />
+			  <file name="access_token.php" role="doc" />
+			  <file name="balances.php" role="doc" />
+		  </dir>
     </dir>
   </contents>
   <dependencies>
@@ -118,6 +129,26 @@ Requirements: ext/hash and libcurl (with https support if you plan to access res
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+    <release>
+        <date>2009-05-09</date>
+        <version>
+            <release>0.99.9</release>
+            <api>0.99.9</api>
+        </version>
+        <stability>
+            <release>beta</release>
+            <api>beta</api>
+        </stability>
+        <notes>
+	  - Added 1.0a support (based on implementer Draft 2, http://oauth.googlecode.com/svn/spec/core/1.0a/drafts/2/oauth-core-1_0a.html)
+	  - Added support for empty parameters
+	  - Added oauth_callback support to getRequestToken
+	  - Added oauth_verifier support to getAccessToken
+	  - Fixed build failures for PHP5.1
+        </notes>
+    </release>
+
 	  <release>
 		  <date>2009-04-30</date>
 		  <version>

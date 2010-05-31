@@ -429,6 +429,7 @@ SOP_METHOD(__construct)
 
 	/* XXX throw E_NOTICE if filter!='unsafe_raw' */
 	if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|z", &params)==FAILURE) {
+		soo_handle_error(NULL, OAUTH_ERR_INTERNAL_ERROR, "Failed to instantiate OAuthProvider", NULL, NULL TSRMLS_CC);
 		return;
 	}
 

@@ -754,8 +754,10 @@ SOP_METHOD(checkOAuthRequest)
 	sbs = oauth_generate_sig_base(NULL, http_verb, uri, sbs_vars, NULL TSRMLS_CC);
 
 	consumer_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET) - 1, 1 TSRMLS_CC);
+	convert_to_string_ex(&consumer_secret);
 	if (is_token_required) {
 		token_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET) - 1, 1 TSRMLS_CC);
+		convert_to_string_ex(&token_secret);
 	}
 	signature = soo_sign(NULL, sbs, consumer_secret, token_secret, sig_ctx TSRMLS_CC);
 
@@ -916,6 +918,7 @@ SOP_METHOD(reportProblem)
 	ulong lcode;
 	uint http_code;
 	sapi_header_line ctr = {0};
+	zend_bool send_headers = 1;
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 2)
 	ex_ce = zend_exception_get_default();
@@ -923,7 +926,7 @@ SOP_METHOD(reportProblem)
 	ex_ce = zend_exception_get_default(TSRMLS_C);
 #endif
 
-	if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O", &exception, ex_ce)==FAILURE) {
+	if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|b", &exception, ex_ce, &send_headers)==FAILURE) {
 		return;
 	}
 
@@ -1002,17 +1005,19 @@ SOP_METHOD(reportProblem)
 
 	ZVAL_STRINGL(return_value, out, strlen(out), 1);
 
-	if(http_code==OAUTH_ERR_BAD_REQUEST) {
-		http_header_line = "HTTP/1.1 400 Bad Request";
-	} else {
-		http_header_line = "HTTP/1.1 401 Unauthorized";
+	if(send_headers) {
+		if(http_code==OAUTH_ERR_BAD_REQUEST) {
+			http_header_line = "HTTP/1.1 400 Bad Request";
+		} else {
+			http_header_line = "HTTP/1.1 401 Unauthorized";
+		}
+
+		ctr.line = http_header_line;
+		ctr.line_len = strlen(http_header_line);
+		ctr.response_code = http_code;
+
+		sapi_header_op(SAPI_HEADER_REPLACE, &ctr TSRMLS_CC);
 	}
-
-	ctr.line = http_header_line;
-	ctr.line_len = strlen(http_header_line);
-	ctr.response_code = http_code;
-
-	sapi_header_op(SAPI_HEADER_REPLACE, &ctr TSRMLS_CC);
 
 	if(out_malloced) {
 		efree(out);

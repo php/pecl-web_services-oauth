@@ -8,7 +8,7 @@ try {
 	header("Content-Type: {$response_info["content_type"]}");
 	echo $o->getLastResponse();
 } catch(Exception $E) {
-	echo "Error: [".$E->errorMessage."]<br>\n";
+	echo "Error: [".$E->getMessage()."]<br>\n";
 	echo "Response: [".$E->lastResponse."]<br>\n";
 	exit;
 }

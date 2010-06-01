@@ -18,6 +18,22 @@ static zend_class_entry *soo_class_entry;
 static zend_class_entry *soo_exception_ce;
 static zend_object_handlers so_object_handlers;
 
+static zend_object_value oauth_clone_obj(zval *this_ptr TSRMLS_DC);
+static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC);
+static zend_object_value php_so_register_object(php_so_object *soo TSRMLS_DC);
+
+static zend_object_value oauth_clone_obj(zval *this_ptr TSRMLS_DC) /* {{{ */
+{
+	php_so_object *old_obj = (php_so_object *)zend_object_store_get_object(this_ptr TSRMLS_CC);
+	php_so_object *new_obj = php_so_object_new(old_obj->zo.ce TSRMLS_CC);
+	zend_object_value new_ov = php_so_register_object(new_obj TSRMLS_CC);
+	
+	zend_objects_clone_members(&new_obj->zo, new_ov, &old_obj->zo, Z_OBJ_HANDLE_P(this_ptr) TSRMLS_CC);
+	
+	return new_ov;
+}
+/* }}} */
+
 static int oauth_parse_str(char *params, zval *dest_array TSRMLS_DC) /* {{{ */
 {
 	char *res = NULL, *var, *val, *separator = NULL;
@@ -614,7 +630,7 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 	urlparts = php_url_parse_ex(uri, strlen(uri));
 
 	if (urlparts) {
-		if (!urlparts->host && !urlparts->scheme) {
+		if (!urlparts->host || !urlparts->scheme) {
 			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid url when trying to build base signature string", NULL, NULL TSRMLS_CC);
 			php_url_free(urlparts);
 			return NULL;
@@ -2729,6 +2745,7 @@ PHP_MINIT_FUNCTION(oauth)
 	
 	so_object_handlers.read_property = oauth_read_member;
 	so_object_handlers.write_property = oauth_write_member;
+	so_object_handlers.clone_obj = oauth_clone_obj;
 
 	zend_declare_property_long(soo_class_entry, "debug", sizeof("debug")-1, 0, ZEND_ACC_PUBLIC TSRMLS_CC);
 	zend_declare_property_long(soo_class_entry, "sslChecks", sizeof("sslChecks")-1, 1, ZEND_ACC_PUBLIC TSRMLS_CC);

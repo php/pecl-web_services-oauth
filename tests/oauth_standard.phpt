@@ -83,46 +83,34 @@ echo "EXCEPTION {$E->getCode()}: {$E->getMessage()}\n";
 --EXPECTF--
 -- empty params --
 
-Warning: OAuth::__construct() expects at least 2 parameters, 0 given %s
-object(OAuth)#1 (3) {
-  ["debug"]=>
-  int(0)
-  ["sslChecks"]=>
-  int(1)
-  ["debugInfo"]=>
-  string(0) ""
+Warning: OAuth::__construct() expects at least 2 parameters, 0 given in %s
+object(OAuth)#1 (0) {
 }
 -- one param --
 
-Warning: OAuth::__construct() expects at least 2 parameters, 1 given %s
-object(OAuth)#2 (3) {
-  ["debug"]=>
-  int(0)
-  ["sslChecks"]=>
-  int(1)
-  ["debugInfo"]=>
-  string(0) ""
+Warning: OAuth::__construct() expects at least 2 parameters, 1 given in %s
+object(OAuth)#2 (0) {
 }
 -- empty consumer key and secret --
 EXCEPTION -1: The consumer key cannot be empty
 NULL
 -- empty consumer secret --
 object(OAuth)#2 (3) {
+  ["debugInfo"]=>
+  NULL
   ["debug"]=>
   bool(false)
   ["sslChecks"]=>
   bool(false)
-  ["debugInfo"]=>
-  NULL
 }
 -- normal constructor --
 object(OAuth)#3 (3) {
+  ["debugInfo"]=>
+  NULL
   ["debug"]=>
   bool(false)
   ["sslChecks"]=>
   bool(false)
-  ["debugInfo"]=>
-  NULL
 }
 -- enable debug --
 bool(true)

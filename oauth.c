@@ -1720,7 +1720,7 @@ PHP_FUNCTION(oauth_urlencode)
 
 	if (uri_len < 1) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid uri length (0)");
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 	RETURN_STRING(oauth_url_encode(uri, uri_len), 0);
 }
@@ -1741,12 +1741,12 @@ PHP_FUNCTION(oauth_get_sbs)
 
 	if (uri_len < 1) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid uri length (0)");
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	if (http_method_len < 1) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid http method length (0)");
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	if (req_params) {
@@ -1756,7 +1756,7 @@ PHP_FUNCTION(oauth_get_sbs)
 	if ((sbs = oauth_generate_sig_base(NULL, http_method, uri, NULL, rparams TSRMLS_CC))) {
 		RETURN_STRING(sbs, 0);
 	} else {
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 }
 /* }}} */
@@ -1961,7 +1961,7 @@ SO_METHOD(setCAPath)
 		MAKE_STD_ZVAL(zca_path);
 		ZVAL_STRINGL(zca_path, ca_path, ca_path_len, 1);
 		if (soo_set_property(soo, zca_path, OAUTH_ATTR_CA_PATH TSRMLS_CC) != SUCCESS) {
-			RETURN_NULL();
+			RETURN_FALSE;
 		}
 	}
 
@@ -1969,7 +1969,7 @@ SO_METHOD(setCAPath)
 		MAKE_STD_ZVAL(zca_info);
 		ZVAL_STRINGL(zca_info, ca_info, ca_info_len, 1);
 		if (soo_set_property(soo, zca_info, OAUTH_ATTR_CA_INFO TSRMLS_CC) != SUCCESS) {
-			RETURN_NULL();
+			RETURN_FALSE;
 		}
 	}
 	RETURN_TRUE;
@@ -2053,7 +2053,7 @@ SO_METHOD(getRequestToken)
 		so_set_response_args(soo->properties, zret, return_value TSRMLS_CC);
 		return;
 	}
-	RETURN_NULL();
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -2194,7 +2194,7 @@ SO_METHOD(setVersion)
 
 	if (ver_len < 1) {
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid version", NULL, NULL TSRMLS_CC);
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	MAKE_STD_ZVAL(zver);
@@ -2233,7 +2233,7 @@ SO_METHOD(setAuthType)
 			}
 		default:
 			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid auth type", NULL, NULL TSRMLS_CC);
-			RETURN_NULL();
+			RETURN_FALSE;
 	}
 
 	RETURN_FALSE;
@@ -2255,7 +2255,7 @@ SO_METHOD(setTimeout)
 
 	if (timeout < 0) {
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid timeout", NULL, NULL TSRMLS_CC);
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	soo->timeout = timeout;
@@ -2280,7 +2280,7 @@ SO_METHOD(setNonce)
 
 	if (nonce_len < 1) {
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid nonce", NULL, NULL TSRMLS_CC);
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	if (soo->nonce) {
@@ -2306,7 +2306,7 @@ SO_METHOD(setTimestamp)
 
 	if (ts_len < 1) {
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid timestamp", NULL, NULL TSRMLS_CC);
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	if (soo->timestamp) {
@@ -2416,7 +2416,7 @@ SO_METHOD(fetch)
 
 	if (fetchurl_len < 1) {
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid protected resource url length", NULL, NULL TSRMLS_CC);
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	retcode = oauth_fetch(soo, fetchurl, http_method, request_args, request_headers, NULL, OAUTH_FETCH_USETOKEN TSRMLS_CC);
@@ -2426,7 +2426,7 @@ SO_METHOD(fetch)
 	so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
 
 	if (retcode < 0 || soo->lastresponse.c == NULL) {
-		RETURN_NULL();
+		RETURN_FALSE;
 	} else {
 		RETURN_BOOL(TRUE);
 	}
@@ -2487,7 +2487,7 @@ SO_METHOD(getAccessToken)
 		so_set_response_args(soo->properties, zret, return_value TSRMLS_CC);
 		return;
 	}
-	RETURN_NULL();
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -2513,7 +2513,7 @@ SO_METHOD(getLastResponseInfo)
 		}
 		RETURN_ZVAL(*data_ptr, 1, 0);
 	}
-	RETURN_NULL();
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -2545,7 +2545,7 @@ SO_METHOD(getLastResponse)
 		data_ptr = p_data_ptr;
 		RETURN_STRING(Z_STRVAL_P(*data_ptr), 0);
 	}
-	RETURN_NULL();
+	RETURN_FALSE;
 #endif
 }
 /* }}} */

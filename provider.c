@@ -13,13 +13,7 @@
 #include "php_oauth.h"
 #include "provider.h"
 
-#if PHP_WIN32
-#include <Wincrypt.h>
-#include <Ntsecapi.h>
-#endif
-
-/* Provides O_RDONLY */
-#include "fcntl.h" 
+#include "fcntl.h"
 
 static zend_object_handlers oauth_provider_obj_hndlrs;
 static zend_class_entry *oauthprovider;
@@ -1135,7 +1129,7 @@ ZEND_ARG_INFO(0, path)
 ZEND_END_ARG_INFO()
 
 OAUTH_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_gen_token, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider_generate_token, 0, 0, 1)
 ZEND_ARG_INFO(0, size)
 ZEND_ARG_INFO(0, strong)
 ZEND_END_ARG_INFO()
@@ -1152,10 +1146,10 @@ static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		SOP_ME(isRequestTokenEndpoint,	arginfo_oauth_provider_req_token,		ZEND_ACC_PUBLIC)
 		SOP_ME(setRequestTokenPath,	arginfo_oauth_provider_set_path,	ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
 		SOP_ME(addRequiredParameter,	arginfo_oauth_provider_set_req_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
-		SOP_ME(generateToken,		arginfo_oauth_provider_gen_token,		ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_FINAL)
 		SOP_ME(reportProblem,	arginfo_oauth_provider_reportproblem,		ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_FINAL)
 		SOP_ME(setParam, 		arginfo_oauth_provider_set_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
 		SOP_ME(removeRequiredParameter,	arginfo_oauth_provider_set_req_param,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
+		SOP_ME(generateToken,		arginfo_oauth_provider_generate_token,		ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_FINAL)
 		PHP_MALIAS(oauthprovider,	is2LeggedEndpoint, isRequestTokenEndpoint, arginfo_oauth_provider_req_token, ZEND_ACC_PUBLIC)
 		{NULL, NULL, NULL}
 };

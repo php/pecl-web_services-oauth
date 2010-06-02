@@ -35,7 +35,7 @@ Requirements: ext/hash
     <email>rasmus@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2009-05-09</date>
+  <date>2010-06-02</date>
   <version>
     <release>1.0.0</release>
     <api>1.0.0</api>
@@ -46,73 +46,77 @@ Requirements: ext/hash
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-    - Added php streams support (libcurl is no longer required)
-    - Added OAuthProvider support (http://php.net/oauthprovider)
-    - Added RSA-SHA1 signature support
-    - Added SHA256 signature support
-    - Added OAuth::setTimeout, OAuth::generateSignature, OAuth::setRequestEngine
-    - Send the User-Agent header for pecl/oauth
-    - Lots of other improvements...
+  - Added php streams support (libcurl is no longer required)
+  - Added OAuthProvider support (http://php.net/oauthprovider)
+  - Added RSA-SHA1 signature support
+  - Added SHA256 signature support
+  - Added OAuth::setTimeout, OAuth::generateSignature, OAuth::setRequestEngine
+  - Send the User-Agent header for pecl/oauth
+  - Lots of other improvements...
   </notes>
   <contents>
-	  <dir name="/">
-		  <file name="config.m4" role="src" />
-		  <file name="config.w32" role="src" />
-		  <file name="oauth.c" role="src" />
-		  <file name="provider.c" role="src" />
-		  <file name="php_oauth.h" role="src" />
-		  <file name="provider.h" role="src" />
-		  <file name="LICENSE" role="doc" />
-          <dir name="examples">
-			  <file name="config.inc.php" role="doc" />
-			  <file name="request_signing.php" role="doc" />
-			  <file name="request_token.php" role="doc" />
-			  <file name="access_token.php" role="doc" />
-			  <file name="exec_api.php" role="doc" />
-			  <file name="README" role="doc" />
-		  </dir>
-          <dir name="examples/yahoo">
-			  <file name="config.inc.php" role="doc" />
-			  <file name="request_signing.php" role="doc" />
-			  <file name="request_token.php" role="doc" />
-			  <file name="access_token.php" role="doc" />
-			  <file name="exec_yql.php" role="doc" />
-			  <file name="exec_yql_refresh_token.php" role="doc" />
-		  </dir>
-          <dir name="examples/fireeagle">
-			  <file name="config.inc.php" role="doc" />
-			  <file name="request_signing.php" role="doc" />
-			  <file name="request_token.php" role="doc" />
-			  <file name="access_token.php" role="doc" />
-			  <file name="exec_update_user.php" role="doc" />
-		  </dir>
-          <dir name="examples/netflix">
-			  <file name="config.inc.php" role="doc" />
-			  <file name="request_token.php" role="doc" />
-			  <file name="access_token.php" role="doc" />
-			  <file name="feeds.php" role="doc" />
-			  <file name="rental_history_atom.php" role="doc" />
-		  </dir>
-          <dir name="examples/twitter">
-			  <file name="README" role="doc" />
-			  <file name="constants.php" role="doc" />
-			  <file name="fetchTimeline.php" role="doc" />
-			  <file name="updateStatus.php" role="doc" />
-		  </dir>
-          <dir name="examples/google">
-			  <file name="README" role="doc" />
-			  <file name="config.inc.php" role="doc" />
-			  <file name="request_token.php" role="doc" />
-			  <file name="access_token.php" role="doc" />
-			  <file name="getContactInfo.php" role="doc" />
-		  </dir>
-          <dir name="examples/wepay">
-			  <file name="README" role="doc" />
-			  <file name="config.inc.php" role="doc" />
-			  <file name="request_token.php" role="doc" />
-			  <file name="access_token.php" role="doc" />
-			  <file name="balances.php" role="doc" />
-		  </dir>
+    <dir name="/">
+      <file name="config.m4" role="src" />
+      <file name="config.w32" role="src" />
+      <file name="oauth.c" role="src" />
+      <file name="provider.c" role="src" />
+      <file name="php_oauth.h" role="src" />
+      <file name="provider.h" role="src" />
+      <file name="LICENSE" role="doc" />
+      <dir name="examples">
+        <file name="config.inc.php" role="doc" />
+        <file name="request_signing.php" role="doc" />
+        <file name="request_token.php" role="doc" />
+        <file name="access_token.php" role="doc" />
+        <file name="exec_api.php" role="doc" />
+        <file name="README" role="doc" />
+      </dir>
+      <dir name="examples/yahoo">
+        <file name="config.inc.php" role="doc" />
+        <file name="request_signing.php" role="doc" />
+        <file name="request_token.php" role="doc" />
+        <file name="access_token.php" role="doc" />
+        <file name="exec_yql.php" role="doc" />
+        <file name="exec_yql_refresh_token.php" role="doc" />
+      </dir>
+      <dir name="examples/fireeagle">
+        <file name="config.inc.php" role="doc" />
+        <file name="request_signing.php" role="doc" />
+        <file name="request_token.php" role="doc" />
+        <file name="access_token.php" role="doc" />
+        <file name="exec_update_user.php" role="doc" />
+      </dir>
+      <dir name="examples/netflix">
+        <file name="config.inc.php" role="doc" />
+        <file name="request_token.php" role="doc" />
+        <file name="access_token.php" role="doc" />
+        <file name="feeds.php" role="doc" />
+        <file name="rental_history_atom.php" role="doc" />
+      </dir>
+      <dir name="examples/twitter">
+        <file name="README" role="doc" />
+        <file name="constants.php" role="doc" />
+        <file name="fetchTimeline.php" role="doc" />
+        <file name="updateStatus.php" role="doc" />
+      </dir>
+      <dir name="examples/google">
+        <file name="README" role="doc" />
+        <file name="config.inc.php" role="doc" />
+        <file name="request_token.php" role="doc" />
+        <file name="access_token.php" role="doc" />
+        <file name="getContactInfo.php" role="doc" />
+      </dir>
+      <dir name="examples/wepay">
+        <file name="README" role="doc" />
+        <file name="config.inc.php" role="doc" />
+        <file name="request_token.php" role="doc" />
+        <file name="access_token.php" role="doc" />
+        <file name="balances.php" role="doc" />
+      </dir>
+      <dir name="examples/digg">
+        <file name="config.inc.php" role="doc" />
+        <file name="digg_a_story.php" role="doc" />
+      </dir>
     </dir>
   </contents>
   <dependencies>

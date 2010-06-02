@@ -1,0 +1,25 @@
+WePay is a group payment service which makes managing money for groups simple.
+
+These example scripts come with a test consumer key and secret which you can
+use to test the API, but they may be rate limited or disabled entirely at any
+point, so you should go to https://www.wepay.com/developer/register to register
+your own consumer key and shared secret which you can put in the config.inc.php
+file.
+
+Once you have your own consumer key and secret, run the request_token.php script.
+This script returns what is known as an unauthorized request token.  In order to
+authorize it, you will need to visit the URL the request_token.php script 
+returns.  Once you have visited this URL you will be redirected to a page on
+http://progphp.com.  This is just a stub callback page that acts as a placeholder
+in order for these example scripts to work.  When you build you own oauth 
+consumer you will be writing your own callback endpoint which WePay will redirect
+users to.  This callback URL is configured on WePay's /developer/register page on
+a per-app basis.
+
+Next, run the access_token.php script.  This script will fetch the verifier from
+the progphp.com stuf callback endpoint and contact WePay to exchange the
+authorized request token for an access token.
+
+This access token will now allow your application to access the API on behalf
+of the user who athoried it.  Run the balances.php script to see an example of
+calling the API.

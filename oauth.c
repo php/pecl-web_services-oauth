@@ -2550,6 +2550,21 @@ SO_METHOD(getLastResponse)
 }
 /* }}} */
 
+SO_METHOD(getLastResponseHeaders)
+{
+	php_so_object *soo;
+
+	if (FAILURE==zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "")) {
+		return;
+	}
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+	if (soo->headers_in.c) {
+		RETURN_STRINGL(soo->headers_in.c, soo->headers_in.len, 1);
+	}
+	RETURN_FALSE;
+}
+
 /* {{{ arginfo */
 OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_urlencode, 0, 0, 1)
@@ -2660,6 +2675,7 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(getAccessToken,		arginfo_oauth_getaccesstoken,	ZEND_ACC_PUBLIC)
 	SO_ME(getLastResponse,		arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(getLastResponseInfo,	arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
+	SO_ME(getLastResponseHeaders,	arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(setToken,				arginfo_oauth_settoken,			ZEND_ACC_PUBLIC)
 	SO_ME(setRequestEngine,		arginfo_oauth_setrequestengine, 		ZEND_ACC_PUBLIC)
 	SO_ME(setVersion,			arginfo_oauth_setversion,		ZEND_ACC_PUBLIC)

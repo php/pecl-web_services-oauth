@@ -326,7 +326,7 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 {
 	php_oauth_provider *sop;
 	php_oauth_provider_fcall *cb = NULL;
-	zval *retval, *args, *pthis;
+	zval *retval = NULL, *args, *pthis;
 	char *errstr = "";
 
 	pthis = getThis();
@@ -711,38 +711,45 @@ SOP_METHOD(checkOAuthRequest)
 
 	retval = oauth_provider_call_cb(INTERNAL_FUNCTION_PARAM_PASSTHRU, OAUTH_PROVIDER_TSNONCE_CB);
 
-	convert_to_long(retval);
-	if(Z_LVAL_P(retval)!=OAUTH_OK) {
-		soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid nonce/timestamp combination", NULL, additional_info TSRMLS_CC);
-		zval_ptr_dtor(&retval);
-		FREE_ARGS_HASH(sbs_vars);
-		OAUTH_PROVIDER_FREE_STRING(current_uri);
-		return;
-	}
-	zval_ptr_dtor(&retval);
-
-	retval = oauth_provider_call_cb(INTERNAL_FUNCTION_PARAM_PASSTHRU, OAUTH_PROVIDER_CONSUMER_CB);
-	convert_to_long(retval);
-	if(Z_LVAL_P(retval)!=OAUTH_OK) {
-		soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid consumer key", NULL, additional_info TSRMLS_CC);
-		zval_ptr_dtor(&retval);
-		FREE_ARGS_HASH(sbs_vars);
-		OAUTH_PROVIDER_FREE_STRING(current_uri);
-		return;
-	}
-	zval_ptr_dtor(&retval);
-
-	if (is_token_required) {
-		retval = oauth_provider_call_cb(INTERNAL_FUNCTION_PARAM_PASSTHRU, OAUTH_PROVIDER_TOKEN_CB);
+	if(retval) {
 		convert_to_long(retval);
 		if(Z_LVAL_P(retval)!=OAUTH_OK) {
-			soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid token", NULL, additional_info TSRMLS_CC);
+			soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid nonce/timestamp combination", NULL, additional_info TSRMLS_CC);
 			zval_ptr_dtor(&retval);
 			FREE_ARGS_HASH(sbs_vars);
 			OAUTH_PROVIDER_FREE_STRING(current_uri);
 			return;
 		}
 		zval_ptr_dtor(&retval);
+	}
+
+	retval = oauth_provider_call_cb(INTERNAL_FUNCTION_PARAM_PASSTHRU, OAUTH_PROVIDER_CONSUMER_CB);
+
+	if(retval) {
+		convert_to_long(retval);
+		if(Z_LVAL_P(retval)!=OAUTH_OK) {
+			soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid consumer key", NULL, additional_info TSRMLS_CC);
+			zval_ptr_dtor(&retval);
+			FREE_ARGS_HASH(sbs_vars);
+			OAUTH_PROVIDER_FREE_STRING(current_uri);
+			return;
+		}
+		zval_ptr_dtor(&retval);
+	}
+
+	if (is_token_required) {
+		retval = oauth_provider_call_cb(INTERNAL_FUNCTION_PARAM_PASSTHRU, OAUTH_PROVIDER_TOKEN_CB);
+		if(retval) {
+			convert_to_long(retval);
+			if(Z_LVAL_P(retval)!=OAUTH_OK) {
+				soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid token", NULL, additional_info TSRMLS_CC);
+				zval_ptr_dtor(&retval);
+				FREE_ARGS_HASH(sbs_vars);
+				OAUTH_PROVIDER_FREE_STRING(current_uri);
+				return;
+			}
+			zval_ptr_dtor(&retval);
+		}
 	}
 
 	/* now for the signature stuff */

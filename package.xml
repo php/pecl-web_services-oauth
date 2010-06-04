@@ -127,6 +127,9 @@ Requirements: ext/hash
       <pearinstaller>
         <min>1.4.0b1</min>
       </pearinstaller>
+      <extension>
+        <name>hash</name>
+      </extension>
     </required>
   </dependencies>
   <providesextension>oauth</providesextension>

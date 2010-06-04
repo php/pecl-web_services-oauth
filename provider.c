@@ -372,22 +372,23 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 static char *oauth_provider_get_http_verb(TSRMLS_D) /* {{{ */
 {
 	zval **tmp;
-#ifndef TRACK_VARS_SERVER
-	return NULL;
-#else
+
+	zend_is_auto_global("_SERVER", sizeof("_SERVER")-1 TSRMLS_CC);
+
 	if(PG(http_globals)[TRACK_VARS_SERVER]) {
 		if(zend_hash_find(HASH_OF(PG(http_globals)[TRACK_VARS_SERVER]), "REQUEST_METHOD", sizeof("REQUEST_METHOD"), (void **) &tmp)!=FAILURE || zend_hash_find(HASH_OF(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_METHOD", sizeof("HTTP_METHOD"), (void **) &tmp)!=FAILURE) {
 			return Z_STRVAL_PP(tmp);
 		}
 	}
 	return NULL;
-#endif
 }
 /* }}} */
 
 static char *oauth_provider_get_current_uri(TSRMLS_D)
 {
 	zval **host = NULL, **port = NULL, **uri = NULL, **proto = NULL;
+	
+	zend_is_auto_global("_SERVER", sizeof("_SERVER")-1 TSRMLS_CC);
 
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_HOST", sizeof("HTTP_HOST"), (void**)&host);
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "SERVER_PORT", sizeof("SERVER_PORT"), (void**)&port);

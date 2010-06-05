@@ -755,13 +755,16 @@ SOP_METHOD(checkOAuthRequest)
 	/* now for the signature stuff */
 	sbs = oauth_generate_sig_base(NULL, http_verb, uri, sbs_vars, NULL TSRMLS_CC);
 
-	consumer_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET) - 1, 1 TSRMLS_CC);
-	convert_to_string_ex(&consumer_secret);
-	if (is_token_required) {
-		token_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET) - 1, 1 TSRMLS_CC);
-		convert_to_string_ex(&token_secret);
+	if (sbs) {
+		consumer_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET) - 1, 1 TSRMLS_CC);
+		convert_to_string_ex(&consumer_secret);
+		if (is_token_required) {
+			token_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET) - 1, 1 TSRMLS_CC);
+			convert_to_string_ex(&token_secret);
+		}
+		signature = soo_sign(NULL, sbs, consumer_secret, token_secret, sig_ctx TSRMLS_CC);
+		efree(sbs);
 	}
-	signature = soo_sign(NULL, sbs, consumer_secret, token_secret, sig_ctx TSRMLS_CC);
 
 	req_signature = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE, sizeof(OAUTH_PROVIDER_SIGNATURE) - 1, 1 TSRMLS_CC);
 	if (!signature || !Z_STRLEN_P(req_signature) || strcmp(signature, Z_STRVAL_P(req_signature))) {
@@ -770,7 +773,6 @@ SOP_METHOD(checkOAuthRequest)
 
 	OAUTH_SIGCTX_FREE(sig_ctx);
 	OAUTH_PROVIDER_FREE_STRING(current_uri);
-	efree(sbs);
 	OAUTH_PROVIDER_FREE_STRING(signature);
 	FREE_ARGS_HASH(sbs_vars);
 }
@@ -968,7 +970,7 @@ SOP_METHOD(reportProblem)
 			http_code = OAUTH_ERR_BAD_AUTH;
 			out = "oauth_problem=signature_invalid";
 			sbs = zend_read_property(Z_OBJCE_P(exception), exception, "additionalInfo", sizeof("additionalInfo") - 1, 1 TSRMLS_CC);
-			if(sbs) {
+			if (sbs && IS_NULL!=Z_TYPE_P(sbs)) {
 				convert_to_string_ex(&sbs);
 				if(Z_STRLEN_P(sbs)) {
 					pr_len = Z_STRLEN_P(sbs) + strlen(out) + sizeof("&debug_sbs=");

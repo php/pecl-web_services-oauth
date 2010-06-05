@@ -3,12 +3,25 @@ OAuth Standard functions
 --FILE--
 <?php
 
+function oauth_dump($v)
+{
+	if (is_null($v)) {
+		echo "NULL\n";
+		return;
+	}
+	if ($v instanceof OAuth) {
+		printf("OAuth[debug=%d,sslChecks=%d,debugInfo=%s]\n", $v->debug, $v->sslChecks, $v->debugInfo);
+		return;
+	}
+	echo "NOT_OAUTH\n";
+}
+
 echo "-- empty params --\n";
 $x = new OAuth;
-var_dump($x);
+oauth_dump($x);
 echo "-- one param --\n";
 $x = new OAuth('');
-var_dump($x);
+oauth_dump($x);
 echo "-- empty consumer key and secret --\n";
 $x = null;
 try {
@@ -16,26 +29,26 @@ try {
 } catch (Exception $e) {
 	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
 }
-var_dump($x);
+oauth_dump($x);
 echo "-- empty consumer secret --\n";
 try {
 	$x = new OAuth('1234', '');
 } catch (Exception $e) {
 	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
 }
-var_dump($x);
+oauth_dump($x);
 
 echo "-- normal constructor --\n";
 $x = new OAuth('1234', '5678');
-var_dump($x);
+oauth_dump($x);
 
 echo "-- enable debug --\n";
 $x->enableDebug();
-var_dump($x->debug);
+oauth_dump($x);
 
 echo "-- disable debug --\n";
 $x->disableDebug();
-var_dump($x->debug);
+oauth_dump($x);
 
 try {
 	echo "-- set version without parameters --\n";
@@ -84,38 +97,22 @@ echo "EXCEPTION {$E->getCode()}: {$E->getMessage()}\n";
 -- empty params --
 
 Warning: OAuth::__construct() expects at least 2 parameters, 0 given in %s
-object(OAuth)#1 (0) {
-}
+OAuth[debug=0,sslChecks=0,debugInfo=]
 -- one param --
 
 Warning: OAuth::__construct() expects at least 2 parameters, 1 given in %s
-object(OAuth)#2 (0) {
-}
+OAuth[debug=0,sslChecks=0,debugInfo=]
 -- empty consumer key and secret --
 EXCEPTION -1: The consumer key cannot be empty
 NULL
 -- empty consumer secret --
-object(OAuth)#2 (3) {
-  ["debugInfo"]=>
-  NULL
-  ["debug"]=>
-  bool(false)
-  ["sslChecks"]=>
-  bool(false)
-}
+OAuth[debug=0,sslChecks=1,debugInfo=]
 -- normal constructor --
-object(OAuth)#3 (3) {
-  ["debugInfo"]=>
-  NULL
-  ["debug"]=>
-  bool(false)
-  ["sslChecks"]=>
-  bool(false)
-}
+OAuth[debug=0,sslChecks=1,debugInfo=]
 -- enable debug --
-bool(true)
+OAuth[debug=1,sslChecks=1,debugInfo=]
 -- disable debug --
-bool(false)
+OAuth[debug=0,sslChecks=1,debugInfo=]
 -- set version without parameters --
 
 Warning: OAuth::setVersion() expects exactly 1 parameter, 0 given %s

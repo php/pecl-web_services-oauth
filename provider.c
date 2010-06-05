@@ -763,7 +763,6 @@ SOP_METHOD(checkOAuthRequest)
 			convert_to_string_ex(&token_secret);
 		}
 		signature = soo_sign(NULL, sbs, consumer_secret, token_secret, sig_ctx TSRMLS_CC);
-		efree(sbs);
 	}
 
 	req_signature = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE, sizeof(OAUTH_PROVIDER_SIGNATURE) - 1, 1 TSRMLS_CC);
@@ -771,6 +770,7 @@ SOP_METHOD(checkOAuthRequest)
 		soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, sbs TSRMLS_CC);
 	}
 
+	OAUTH_PROVIDER_FREE_STRING(sbs);
 	OAUTH_SIGCTX_FREE(sig_ctx);
 	OAUTH_PROVIDER_FREE_STRING(current_uri);
 	OAUTH_PROVIDER_FREE_STRING(signature);

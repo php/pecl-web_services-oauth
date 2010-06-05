@@ -1775,11 +1775,13 @@ SO_METHOD(__construct)
 	php_so_object *soo;
 
 	obj = getThis();
-	soo = fetch_so_object(obj TSRMLS_CC);
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|sl", &ck, &ck_len, &cs, &cs_len, &sig_method, &sig_method_len, &auth_method) == FAILURE) {
+		ZVAL_NULL(obj);
 		return;
 	}
+
+	soo = fetch_so_object(obj TSRMLS_CC);
 
 	if(!ck_len) {
 		soo_handle_error(soo, -1, "The consumer key cannot be empty", NULL, NULL TSRMLS_CC);

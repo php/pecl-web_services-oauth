@@ -97,11 +97,11 @@ echo "EXCEPTION {$E->getCode()}: {$E->getMessage()}\n";
 -- empty params --
 
 Warning: OAuth::__construct() expects at least 2 parameters, 0 given in %s
-OAuth[debug=0,sslChecks=0,debugInfo=]
+NULL
 -- one param --
 
 Warning: OAuth::__construct() expects at least 2 parameters, 1 given in %s
-OAuth[debug=0,sslChecks=0,debugInfo=]
+NULL
 -- empty consumer key and secret --
 EXCEPTION -1: The consumer key cannot be empty
 NULL

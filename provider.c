@@ -731,7 +731,7 @@ SOP_METHOD(checkOAuthRequest)
 			zval_ptr_dtor(&retval);
 
 			if (OAUTH_OK!=cb_res) {
-				soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid nonce/timestamp combination", NULL, additional_info TSRMLS_CC);
+				soo_handle_error(NULL, cb_res, "Invalid nonce/timestamp combination", NULL, additional_info TSRMLS_CC);
 				break;
 			}
 		} else if (EG(exception)) {
@@ -746,7 +746,7 @@ SOP_METHOD(checkOAuthRequest)
 			zval_ptr_dtor(&retval);
 
 			if (OAUTH_OK!=cb_res) {
-				soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid consumer key", NULL, additional_info TSRMLS_CC);
+				soo_handle_error(NULL, cb_res, "Invalid consumer key", NULL, additional_info TSRMLS_CC);
 				break;
 			}
 		} else if (EG(exception)) {
@@ -762,7 +762,7 @@ SOP_METHOD(checkOAuthRequest)
 				zval_ptr_dtor(&retval);
 
 				if (OAUTH_OK!=cb_res) {
-					soo_handle_error(NULL, Z_LVAL_P(retval), "Invalid token", NULL, additional_info TSRMLS_CC);
+					soo_handle_error(NULL, cb_res, "Invalid token", NULL, additional_info TSRMLS_CC);
 					break;
 				}
 			} else if (EG(exception)) {

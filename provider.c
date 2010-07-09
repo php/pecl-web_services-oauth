@@ -224,7 +224,7 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 	}
 
 	MAKE_STD_ZVAL(return_value);
-	MAKE_STD_ZVAL(subpats);
+	ALLOC_INIT_ZVAL(subpats);
 
 	php_pcre_match_impl(
 		pce,

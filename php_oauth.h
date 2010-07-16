@@ -234,9 +234,9 @@ typedef struct {
 	HashTable *properties;
 	smart_str lastresponse;
 	smart_str headers_in;
-	void ***thread_ctx;
 	char last_location_header[OAUTH_MAX_HEADER_LEN];
 	uint redirects;
+	uint multipart_files_num;
 	uint sslcheck; /* whether we check for SSL verification or not */
 	uint debug; /* verbose output */
 	uint follow_redirects; /* follow and sign redirects? */
@@ -249,6 +249,9 @@ typedef struct {
 	zval *debugArr;
 	oauth_sig_context *sig_ctx;
 	php_so_debug *debug_info;
+	char **multipart_files;
+	char **multipart_params;
+	void ***thread_ctx;
 } php_so_object;
 
 #if (PHP_MAJOR_VERSION >= 6)

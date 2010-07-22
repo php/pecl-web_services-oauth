@@ -10,7 +10,7 @@ try {
 	file_put_contents(OAUTH_TMP_DIR . "/wepay_request_token_resp",serialize($arrayResp));
 
 // Get the authorizating URL that the user needs to click on to authorize the request token
-	$authorizeUrl = $arrayResp["login_url"] . "&oauth_token=" . $arrayResp['oauth_token'];
+	$authorizeUrl = $arrayResp["login_url"];
 	if(PHP_SAPI=="cli") {
 		echo "Point your Web browser at: {$authorizeUrl}\n";
 	} else {

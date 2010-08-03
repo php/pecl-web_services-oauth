@@ -494,6 +494,21 @@ SOP_METHOD(__construct)
 				if(SUCCESS == zend_hash_find(HASH_OF(retval), "Authorization", sizeof("Authorization"), (void **) &tmpzval)) {
 					auth_header = *tmpzval;
 					authorization_header = estrdup(Z_STRVAL_P(auth_header));
+				} else if (SUCCESS==zend_hash_find(HASH_OF(retval), "authorization", sizeof("authorization"), (void **) &tmpzval)) {
+					auth_header = *tmpzval;
+					authorization_header = estrdup(Z_STRVAL_P(auth_header));
+				} else {
+					/* search one by one */
+					zend_hash_internal_pointer_reset_ex(HASH_OF(retval), &hpos);
+					do {
+						uint key_len;
+
+						if (FAILURE!=zend_hash_get_current_key_ex(HASH_OF(retval), &key, &key_len, &num_key, 0, &hpos) && key_len==sizeof("authorization") && 0==strcasecmp(key, "authorization") && SUCCESS==zend_hash_get_current_data_ex(HASH_OF(retval), (void**)&tmpzval, &hpos)) {
+							auth_header = *tmpzval;
+							authorization_header = estrdup(Z_STRVAL_P(auth_header));
+							break;
+						}
+					} while (SUCCESS==zend_hash_move_forward_ex(HASH_OF(retval), &hpos));
 				}
 			} else {
 				php_error_docref(NULL TSRMLS_CC, E_ERROR, "Failed to call apache_request_headers while running under the Apache SAPI");

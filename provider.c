@@ -13,6 +13,11 @@
 #include "php_oauth.h"
 #include "provider.h"
 
+#if PHP_WIN32
+# include <windows.h>
+# include <Wincrypt.h>
+#endif
+
 #include "fcntl.h"
 
 static zend_object_handlers oauth_provider_obj_hndlrs;

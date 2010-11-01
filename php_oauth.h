@@ -102,6 +102,7 @@
 #define OAUTH_SIG_METHOD_HMACSHA1 "HMAC-SHA1"
 #define OAUTH_SIG_METHOD_HMACSHA256 "HMAC-SHA256"
 #define OAUTH_SIG_METHOD_RSASHA1 "RSA-SHA1"
+#define OAUTH_SIG_METHOD_PLAINTEXT "PLAINTEXT"
 
 extern zend_module_entry oauth_module_entry;
 
@@ -176,7 +177,7 @@ PHP_MINFO_FUNCTION(oauth);
 #define OAUTH(v) (oauth_globals.v)
 #endif
 
-typedef enum { OAUTH_SIGCTX_TYPE_NONE, OAUTH_SIGCTX_TYPE_HMAC, OAUTH_SIGCTX_TYPE_RSA } oauth_sigctx_type;
+typedef enum { OAUTH_SIGCTX_TYPE_NONE, OAUTH_SIGCTX_TYPE_HMAC, OAUTH_SIGCTX_TYPE_RSA, OAUTH_SIGCTX_TYPE_PLAIN } oauth_sigctx_type;
 
 typedef struct {
 	oauth_sigctx_type	type;
@@ -194,6 +195,10 @@ typedef struct {
 #define OAUTH_SIGCTX_HMAC(ctx, algo) { \
 		(ctx)->type = OAUTH_SIGCTX_TYPE_HMAC; \
 		(ctx)->hash_algo = algo; \
+	}
+
+#define OAUTH_SIGCTX_PLAIN(ctx) { \
+		(ctx)->type = OAUTH_SIGCTX_TYPE_PLAIN; \
 	}
 
 #define OAUTH_SIGCTX_FREE_PRIVATEKEY(ctx) { \

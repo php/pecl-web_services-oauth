@@ -331,6 +331,15 @@ static char *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_con
 
 	return (char *)result;
 }
+/* }}} */
+
+static char *soo_sign_plain(php_so_object *soo, const char *cs, const char *ts TSRMLS_DC) /* {{{ */
+{
+	char *tret;
+	spprintf(&tret, 0, "%s&%s", cs, ts);
+	return tret;
+}
+/* }}} */
 
 oauth_sig_context *oauth_create_sig_context(const char *sigmethod)
 {
@@ -343,6 +352,8 @@ oauth_sig_context *oauth_create_sig_context(const char *sigmethod)
 		OAUTH_SIGCTX_HMAC(ctx, "sha256");
 	} else if (0==strcmp(sigmethod, OAUTH_SIG_METHOD_RSASHA1)) {
 		OAUTH_SIGCTX_RSA(ctx, "sha1");
+	} else if (0==strcmp(sigmethod, OAUTH_SIG_METHOD_PLAINTEXT)) {
+		OAUTH_SIGCTX_PLAIN(ctx);
 	}
 
 	return ctx;
@@ -356,6 +367,8 @@ char *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oaut
 		return soo_sign_hmac(soo, message, csec, tsec, ctx TSRMLS_CC);
 	} else if (OAUTH_SIGCTX_TYPE_RSA==ctx->type) {
 		return soo_sign_rsa(soo, message, ctx TSRMLS_CC);
+	} else if(OAUTH_SIGCTX_TYPE_PLAIN==ctx->type) {
+		return soo_sign_plain(soo, csec, tsec TSRMLS_CC);
 	}
 	return NULL;
 }
@@ -2856,6 +2869,7 @@ PHP_MINIT_FUNCTION(oauth)
 	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_HMACSHA1", OAUTH_SIG_METHOD_HMACSHA1, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_HMACSHA256", OAUTH_SIG_METHOD_HMACSHA256, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_RSASHA1", OAUTH_SIG_METHOD_RSASHA1, CONST_CS | CONST_PERSISTENT);
+	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_PLAINTEXT", OAUTH_SIG_METHOD_PLAINTEXT, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("OAUTH_AUTH_TYPE_AUTHORIZATION", OAUTH_AUTH_TYPE_AUTHORIZATION, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("OAUTH_AUTH_TYPE_URI", OAUTH_AUTH_TYPE_URI, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("OAUTH_AUTH_TYPE_FORM", OAUTH_AUTH_TYPE_FORM, CONST_CS | CONST_PERSISTENT);
@@ -2907,7 +2921,7 @@ PHP_MINFO_FUNCTION(oauth)
 {
 	php_info_print_table_start();
 	php_info_print_table_header(2, "OAuth support", "enabled");
-	php_info_print_table_row(2, "PLAINTEXT support", "not supported");
+	php_info_print_table_row(2, "PLAINTEXT support", "enabled");
 #if HAVE_OPENSSL_EXT 
 	php_info_print_table_row(2, "RSA-SHA1 support", "enabled");
 #else

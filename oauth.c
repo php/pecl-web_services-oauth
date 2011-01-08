@@ -881,7 +881,11 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 	struct timeval tv;
 	int secs = 0;
 
+#ifdef ZEND_ENGINE_2_4
+	sc = php_stream_context_alloc(TSRMLS_C);
+#else
 	sc = php_stream_context_alloc();
+#endif
 
 	if (payload->len) {
 		smart_str_0(payload);

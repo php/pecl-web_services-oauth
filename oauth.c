@@ -1473,10 +1473,9 @@ static const char *oauth_get_http_method(php_so_object *soo, const char *http_me
 {
 	long auth_type = Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
 
-	if (OAUTH_AUTH_TYPE_FORM==auth_type) {
-		return OAUTH_HTTP_METHOD_POST;
-	} else if (!http_method) {
-		return OAUTH_HTTP_METHOD_GET;
+	switch(auth_type) {
+		case OAUTH_AUTH_TYPE_FORM:return OAUTH_HTTP_METHOD_POST;
+		case OAUTH_AUTH_TYPE_URI:return OAUTH_HTTP_METHOD_GET;
 	}
 	return http_method;
 }
@@ -2161,7 +2160,7 @@ SO_METHOD(getRequestToken)
 		}
 	}
 
-	retcode = oauth_fetch(soo, url, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), NULL, NULL, args, 0 TSRMLS_CC);
+	retcode = oauth_fetch(soo, url, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_POST TSRMLS_CC), NULL, NULL, args, 0 TSRMLS_CC);
 
 	if (args) {
 		FREE_ARGS_HASH(args);
@@ -2621,7 +2620,7 @@ SO_METHOD(getAccessToken)
 		}
 	}
 
-	retcode = oauth_fetch(soo, aturi, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_GET TSRMLS_CC), NULL, NULL, args, OAUTH_FETCH_USETOKEN TSRMLS_CC);
+	retcode = oauth_fetch(soo, aturi, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_POST TSRMLS_CC), NULL, NULL, args, OAUTH_FETCH_USETOKEN TSRMLS_CC);
 
 	if (args) {
 		FREE_ARGS_HASH(args);

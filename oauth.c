@@ -154,6 +154,9 @@ static void so_object_free_storage(void *obj TSRMLS_DC) /* {{{ */
 	if (soo->headers_in.c) {
 		smart_str_free(&soo->headers_in);
 	}
+	if (soo->headers_out.c) {
+		smart_str_free(&soo->headers_out);
+	}
 	efree(obj);
 }
 /* }}} */
@@ -806,7 +809,7 @@ static int add_arg_for_req(HashTable *ht, const char *arg, const char *val TSRML
 }
 /* }}} */
 
-void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_args TSRMLS_DC)
+void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_args, smart_str *header TSRMLS_DC)
 {
 	smart_str sheader = {0};
 	zend_bool prepend_comma = FALSE;
@@ -841,8 +844,12 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 		prepend_comma = TRUE;
 	}
 	smart_str_0(&sheader);
-	add_arg_for_req(request_headers, "Authorization", sheader.c TSRMLS_CC);
 
+	if (!header) {
+		add_arg_for_req(request_headers, "Authorization", sheader.c TSRMLS_CC);
+	} else {
+		smart_str_appends(header, sheader.c);
+	}
 	smart_str_free(&sheader);
 }
 
@@ -1281,10 +1288,16 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload
 	curl_easy_setopt(curl, CURLOPT_USERAGENT, OAUTH_USER_AGENT);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, soo_read_response);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, soo);
-	if(!sslcheck) {
+	if(sslcheck == OAUTH_SSLCHECK_NONE) {
 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
 	} else {
+		if (!(sslcheck & OAUTH_SSLCHECK_HOST)) {
+			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+		}
+		if (!(sslcheck & OAUTH_SSLCHECK_PEER)) {
+			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+		}
 		if(zca_path && Z_STRLEN_PP(zca_path)) {
 			curl_easy_setopt(curl, CURLOPT_CAPATH, Z_STRVAL_PP(zca_path));
 		}
@@ -1645,6 +1658,19 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 		/* and add signature to the oauth parameters */
 		add_arg_for_req(oauth_args, OAUTH_PARAM_SIGNATURE, sig TSRMLS_CC);
 
+		if(fetch_flags & OAUTH_FETCH_HEADONLY) {
+			INIT_SMART_STR(soo->headers_out);
+			oauth_add_signature_header(rheaders, oauth_args, &soo->headers_out TSRMLS_CC);
+			smart_str_0(&payload);
+			FREE_ARGS_HASH(oauth_args);
+			smart_str_free(&surl);
+			smart_str_free(&postdata);
+			if(need_to_free_rheaders) {
+				FREE_ARGS_HASH(rheaders);
+			}
+			return SUCCESS;
+		}
+
 		if (!strcmp(final_http_method, OAUTH_HTTP_METHOD_GET)) {
 			/* GET request means to extend the url, but not for redirects obviously */
 			if (!is_redirect && postdata.len) {
@@ -1670,7 +1696,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 				break;
 			case OAUTH_AUTH_TYPE_AUTHORIZATION:
 				/* add http header with oauth parameters */
-				oauth_add_signature_header(rheaders, oauth_args TSRMLS_CC);
+				oauth_add_signature_header(rheaders, oauth_args, NULL TSRMLS_CC);
 				break;
 		}
 
@@ -1903,7 +1929,7 @@ SO_METHOD(__construct)
 	/* set default class members */
 	zend_update_property_null(soo_class_entry, obj, "debugInfo", sizeof("debugInfo") - 1 TSRMLS_CC);
 	zend_update_property_bool(soo_class_entry, obj, "debug", sizeof("debug") - 1, soo->debug TSRMLS_CC);
-	zend_update_property_bool(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, soo->sslcheck TSRMLS_CC);
+	zend_update_property_long(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, soo->sslcheck TSRMLS_CC);
 
 	TSRMLS_SET_CTX(soo->thread_ctx);
 
@@ -1961,7 +1987,7 @@ SO_METHOD(__construct)
 	} 
 
 	soo->debug = 0;
-	soo->sslcheck = 1;
+	soo->sslcheck = OAUTH_SSLCHECK_BOTH;
 	soo->follow_redirects = 1;
 
 	soo->lastresponse.c = NULL;
@@ -2018,7 +2044,9 @@ SO_METHOD(__destruct)
 	}
 
 	smart_str_free(&soo->headers_in);
-
+	if (soo->headers_out.c) {
+		smart_str_free(&soo->headers_out);
+	}
 	if(soo->debugArr) {
 		zval_ptr_dtor(&soo->debugArr);
 	}
@@ -2242,8 +2270,8 @@ SO_METHOD(enableSSLChecks)
 		return;
 	}
 
-	soo->sslcheck = 1;
-	zend_update_property_bool(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, 1 TSRMLS_CC);
+	soo->sslcheck = OAUTH_SSLCHECK_BOTH;
+	zend_update_property_long(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, 1 TSRMLS_CC);
 
 	RETURN_TRUE;
 }
@@ -2263,12 +2291,38 @@ SO_METHOD(disableSSLChecks)
 		return;
 	}
 
-	soo->sslcheck = 0;
-	zend_update_property_bool(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, 0 TSRMLS_CC);
+	soo->sslcheck = OAUTH_SSLCHECK_NONE;
+	zend_update_property_long(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, 0 TSRMLS_CC);
 
 	RETURN_TRUE;
 }
 /* }}} */
+
+
+/* {{{ proto bool OAuth::setSSLChecks(long sslcheck)
+   Disable SSL verification for requests (be careful using this for production) */
+SO_METHOD(setSSLChecks)
+{
+	php_so_object *soo;
+	zval *obj;
+	long sslcheck = OAUTH_SSLCHECK_BOTH;
+
+	obj = getThis();
+	soo = fetch_so_object(obj TSRMLS_CC);
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &sslcheck) == FAILURE) {
+		return;
+	}
+
+	soo->sslcheck = sslcheck & OAUTH_SSLCHECK_BOTH;
+
+	zend_update_property_long(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, 
+			soo->sslcheck TSRMLS_CC);
+
+	RETURN_TRUE;
+}
+/* }}} */
+
 
 /* {{{ proto bool OAuth::setVersion(string version)
    Set oauth_version for requests (default 1.0) */
@@ -2658,6 +2712,36 @@ SO_METHOD(getLastResponseHeaders)
 	RETURN_FALSE;
 }
 
+/* {{{ proto string OAuth::getRequestHeader(string http_method, string url [, string|array extra_parameters ])
+   Generate OAuth header string signature based on the final HTTP method, URL and a string/array of parameters */
+SO_METHOD(getRequestHeader)
+{
+	php_so_object *soo;
+	int url_len, http_method_len = 0;
+	char *url;
+	zval *request_args = NULL;
+	char *http_method = NULL;
+
+	soo = fetch_so_object(getThis() TSRMLS_CC);
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss|z", &http_method, &http_method_len, &url, &url_len, &request_args) == FAILURE) {
+		return;
+	}
+
+	if (url_len < 1) {
+		RETURN_BOOL(FALSE);
+	}
+
+	if (oauth_fetch(soo, url, http_method, request_args, NULL, NULL, 
+				(OAUTH_FETCH_USETOKEN | OAUTH_FETCH_HEADONLY) TSRMLS_CC) < 0) {
+		RETURN_BOOL(FALSE);
+	} else {
+		RETURN_STRINGL(soo->headers_out.c, soo->headers_out.len, 1);
+	}
+
+	RETURN_FALSE;
+}
+
 /* {{{ arginfo */
 OAUTH_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_urlencode, 0, 0, 1)
@@ -2758,6 +2842,19 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_gensig, 0, 0, 2)
 	ZEND_ARG_INFO(0, extra_parameters) /* ARRAY_INFO(1, arg, 0) */
 ZEND_END_ARG_INFO()
 
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_setsslchecks, 0, 0, 1)
+	ZEND_ARG_INFO(0, sslcheck)
+ZEND_END_ARG_INFO()
+
+OAUTH_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_getrequestheader, 0, 0, 2)
+	ZEND_ARG_INFO(0, http_method)
+	ZEND_ARG_INFO(0, url)
+	ZEND_ARG_INFO(0, extra_parameters) /* ARRAY_INFO(1, arg, 0) */
+ZEND_END_ARG_INFO()
+
+
 /* }}} */
 
 
@@ -2786,6 +2883,8 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(getCAPath,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	SO_ME(generateSignature,	arginfo_oauth_gensig,			ZEND_ACC_PUBLIC)
 	SO_ME(setTimeout,			arginfo_oauth_settimeout,		ZEND_ACC_PUBLIC)
+	SO_ME(setSSLChecks,			arginfo_oauth_setsslchecks,		ZEND_ACC_PUBLIC)
+	SO_ME(getRequestHeader,		arginfo_oauth_getrequestheader,	ZEND_ACC_PUBLIC)
 	SO_ME(__destruct,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
@@ -2887,6 +2986,10 @@ PHP_MINIT_FUNCTION(oauth)
 #ifdef OAUTH_USE_CURL
 	REGISTER_LONG_CONSTANT("OAUTH_REQENGINE_CURL", OAUTH_REQENGINE_CURL, CONST_CS | CONST_PERSISTENT);
 #endif
+	REGISTER_LONG_CONSTANT("OAUTH_SSLCHECK_NONE", OAUTH_SSLCHECK_NONE, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_SSLCHECK_HOST", OAUTH_SSLCHECK_HOST, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_SSLCHECK_PEER", OAUTH_SSLCHECK_PEER, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("OAUTH_SSLCHECK_BOTH", OAUTH_SSLCHECK_BOTH, CONST_CS | CONST_PERSISTENT);
 
 	oauth_provider_register_class(TSRMLS_C);
 	REGISTER_LONG_CONSTANT("OAUTH_OK", OAUTH_OK, CONST_CS | CONST_PERSISTENT);

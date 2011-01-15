@@ -1,0 +1,14 @@
+This extension needs to be compiled and enabled in your PHP installation.
+
+Basic instructions:
+
+1) phpize
+2) ./configure
+3) make && make install
+
+For Debian/Ubuntu users:
+
+The following packages need to be installed before running the steps above:
+
+1) php5-dev
+2) libpcre3-dev

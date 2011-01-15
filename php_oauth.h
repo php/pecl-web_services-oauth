@@ -136,6 +136,12 @@ extern zend_module_entry oauth_module_entry;
 
 #define OAUTH_FETCH_USETOKEN 1
 #define OAUTH_FETCH_SIGONLY 2
+#define OAUTH_FETCH_HEADONLY 4
+
+#define OAUTH_SSLCHECK_NONE 0
+#define OAUTH_SSLCHECK_HOST 1
+#define OAUTH_SSLCHECK_PEER 2
+#define OAUTH_SSLCHECK_BOTH (OAUTH_SSLCHECK_HOST | OAUTH_SSLCHECK_PEER)
 
 #define OAUTH_DEFAULT_VERSION "1.0"
 
@@ -239,6 +245,7 @@ typedef struct {
 	HashTable *properties;
 	smart_str lastresponse;
 	smart_str headers_in;
+	smart_str headers_out;
 	char last_location_header[OAUTH_MAX_HEADER_LEN];
 	uint redirects;
 	uint multipart_files_num;

@@ -106,13 +106,13 @@ NULL
 EXCEPTION -1: The consumer key cannot be empty
 NULL
 -- empty consumer secret --
-OAuth[debug=0,sslChecks=1,debugInfo=]
+OAuth[debug=0,sslChecks=3,debugInfo=]
 -- normal constructor --
-OAuth[debug=0,sslChecks=1,debugInfo=]
+OAuth[debug=0,sslChecks=3,debugInfo=]
 -- enable debug --
-OAuth[debug=1,sslChecks=1,debugInfo=]
+OAuth[debug=1,sslChecks=3,debugInfo=]
 -- disable debug --
-OAuth[debug=0,sslChecks=1,debugInfo=]
+OAuth[debug=0,sslChecks=3,debugInfo=]
 -- set version without parameters --
 
 Warning: OAuth::setVersion() expects exactly 1 parameter, 0 given %s

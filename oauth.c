@@ -2299,7 +2299,7 @@ SO_METHOD(disableSSLChecks)
 
 
 /* {{{ proto bool OAuth::setSSLChecks(long sslcheck)
-   Disable SSL verification for requests (be careful using this for production) */
+   Tweak specific SSL checks for requests (be careful using this for production) */
 SO_METHOD(setSSLChecks)
 {
 	php_so_object *soo;
@@ -2906,8 +2906,7 @@ static zval *oauth_read_member(zval *obj, zval *mem, int type TSRMLS_DC) /* {{{ 
 		convert_to_boolean(return_value);
 		ZVAL_BOOL(return_value, soo->debug);
 	} else if(!strcasecmp(Z_STRVAL_P(mem),"sslChecks")) {
-		convert_to_boolean(return_value);
-		ZVAL_BOOL(return_value, soo->sslcheck);
+		ZVAL_LONG(return_value, soo->sslcheck);
 	}
 	return return_value;
 } /* }}} */

@@ -174,6 +174,7 @@ static zend_object_value php_so_register_object(php_so_object *soo TSRMLS_DC) /*
 static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 {
 	php_so_object *nos;
+	zval *tmp;
 
 	nos = ecalloc(1, sizeof(php_so_object));
 	nos->signature = NULL;
@@ -189,6 +190,8 @@ static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ *
 	zend_object_std_init(&nos->zo, ce TSRMLS_CC);
 #ifdef ZEND_ENGINE_2_4
 	object_properties_init(&nos->zo, ce);
+#else
+	zend_hash_copy(nos->zo.properties, &ce->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
 #endif
 #endif
 

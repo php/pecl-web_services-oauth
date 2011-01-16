@@ -1117,6 +1117,7 @@ static zend_object_value oauth_provider_register(php_oauth_provider *soo TSRMLS_
 static php_oauth_provider* oauth_provider_new(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 {
 	php_oauth_provider *nos;
+	zval *tmp;
 
 	nos = ecalloc(1, sizeof(php_oauth_provider));
 
@@ -1128,6 +1129,11 @@ static php_oauth_provider* oauth_provider_new(zend_class_entry *ce TSRMLS_DC) /*
 	nos->zo.guards = NULL;
 #else
 	zend_object_std_init(&nos->zo, ce TSRMLS_CC);
+#ifdef ZEND_ENGINE_2_4
+	object_properties_init(&nos->zo, ce);
+#else
+	zend_hash_copy(nos->zo.properties, &ce->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
+#endif
 #endif
 
 	return nos;

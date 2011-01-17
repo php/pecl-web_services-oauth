@@ -333,6 +333,7 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 	php_oauth_provider_fcall *cb = NULL;
 	zval *retval = NULL, *args, *pthis;
 	char *errstr = "", *callable_name = NULL;
+	zend_bool is_callable;
 
 	pthis = getThis();
 	sop = fetch_sop_object(pthis TSRMLS_CC);
@@ -366,7 +367,13 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 	Z_ADDREF_P(pthis);
 
 	errstr = NULL;
-	if (!zend_is_callable_ex(cb->fcall_info->function_name, cb->fcall_info->object_ptr, IS_CALLABLE_CHECK_SILENT, &callable_name, NULL, &cb->fcall_info_cache, &errstr TSRMLS_CC)) {
+#if PHP_VERSION_ID < 50300
+	is_callable = zend_is_callable_ex(cb->fcall_info->function_name, 0, &callable_name, NULL, NULL, NULL, NULL TSRMLS_CC);
+#else
+	is_callable = zend_is_callable_ex(cb->fcall_info->function_name, cb->fcall_info->object_ptr, IS_CALLABLE_CHECK_SILENT, &callable_name, NULL, &cb->fcall_info_cache, &errstr TSRMLS_CC);
+#endif
+	
+	if (!is_callable) {
 		if (errstr) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid callback %s, %s", callable_name, errstr);
 			efree(errstr);

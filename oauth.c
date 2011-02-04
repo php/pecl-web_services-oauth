@@ -1550,7 +1550,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 	uint is_redirect = FALSE, follow_redirects = 0, need_to_free_rheaders = 0;
 
 	auth_type = Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
-	final_http_method = oauth_get_http_method(soo, method TSRMLS_CC);
+	final_http_method = oauth_get_http_method(soo, method ? method : OAUTH_HTTP_METHOD_POST TSRMLS_CC);
 
 	if (OAUTH_AUTH_TYPE_FORM==auth_type && strcasecmp(final_http_method, OAUTH_HTTP_METHOD_POST)) {
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "auth type is set to HTTP POST with a non-POST http method, use setAuthType to put OAuth parameters somewhere else in the request", NULL, NULL TSRMLS_CC);

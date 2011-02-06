@@ -1480,7 +1480,7 @@ static const char *oauth_get_http_method(php_so_object *soo, const char *http_me
 		case OAUTH_AUTH_TYPE_FORM:return OAUTH_HTTP_METHOD_POST;
 		case OAUTH_AUTH_TYPE_URI:return OAUTH_HTTP_METHOD_GET;
 	}
-	return http_method;
+	return http_method ? http_method : OAUTH_HTTP_METHOD_POST;
 }
 /* }}} */
 

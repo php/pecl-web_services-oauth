@@ -1476,11 +1476,12 @@ static const char *oauth_get_http_method(php_so_object *soo, const char *http_me
 {
 	long auth_type = Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
 
-	switch(auth_type) {
-		case OAUTH_AUTH_TYPE_FORM:return OAUTH_HTTP_METHOD_POST;
-		case OAUTH_AUTH_TYPE_URI:return OAUTH_HTTP_METHOD_GET;
+	if (OAUTH_AUTH_TYPE_URI==auth_type) {
+		return OAUTH_HTTP_METHOD_GET;
+	} else if (!http_method) {
+		return OAUTH_HTTP_METHOD_POST;
 	}
-	return http_method ? http_method : OAUTH_HTTP_METHOD_POST;
+ 	return http_method;
 }
 /* }}} */
 

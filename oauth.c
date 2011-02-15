@@ -174,7 +174,6 @@ static zend_object_value php_so_register_object(php_so_object *soo TSRMLS_DC) /*
 static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 {
 	php_so_object *nos;
-	zval *tmp;
 
 	nos = ecalloc(1, sizeof(php_so_object));
 	nos->signature = NULL;
@@ -191,6 +190,7 @@ static php_so_object* php_so_object_new(zend_class_entry *ce TSRMLS_DC) /* {{{ *
 #ifdef ZEND_ENGINE_2_4
 	object_properties_init(&nos->zo, ce);
 #else
+	zval *tmp;
 	zend_hash_copy(nos->zo.properties, &ce->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
 #endif
 #endif
@@ -1720,9 +1720,11 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 #if OAUTH_USE_CURL
 			case OAUTH_REQENGINE_CURL:
 				http_response_code = make_req_curl(soo, surl.c, &payload, final_http_method, rheaders TSRMLS_CC);
-				efree(soo->multipart_files);
-				efree(soo->multipart_params);
-				soo->multipart_files_num = 0;
+				if (soo->multipart_files_num) {
+					efree(soo->multipart_files);
+					efree(soo->multipart_params);
+					soo->multipart_files_num = 0;
+				}
 				break;
 #endif
 		}

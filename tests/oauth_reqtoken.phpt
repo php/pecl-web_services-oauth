@@ -13,6 +13,7 @@ $pid = http_server("tcp://127.0.0.1:12342", array(
 	"HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 40\r\n\r\noauth_token=1234&oauth_token_secret=4567",
 	"HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 40\r\n\r\noauth_token=1234&oauth_token_secret=4567",
 	"HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 40\r\n\r\noauth_token=1234&oauth_token_secret=4567",
+	"HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 40\r\n\r\noauth_token=1234&oauth_token_secret=4567",
 ), $output);
 
 $x->setAuthType(OAUTH_AUTH_TYPE_AUTHORIZATION);
@@ -23,6 +24,7 @@ var_dump($x->getRequestToken('http://127.0.0.1:12342/test'));
 
 $x->setAuthType(OAUTH_AUTH_TYPE_URI);
 var_dump($x->getRequestToken('http://127.0.0.1:12342/test'));
+var_dump($x->getRequestToken('http://127.0.0.1:12342/test', null, 'POST'));
 
 fseek($output, 0, SEEK_SET);
 var_dump(stream_get_contents($output));
@@ -49,7 +51,13 @@ array(2) {
   ["oauth_token_secret"]=>
   string(4) "4567"
 }
-string(%d) "POST /test HTTP/%f
+array(2) {
+  ["oauth_token"]=>
+  string(4) "1234"
+  ["oauth_token_secret"]=>
+  string(4) "4567"
+}
+string(%d) "GET /test HTTP/%f
 Host: 127.0.0.1:12342
 Authorization: OAuth oauth_consumer_key="1234",oauth_signature_method="HMAC-SHA1",oauth_nonce="%s.%d",oauth_timestamp="%d",oauth_version="1.0",oauth_signature="%s"
 
@@ -60,6 +68,9 @@ Content-Type: application/x-www-form-urlencoded
 
 oauth_consumer_key=1234&oauth_signature_method=HMAC-SHA1&oauth_nonce=%s.%d&oauth_timestamp=%d&oauth_version=1.0&oauth_signature=%s
 GET /test?oauth_consumer_key=1234&oauth_signature_method=HMAC-SHA1&oauth_nonce=%s.%d&oauth_timestamp=%d&oauth_version=1.0&oauth_signature=%s HTTP/%f
+Host: 127.0.0.1:12342
+
+POST /test?oauth_consumer_key=1234&oauth_signature_method=HMAC-SHA1&oauth_nonce=%s.%d&oauth_timestamp=%d&oauth_version=1.0&oauth_signature=%s HTTP/%f
 Host: 127.0.0.1:12342
 
 "

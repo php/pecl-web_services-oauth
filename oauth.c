@@ -1476,12 +1476,16 @@ static const char *oauth_get_http_method(php_so_object *soo, const char *http_me
 {
 	long auth_type = Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
 
-	if (OAUTH_AUTH_TYPE_URI==auth_type) {
-		return OAUTH_HTTP_METHOD_GET;
-	} else if (!http_method) {
-		return OAUTH_HTTP_METHOD_POST;
+	if (http_method) {
+		/* TODO handle conflict with FORM auth and anything but POST or PUT */
+		return http_method;
 	}
- 	return http_method;
+	/* http method not explicitly given, choose default one */
+	if (OAUTH_AUTH_TYPE_FORM==auth_type) {
+		return OAUTH_HTTP_METHOD_POST;
+	} else {
+		return OAUTH_HTTP_METHOD_GET;
+	}
 }
 /* }}} */
 
@@ -2138,15 +2142,15 @@ SO_METHOD(getCAPath)
 SO_METHOD(getRequestToken)
 {
 	php_so_object *soo;
-	zval *zret = NULL;
-	char *url, *callback_url = NULL;
-	int url_len = 0, callback_url_len = 0;
+	zval *zret = NULL, *callback_url = NULL;
+	char *url, *http_method = NULL;
+	int url_len = 0, http_method_len = 0;
 	long retcode;
 	HashTable *args = NULL;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|s", &url, &url_len, &callback_url, &callback_url_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|zs", &url, &url_len, &callback_url, &http_method, &http_method_len) == FAILURE) {
 		return;
 	}
 
@@ -2155,18 +2159,18 @@ SO_METHOD(getRequestToken)
 		RETURN_FALSE;
 	}
 
-	if (callback_url) {
+	if (callback_url && IS_STRING==Z_TYPE_P(callback_url)) {
 		ALLOC_HASHTABLE(args);
 		zend_hash_init(args, 0, NULL, ZVAL_PTR_DTOR, 0);
-		if (callback_url_len > 0) {
-			add_arg_for_req(args, OAUTH_PARAM_CALLBACK, callback_url TSRMLS_CC);
+		if (Z_STRLEN_P(callback_url) > 0) {
+			add_arg_for_req(args, OAUTH_PARAM_CALLBACK, Z_STRVAL_P(callback_url) TSRMLS_CC);
 		} else {
 			/* empty callback url specified, treat as 1.0a */
 			add_arg_for_req(args, OAUTH_PARAM_CALLBACK, OAUTH_CALLBACK_OOB TSRMLS_CC);
 		}
 	}
 
-	retcode = oauth_fetch(soo, url, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_POST TSRMLS_CC), NULL, NULL, args, 0 TSRMLS_CC);
+	retcode = oauth_fetch(soo, url, oauth_get_http_method(soo, http_method TSRMLS_CC), NULL, NULL, args, 0 TSRMLS_CC);
 
 	if (args) {
 		FREE_ARGS_HASH(args);

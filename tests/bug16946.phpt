@@ -24,7 +24,7 @@ $pid = http_server("tcp://127.0.0.1:12342", array(
 
 try {
 	$x->setAuthType(OAUTH_AUTH_TYPE_AUTHORIZATION);
-	var_dump($x->getRequestToken('http://127.0.0.1:12342/test'));
+	var_dump($x->getRequestToken('http://127.0.0.1:12342/test', null, 'GET'));
 } catch (Exception $e) {
 	var_dump($x->debugInfo);
 }

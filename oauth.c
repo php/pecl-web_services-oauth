@@ -541,15 +541,18 @@ int oauth_http_build_query(php_so_object *soo, smart_str *s, HashTable *args, ze
 
 			switch (hash_key_type) {
 				case HASH_KEY_IS_STRING:
-					if(*(ZEND_HASH_KEY_STRVAL(cur_key))=='@' && *(Z_STRVAL_PP(cur_val))=='@') {
+					if (*(ZEND_HASH_KEY_STRVAL(cur_key))=='@' && *(Z_STRVAL_PP(cur_val))=='@') {
 						found = 0;
-						for(i=0; i<soo->multipart_files_num; i++) {
-							if(!strcmp(soo->multipart_params[i], ZEND_HASH_KEY_STRVAL(cur_key))) {
-								found = 1; break;
+						for (i=0; i<soo->multipart_files_num; ++i) {
+							if (0 == strcmp(soo->multipart_params[i], ZEND_HASH_KEY_STRVAL(cur_key))) {
+								found = 1;
+								break;
 							}
 						}
 
-						if(found) continue;
+						if (found) {
+							continue;
+						}
 
 						soo->multipart_files = erealloc(soo->multipart_files, sizeof(char *) * (soo->multipart_files_num + 1));
 						soo->multipart_params = erealloc(soo->multipart_params, sizeof(char *) * (soo->multipart_files_num + 1));
@@ -562,13 +565,15 @@ int oauth_http_build_query(php_so_object *soo, smart_str *s, HashTable *args, ze
 						/* we don't add multipart files to the params */
 						skip_append = 1;
 						break;
-					} 
+					}
 					arg_key = oauth_url_encode(ZEND_HASH_KEY_STRVAL(cur_key), cur_key_len-1);
 					break;
+
 				case HASH_KEY_IS_LONG:
 					/* take value of num_index instead */
 					arg_key = NULL;
 					break;
+
 #if (PHP_MAJOR_VERSION >= 6)
 				case HASH_KEY_IS_UNICODE:
 					{
@@ -585,7 +590,9 @@ int oauth_http_build_query(php_so_object *soo, smart_str *s, HashTable *args, ze
 					continue;
 			}
 
-			if(skip_append) continue;
+			if (skip_append) {
+				continue;
+			}
 
 			INIT_SMART_STR(keyname);
 			if (arg_key) {

@@ -2597,15 +2597,15 @@ SO_METHOD(fetch)
 SO_METHOD(getAccessToken)
 {
 	php_so_object *soo;
-	int aturi_len = 0, ash_len = 0, verifier_len = 0;
-	char *aturi, *ash, *verifier;
+	int aturi_len = 0, ash_len = 0, verifier_len = 0, http_method_len = 0;
+	char *aturi, *ash, *verifier, *http_method = NULL;
 	zval *zret = NULL;
 	HashTable *args = NULL;
 	long retcode;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|ss", &aturi, &aturi_len, &ash, &ash_len, &verifier, &verifier_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|sss", &aturi, &aturi_len, &ash, &ash_len, &verifier, &verifier_len, &http_method, &http_method_len) == FAILURE) {
 		return;
 	}
 
@@ -2630,7 +2630,7 @@ SO_METHOD(getAccessToken)
 		}
 	}
 
-	retcode = oauth_fetch(soo, aturi, oauth_get_http_method(soo, OAUTH_HTTP_METHOD_POST TSRMLS_CC), NULL, NULL, args, OAUTH_FETCH_USETOKEN TSRMLS_CC);
+	retcode = oauth_fetch(soo, aturi, oauth_get_http_method(soo, http_method TSRMLS_CC), NULL, NULL, args, OAUTH_FETCH_USETOKEN TSRMLS_CC);
 
 	if (args) {
 		FREE_ARGS_HASH(args);

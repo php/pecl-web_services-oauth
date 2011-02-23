@@ -486,6 +486,7 @@ SOP_METHOD(__construct)
 	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET)-1 TSRMLS_CC);
 	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_NONCE, sizeof(OAUTH_PROVIDER_NONCE)-1 TSRMLS_CC);
 	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN, sizeof(OAUTH_PROVIDER_TOKEN)-1 TSRMLS_CC);
+	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET)-1 TSRMLS_CC);
 	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TIMESTAMP, sizeof(OAUTH_PROVIDER_TIMESTAMP)-1 TSRMLS_CC);
 	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_VERSION, sizeof(OAUTH_PROVIDER_VERSION)-1 TSRMLS_CC);
 	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE_METHOD, sizeof(OAUTH_PROVIDER_SIGNATURE_METHOD)-1 TSRMLS_CC);

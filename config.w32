@@ -16,6 +16,7 @@ if (PHP_OAUTH != "no") {
 		EXTENSION("oauth", "oauth.c provider.c", true);
 		ADD_FLAG("CFLAGS_OAUTH", "/D CURL_STATICLIB");
 		ADD_FLAG("CFLAGS_OAUTH", "/D OAUTH_USE_CURL");
+		ADD_FLAG("LDFLAGS_OAUTH", "/D /FORCE:MULTIPLE ");
 	} else {
 		WARNING("oauth not enabled; libraries and headers not found");
 	}

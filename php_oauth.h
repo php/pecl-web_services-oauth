@@ -69,7 +69,7 @@
 #endif
 #endif
 
-#define PHP_OAUTH_VERSION "1.1.1/dev"
+#define PHP_OAUTH_VERSION "1.1.1-dev"
 
 #ifdef ZEND_ENGINE_2_4
 # define OAUTH_READ_PROPERTY(_obj, _mem, _type) zend_get_std_object_handlers()->read_property(_obj, _mem, _type, key TSRMLS_CC)

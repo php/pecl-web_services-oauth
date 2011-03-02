@@ -2877,7 +2877,7 @@ ZEND_END_ARG_INFO()
 
 
 static zend_function_entry so_functions[] = { /* {{{ */
-	SO_ME(__construct,			arginfo_oauth__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)
+	SO_ME(__construct,			arginfo_oauth__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)
 	SO_ME(setRSACertificate,	arginfo_oauth_setrsacertificate,	ZEND_ACC_PUBLIC)
 	SO_ME(getRequestToken,		arginfo_oauth_getrequesttoken,	ZEND_ACC_PUBLIC)
 	SO_ME(getAccessToken,		arginfo_oauth_getaccesstoken,	ZEND_ACC_PUBLIC)

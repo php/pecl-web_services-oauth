@@ -1202,7 +1202,7 @@ ZEND_ARG_INFO(0, strong)
 ZEND_END_ARG_INFO()
 
 static zend_function_entry oauth_provider_methods[] = { /* {{{ */
-		SOP_ME(__construct,			arginfo_oauth_provider__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_FINAL|ZEND_ACC_CTOR)
+		SOP_ME(__construct,			arginfo_oauth_provider__construct,		ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)
 		SOP_ME(consumerHandler,	arginfo_oauth_provider_handler,		ZEND_ACC_PUBLIC)
 		SOP_ME(tokenHandler,	arginfo_oauth_provider_handler,		ZEND_ACC_PUBLIC)
 		SOP_ME(timestampNonceHandler,	arginfo_oauth_provider_handler,		ZEND_ACC_PUBLIC)

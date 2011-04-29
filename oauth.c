@@ -1771,7 +1771,9 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 					++soo->redirects;
 					oauth_apply_url_redirect(&surl, soo->last_location_header);
 					smart_str_0(&surl);
+/* bug 22628; keep same method when following redirects
 					final_http_method = OAUTH_HTTP_METHOD_GET;
+*/
 				}
 			}
 		} else if (http_response_code < 0) {

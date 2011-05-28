@@ -1564,10 +1564,14 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 	uint is_redirect = FALSE, follow_redirects = 0, need_to_free_rheaders = 0;
 
 	auth_type = Z_LVAL_PP(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD TSRMLS_CC));
-	final_http_method = oauth_get_http_method(soo, method ? method : OAUTH_HTTP_METHOD_POST TSRMLS_CC);
+	if(fetch_flags & OAUTH_OVERRIDE_HTTP_METHOD) {
+		final_http_method = method;
+	} else {
+		final_http_method = oauth_get_http_method(soo, method ? method : OAUTH_HTTP_METHOD_POST TSRMLS_CC);
 
-	if (OAUTH_AUTH_TYPE_FORM==auth_type && strcasecmp(final_http_method, OAUTH_HTTP_METHOD_POST)) {
-		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "auth type is set to HTTP POST with a non-POST http method, use setAuthType to put OAuth parameters somewhere else in the request", NULL, NULL TSRMLS_CC);
+		if (OAUTH_AUTH_TYPE_FORM==auth_type && strcasecmp(final_http_method, OAUTH_HTTP_METHOD_POST)) {
+			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "auth type is set to HTTP POST with a non-POST http method, use setAuthType to put OAuth parameters somewhere else in the request", NULL, NULL TSRMLS_CC);
+		}
 	}
 
 	follow_redirects = soo->follow_redirects;
@@ -2586,7 +2590,7 @@ SO_METHOD(fetch)
 		RETURN_FALSE;
 	}
 
-	retcode = oauth_fetch(soo, fetchurl, http_method, request_args, request_headers, NULL, OAUTH_FETCH_USETOKEN TSRMLS_CC);
+	retcode = oauth_fetch(soo, fetchurl, http_method, request_args, request_headers, NULL, OAUTH_FETCH_USETOKEN | OAUTH_OVERRIDE_HTTP_METHOD TSRMLS_CC);
 
 	MAKE_STD_ZVAL(zret);
 	ZVAL_STRINGL(zret, soo->lastresponse.c, soo->lastresponse.len, 1);

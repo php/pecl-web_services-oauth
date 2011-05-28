@@ -139,6 +139,7 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_FETCH_USETOKEN 1
 #define OAUTH_FETCH_SIGONLY 2
 #define OAUTH_FETCH_HEADONLY 4
+#define OAUTH_OVERRIDE_HTTP_METHOD 8
 
 #define OAUTH_SSLCHECK_NONE 0
 #define OAUTH_SSLCHECK_HOST 1

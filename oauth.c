@@ -755,6 +755,10 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 				efree(sbs_scheme_part);
 			}
 			smart_str_free(&squery);
+		} else {
+			/* Bug 22630 - throw exception if no path given */
+			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid path (perhaps you only specified the hostname? try adding a slash at the end)", NULL, NULL TSRMLS_CC);
+			return NULL;
 		}
 
 		smart_str_free(&sbuf);

@@ -1161,6 +1161,7 @@ static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
 		}
 		strncpy(soo->last_location_header, header, hlen - xhead_clen - 3 /*\r\n\0*/);
 		soo->last_location_header[hlen - xhead_clen - 3] = '\0';
+		smart_str_appendl(&soo->headers_in, "Location: ", sizeof("Location: ") - 1);
 	}
 	if(strncasecmp(header, "\r\n", 2)) {
 		smart_str_appendl(&soo->headers_in, header, hlen);

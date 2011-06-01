@@ -889,8 +889,7 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 
 #define HTTP_RESPONSE_LOCATION(zvalpp) \
 	if (0==strncasecmp(Z_STRVAL_PP(zvalpp), "Location: ", 10)) { \
-		strncpy(soo->last_location_header, Z_STRVAL_PP(zvalpp)+10, OAUTH_MAX_HEADER_LEN-1); \
-		soo->last_location_header[OAUTH_MAX_HEADER_LEN-1] = '\0'; \
+		strlcpy(soo->last_location_header, Z_STRVAL_PP(zvalpp)+10, OAUTH_MAX_HEADER_LEN); \
 	}
 
 static long make_req_streams(php_so_object *soo, const char *url, const smart_str *payload, const char *http_method, HashTable *request_headers TSRMLS_DC) /* {{{ */
@@ -1140,32 +1139,33 @@ int oauth_debug_handler(CURL *ch, curl_infotype type, char *data, size_t data_le
 static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
 {
 	char *header;
-	size_t hlen;
+	size_t hlen, vpos = sizeof("Location:") - 1;
 	php_so_object *soo;
-	unsigned int xhead_clen = 0;
-	unsigned int location_len = 8;
 
 	header = (char *)ptr;
 	hlen = nmemb * size;
 	soo = (php_so_object *)ctx;
 
-	if(header[hlen]!='\0')
-	{
-		header[hlen] = '\0';
-	}
-
 	/* handle Location header */
-	if(hlen > location_len && !strncasecmp(header,"Location",location_len)) {
-		header += location_len + 1 /*:*/;
-		xhead_clen += location_len;
-		while(*header==' ' && xhead_clen<(OAUTH_MAX_HEADER_LEN))
-		{
-			header++;
-			++xhead_clen;
+	if (hlen > vpos && 0==strncasecmp(header, "Location:", vpos)) {
+		size_t eol = hlen;
+		/* find value start */
+		while (vpos != eol && ' '==header[vpos]) {
+			++vpos;
 		}
-		strncpy(soo->last_location_header, header, hlen - xhead_clen - 3 /*\r\n\0*/);
-		soo->last_location_header[hlen - xhead_clen - 3] = '\0';
-		smart_str_appendl(&soo->headers_in, "Location: ", sizeof("Location: ") - 1);
+		/* POST: vpos == eol OR vpos < eol => value start found */
+		while (vpos != eol && strchr("\r\n\0", header[eol - 1])) {
+			--eol;
+		}
+		/* POST: vpos == eol OR vpos < eol => value end found */
+		if (vpos != eol) {
+			if (eol - vpos >= OAUTH_MAX_HEADER_LEN) {
+				eol = vpos + OAUTH_MAX_HEADER_LEN - 1;
+			}
+			/* POST: eol - vpos <= OAUTH_MAX_HEADER_LEN */
+			strncpy(soo->last_location_header, header + vpos, eol - vpos);
+		}
+		soo->last_location_header[eol - vpos] = '\0';
 	}
 	if(strncasecmp(header, "\r\n", 2)) {
 		smart_str_appendl(&soo->headers_in, header, hlen);

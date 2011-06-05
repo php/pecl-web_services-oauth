@@ -1127,7 +1127,9 @@ static zend_object_value oauth_provider_register(php_oauth_provider *soo TSRMLS_
 static php_oauth_provider* oauth_provider_new(zend_class_entry *ce TSRMLS_DC) /* {{{ */
 {
 	php_oauth_provider *nos;
+#ifndef ZEND_ENGINE_2_4
 	zval *tmp;
+#endif
 
 	nos = ecalloc(1, sizeof(php_oauth_provider));
 

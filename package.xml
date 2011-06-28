@@ -35,10 +35,10 @@ Requirements: ext/hash
     <email>rasmus@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2011-02-06</date>
+  <date>2011-06-27</date>
   <version>
-    <release>1.1.0</release>
-    <api>1.1.0</api>
+    <release>1.2</release>
+    <api>1.2</api>
   </version>
   <stability>
     <release>stable</release>
@@ -46,9 +46,8 @@ Requirements: ext/hash
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-  - Fixed bugs: 17782, 18214, 21426, 22093
-  - Added PLAINTEXT signature method support (stas@)
-  - Added OAuth::getRequestHeader and OAuth::setSSLChecks (hirokawa@)
+    - Fixed bugs: 22337, 22485, 22628, 22630, 22484 (and others!)
+    - Added ability to coerce HTTP method when calling OAuth::fetch()
   </notes>
   <contents>
     <dir name="/">
@@ -132,6 +131,62 @@ Requirements: ext/hash
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+  <release>
+    <date>2011-02-06</date>
+    <version>
+      <release>1.1.0</release>
+      <api>1.1.0</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <notes>
+      - Fixed bugs: 17782, 18214, 21426, 22093
+      - Added PLAINTEXT signature method support (stas@)
+      - Added OAuth::getRequestHeader and OAuth::setSSLChecks (hirokawa@)
+    </notes>
+    </release>
+  
+  <release>
+    <date>2011-06-02</date>
+    <version>
+      <release>1.0.0</release>
+      <api>1.0.0</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <notes>
+    - Added php streams support (libcurl is no longer required)
+    - Added OAuthProvider support (http://php.net/oauthprovider)
+    - Added RSA-SHA1 signature support
+    - Added SHA256 signature support
+    - Added OAuth::setTimeout, OAuth::generateSignature, OAuth::setRequestEngine
+    - Send the User-Agent header for pecl/oauth
+    - Lots of other improvements...
+    </notes>
+    </release>
+    <release>
+        <date>2009-05-09</date>
+        <version>
+            <release>0.99.9</release>
+            <api>0.99.9</api>
+        </version>
+        <stability>
+            <release>beta</release>
+            <api>beta</api>
+        </stability>
+        <notes>
+	  - Added 1.0a support (based on implementer Draft 2, http://oauth.googlecode.com/svn/spec/core/1.0a/drafts/2/oauth-core-1_0a.html)
+	  - Added support for empty parameters
+	  - Added oauth_callback support to getRequestToken
+	  - Added oauth_verifier support to getAccessToken
+	  - Fixed build failures for PHP5.1
+        </notes>
+    </release>
 
   <release>
     <date>2010-06-02</date>

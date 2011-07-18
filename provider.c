@@ -410,24 +410,39 @@ static char *oauth_provider_get_http_verb(TSRMLS_D) /* {{{ */
 
 static char *oauth_provider_get_current_uri(TSRMLS_D)
 {
-	zval **host = NULL, **port = NULL, **uri = NULL, **proto = NULL;
-	
+	zval **host = NULL, **port = NULL, **uri = NULL, **proto = NULL, **https=NULL;
+
 	zend_is_auto_global("_SERVER", sizeof("_SERVER")-1 TSRMLS_CC);
 
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_HOST", sizeof("HTTP_HOST"), (void**)&host);
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "SERVER_PORT", sizeof("SERVER_PORT"), (void**)&port);
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "REQUEST_URI", sizeof("REQUEST_URI"), (void**)&uri);
 	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_X_FORWARDED_PROTO", sizeof("HTTP_X_FORWARDED_PROTO"), (void **)&proto);
+	zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTPS", sizeof("HTTPS"), (void **)&https);
 
-	if (host && port && uri) {
-		char *tmp;
-		if(proto && Z_STRLEN_PP(proto)) {	
-			spprintf(&tmp, 0, "%s://%s%s", Z_STRVAL_PP(proto), Z_STRVAL_PP(host), Z_STRVAL_PP(uri));
-		} else {
-			SEPARATE_ZVAL(port);
-			convert_to_long_ex(port);
-			spprintf(&tmp, 0, "http%s://%s%s", Z_LVAL_PP(port)==443?"s":"", Z_STRVAL_PP(host), Z_STRVAL_PP(uri));
+	if (host && port && uri)
+	{
+		char *tmp,*hostname,*colon_in_hostname;
+		
+		spprintf(&hostname, 0, "%s", Z_STRVAL_PP(host));
+		colon_in_hostname=strrchr(hostname,':');
+		if(colon_in_hostname && ((https && Z_LVAL_PP(port)==443) || (!https && Z_LVAL_PP(port)==80)))
+		{
+			*colon_in_hostname=0;
 		}
+		if(proto && Z_STRLEN_PP(proto))
+		{	
+			spprintf(&tmp, 0, "%s://%s%s", Z_STRVAL_PP(proto), hostname, Z_STRVAL_PP(uri));
+		}
+		else if(https && stricmp(Z_STRVAL_PP(https),"off")!=0)
+		{
+			spprintf(&tmp, 0, "https://%s%s", hostname, Z_STRVAL_PP(uri));
+		}
+		else
+		{
+			spprintf(&tmp, 0, "http://%s%s", hostname, Z_STRVAL_PP(uri));
+		}
+		efree(hostname);
 		return tmp;
 	}
 

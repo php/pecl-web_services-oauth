@@ -434,7 +434,7 @@ static char *oauth_provider_get_current_uri(TSRMLS_D)
 		{	
 			spprintf(&tmp, 0, "%s://%s%s", Z_STRVAL_PP(proto), hostname, Z_STRVAL_PP(uri));
 		}
-		else if(https && stricmp(Z_STRVAL_PP(https),"off")!=0)
+		else if(https && strcasecmp(Z_STRVAL_PP(https),"off")!=0)
 		{
 			spprintf(&tmp, 0, "https://%s%s", hostname, Z_STRVAL_PP(uri));
 		}

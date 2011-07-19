@@ -1696,6 +1696,10 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 			return SUCCESS;
 		}
 
+		if(!final_http_method) {
+			final_http_method = "GET";
+		}
+
 		if (!strcmp(final_http_method, OAUTH_HTTP_METHOD_GET)) {
 			/* GET request means to extend the url, but not for redirects obviously */
 			if (!is_redirect && postdata.len) {

@@ -9,7 +9,7 @@ http://pear.php.net/dtd/package-2.0.xsd">
   <description>
 OAuth is an authorization protocol built on top of HTTP which allows applications to securely access data without having to store usernames and passwords.
 
-Requirements: ext/hash
+Requirements: ext/hash (now a part of PHP core)
   </description>
   <lead>
     <name>John Jawed</name>
@@ -37,7 +37,7 @@ Requirements: ext/hash
   </lead>
   <date>2011-06-27</date>
   <version>
-    <release>1.2</release>
+    <release>1.2.1</release>
     <api>1.2</api>
   </version>
   <stability>
@@ -46,8 +46,7 @@ Requirements: ext/hash
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-    - Fixed bugs: 22337, 22485, 22628, 22630, 22484 (and others!)
-    - Added ability to coerce HTTP method when calling OAuth::fetch()
+    - Fixed bugs: 22819, 22824
   </notes>
   <contents>
     <dir name="/">
@@ -133,6 +132,22 @@ Requirements: ext/hash
   <changelog>
 
   <release>
+    <date>2011-06-27</date>
+    <version>
+      <release>1.2</release>
+      <api>1.2</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <notes>
+      - Fixed bugs: 22337, 22485, 22628, 22630, 22484 (and others!)
+      - Added ability to coerce HTTP method when calling OAuth::fetch()
+    </notes>
+  </release>
+
+  <release>
     <date>2011-02-06</date>
     <version>
       <release>1.1.0</release>
@@ -147,7 +162,7 @@ Requirements: ext/hash
       - Added PLAINTEXT signature method support (stas@)
       - Added OAuth::getRequestHeader and OAuth::setSSLChecks (hirokawa@)
     </notes>
-    </release>
+  </release>
   
   <release>
     <date>2011-06-02</date>

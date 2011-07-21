@@ -341,7 +341,7 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 	switch(type) {
 		case OAUTH_PROVIDER_CONSUMER_CB:
 			cb = sop->consumer_handler;
-			errstr = "Consumer key/secret handler not specified, did you set a valid callback via OAuthProvider::consumerKeyHandler()?";
+			errstr = "Consumer key/secret handler not specified, did you set a valid callback via OAuthProvider::consumerHandler()?";
 			break;
 		case OAUTH_PROVIDER_TOKEN_CB:
 			cb = sop->token_handler;
@@ -590,7 +590,7 @@ SOP_METHOD(__construct)
 }
 /* }}} */
 
-/* {{{ proto void OAuthProvider::callConsumerKeyHandler()
+/* {{{ proto void OAuthProvider::callConsumerHandler()
    calls the registered consumer key handler function */
 SOP_METHOD(callconsumerHandler)
 {
@@ -614,7 +614,7 @@ SOP_METHOD(callTimestampNonceHandler)
 }
 /* }}} */
 
-/* {{{ proto void OAuthProvider::consumerKeyHandler(callback cb) */
+/* {{{ proto void OAuthProvider::consumerHandler(callback cb) */
 SOP_METHOD(consumerHandler)
 {
 	oauth_provider_register_cb(INTERNAL_FUNCTION_PARAM_PASSTHRU, OAUTH_PROVIDER_CONSUMER_CB);

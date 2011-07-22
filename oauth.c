@@ -1579,6 +1579,11 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 		}
 	}
 
+
+	if(!final_http_method) {
+		final_http_method = "GET";
+	}
+
 	follow_redirects = soo->follow_redirects;
 	soo->redirects = 0;
 	soo->multipart_files = NULL;
@@ -1694,10 +1699,6 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 				FREE_ARGS_HASH(rheaders);
 			}
 			return SUCCESS;
-		}
-
-		if(!final_http_method) {
-			final_http_method = "GET";
 		}
 
 		if (!strcmp(final_http_method, OAUTH_HTTP_METHOD_GET)) {

@@ -266,6 +266,7 @@ typedef struct {
 	php_so_debug *debug_info;
 	char **multipart_files;
 	char **multipart_params;
+	uint is_multipart;
 	void ***thread_ctx;
 } php_so_object;
 

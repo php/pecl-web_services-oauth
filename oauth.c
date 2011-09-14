@@ -534,6 +534,19 @@ int oauth_http_build_query(php_so_object *soo, smart_str *s, HashTable *args, ze
 
 	smart_str_0(s);
 	if (args) {
+		if (!soo->is_multipart) {
+			for (zend_hash_internal_pointer_reset_ex(args, &pos);
+				 HASH_KEY_NON_EXISTANT!=(hash_key_type=zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, &num_index, 0, &pos));
+				 zend_hash_move_forward_ex(args, &pos)) {
+				zend_hash_get_current_data_ex(args, (void *)&cur_val, &pos);
+				if (hash_key_type == HASH_KEY_IS_STRING &&
+					(*(ZEND_HASH_KEY_STRVAL(cur_key))=='@' && *(Z_STRVAL_PP(cur_val))=='@')) {
+					soo->is_multipart = 1;
+					break;
+				}
+			}
+		}
+
 		for (zend_hash_internal_pointer_reset_ex(args, &pos);
 				HASH_KEY_NON_EXISTANT!=(hash_key_type=zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, &num_index, 0, &pos));
 				zend_hash_move_forward_ex(args, &pos)) {
@@ -543,7 +556,7 @@ int oauth_http_build_query(php_so_object *soo, smart_str *s, HashTable *args, ze
 
 			switch (hash_key_type) {
 				case HASH_KEY_IS_STRING:
-					if (*(ZEND_HASH_KEY_STRVAL(cur_key))=='@' && *(Z_STRVAL_PP(cur_val))=='@') {
+					if (soo->is_multipart && strncmp(ZEND_HASH_KEY_STRVAL(cur_key), "oauth_", 6) != 0) {
 						found = 0;
 						for (i=0; i<soo->multipart_files_num; ++i) {
 							if (0 == strcmp(soo->multipart_params[i], ZEND_HASH_KEY_STRVAL(cur_key))) {
@@ -551,24 +564,24 @@ int oauth_http_build_query(php_so_object *soo, smart_str *s, HashTable *args, ze
 								break;
 							}
 						}
-
+						
 						if (found) {
 							continue;
 						}
-
+						
 						soo->multipart_files = erealloc(soo->multipart_files, sizeof(char *) * (soo->multipart_files_num + 1));
 						soo->multipart_params = erealloc(soo->multipart_params, sizeof(char *) * (soo->multipart_files_num + 1));
-
+						
 						convert_to_string_ex(cur_val);
 						soo->multipart_files[soo->multipart_files_num] = Z_STRVAL_PP(cur_val);
 						soo->multipart_params[soo->multipart_files_num] = ZEND_HASH_KEY_STRVAL(cur_key);
-
+						
 						++soo->multipart_files_num;
 						/* we don't add multipart files to the params */
 						skip_append = 1;
-						break;
+					} else {
+						arg_key = oauth_url_encode(ZEND_HASH_KEY_STRVAL(cur_key), cur_key_len-1);
 					}
-					arg_key = oauth_url_encode(ZEND_HASH_KEY_STRVAL(cur_key), cur_key_len-1);
 					break;
 
 				case HASH_KEY_IS_LONG:
@@ -1247,7 +1260,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload
 		}
 	}
 
-	if(soo->multipart_files_num) {
+	if(soo->is_multipart) {
 		struct curl_httppost *ff = NULL;
 		struct curl_httppost *lf = NULL;
 		int i;
@@ -1258,33 +1271,42 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload
 			/* swiped from ext/curl/interface.c to help with consistency */
 			postval = estrdup(soo->multipart_files[i]);
 
-			/* :< (chomp) @ */
-			++soo->multipart_params[i];
-			++postval;
-
-			if((type = php_memnstr(postval, ";type=", sizeof(";type=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
-				*type = '\0';
+			if (postval[0] == '@' && soo->multipart_params[i][0] == '@') {
+				/* :< (chomp) @ */
+				++soo->multipart_params[i];
+				++postval;
+				
+				if((type = php_memnstr(postval, ";type=", sizeof(";type=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
+					*type = '\0';
+				}
+				if((filename = php_memnstr(postval, ";filename=", sizeof(";filename=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
+					*filename = '\0';
+				}
+				
+				/* open_basedir check */
+				if(php_check_open_basedir(postval TSRMLS_CC)) {
+					char *em;
+					spprintf(&em, 0, "failed to open file for multipart request: %s", postval);
+					soo_handle_error(soo, -1, em, NULL, NULL TSRMLS_CC);
+					efree(em);
+					return 1;
+				}
+				
+				curl_formadd(&ff, &lf,
+							 CURLFORM_COPYNAME, soo->multipart_params[i],
+							 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+							 CURLFORM_FILENAME, filename ? filename + sizeof(";filename=") - 1 : soo->multipart_files[i],
+							 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
+							 CURLFORM_FILE, postval,
+							 CURLFORM_END);
+			} else {
+				curl_formadd(&ff, &lf,
+							 CURLFORM_COPYNAME, soo->multipart_params[i],
+							 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+							 CURLFORM_COPYCONTENTS, postval,
+							 CURLFORM_CONTENTSLENGTH, (long)strlen(postval),
+							 CURLFORM_END);
 			}
-			if((filename = php_memnstr(postval, ";filename=", sizeof(";filename=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
-				*filename = '\0';
-			}
-
-			/* open_basedir check */
-			if(php_check_open_basedir(postval TSRMLS_CC)) {
-				char *em;
-				spprintf(&em, 0, "failed to open file for multipart request: %s", postval);
-				soo_handle_error(soo, -1, em, NULL, NULL TSRMLS_CC);
-				efree(em);
-				return 1;
-			}
-
-			curl_formadd(&ff, &lf,
-					CURLFORM_COPYNAME, soo->multipart_params[i],
-					CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
-					CURLFORM_FILENAME, filename ? filename + sizeof(";filename=") - 1 : soo->multipart_files[i],
-					CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
-					CURLFORM_FILE, postval,
-					CURLFORM_END);
 		}
 
 		curl_easy_setopt(curl, CURLOPT_HTTPPOST, ff);
@@ -1589,6 +1611,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 	soo->multipart_files = NULL;
 	soo->multipart_params = NULL;
 	soo->multipart_files_num = 0;
+	soo->is_multipart = 0;
 
 	/* request_params can be either NULL, a string containing arbitrary text (such as XML) or an array */
 	if (request_params) {
@@ -1751,6 +1774,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 					efree(soo->multipart_files);
 					efree(soo->multipart_params);
 					soo->multipart_files_num = 0;
+					soo->is_multipart = 0;
 				}
 				break;
 #endif

@@ -534,7 +534,7 @@ int oauth_http_build_query(php_so_object *soo, smart_str *s, HashTable *args, ze
 
 	smart_str_0(s);
 	if (args) {
-		if (!soo->is_multipart) {
+		if (soo && !soo->is_multipart) {
 			for (zend_hash_internal_pointer_reset_ex(args, &pos);
 				 HASH_KEY_NON_EXISTANT!=(hash_key_type=zend_hash_get_current_key_ex(args, &cur_key, &cur_key_len, &num_index, 0, &pos));
 				 zend_hash_move_forward_ex(args, &pos)) {
@@ -556,7 +556,7 @@ int oauth_http_build_query(php_so_object *soo, smart_str *s, HashTable *args, ze
 
 			switch (hash_key_type) {
 				case HASH_KEY_IS_STRING:
-					if (soo->is_multipart && strncmp(ZEND_HASH_KEY_STRVAL(cur_key), "oauth_", 6) != 0) {
+					if (soo && soo->is_multipart && strncmp(ZEND_HASH_KEY_STRVAL(cur_key), "oauth_", 6) != 0) {
 						found = 0;
 						for (i=0; i<soo->multipart_files_num; ++i) {
 							if (0 == strcmp(soo->multipart_params[i], ZEND_HASH_KEY_STRVAL(cur_key))) {

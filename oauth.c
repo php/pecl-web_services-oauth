@@ -2127,7 +2127,7 @@ SO_METHOD(setCAPath)
 {
 	php_so_object *soo;
 	char *ca_path, *ca_info;
-	int ca_path_len, ca_info_len;
+	int ca_path_len = 0, ca_info_len = 0;
 	zval *zca_path, *zca_info;
 
 	soo = fetch_so_object(getThis() TSRMLS_CC);

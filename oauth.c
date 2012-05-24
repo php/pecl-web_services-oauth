@@ -2630,7 +2630,7 @@ SO_METHOD(fetch)
 	ZVAL_STRINGL(zret, soo->lastresponse.c, soo->lastresponse.len, 1);
 	so_set_response_args(soo->properties, zret, NULL TSRMLS_CC);
 
-	if (retcode < 0 || soo->lastresponse.c == NULL) {
+	if ((retcode < 200 || retcode > 206)) {
 		RETURN_FALSE;
 	} else {
 		RETURN_BOOL(TRUE);

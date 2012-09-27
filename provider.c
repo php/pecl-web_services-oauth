@@ -365,6 +365,7 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 	array_init(args);
 	add_next_index_zval(args, pthis);
 	Z_ADDREF_P(pthis);
+	Z_ADDREF_P(args);
 
 	errstr = NULL;
 #if PHP_VERSION_ID < 50300

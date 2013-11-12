@@ -696,6 +696,8 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 	smart_str sbuf = {0};
 
 	urlparts = php_url_parse_ex(uri, strlen(uri));
+	php_strtolower(urlparts->scheme, strlen(urlparts->scheme));
+	php_strtolower(urlparts->host, strlen(urlparts->host));
 
 	if (urlparts) {
 		if (!urlparts->host || !urlparts->scheme) {

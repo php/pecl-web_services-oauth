@@ -26,16 +26,11 @@
 	if(dest) { zval_ptr_dtor(&dest); } \
 	OAUTH_PROVIDER_COPY_ZVAL_FROM_PZVAL(dest, src, 0) 
 
-#define OAUTH_PROVIDER_CALL_CB(pt, m) \
-	zval *retval = NULL; \
-	retval = oauth_provider_call_cb(pt, m); \
-	COPY_PZVAL_TO_ZVAL(*return_value, retval); \
-	zval_ptr_dtor(&retval); 
-	
+#define OAUTH_PROVIDER_CALL_CB(pt, m) oauth_provider_call_cb(pt, m);
 
 #define OAUTH_PROVIDER_FREE_FCALL_INFO(o) \
 	if(o) { \
-		if(o->fcall_info->function_name) { zval_ptr_dtor(&o->fcall_info->function_name); } \
+		zval_ptr_dtor(&o->fcall_info->function_name); \
 		efree(o->fcall_info); \
 		efree(o); \
 	}
@@ -72,10 +67,12 @@
 #define OAUTH_PROVIDER_SET_PARAM_VALUE(ht,k,m,v) \
 	zend_hash_update(ht, k, strlen(k) + 1, (void**)v, Z_STRLEN_PP(v) + 1, NULL)
 
-#define OAUTH_PROVIDER_SET_STD_PARAM(h,k,m) \
-	if(zend_hash_find(h, k, sizeof(k), (void **) &dest_entry)!=FAILURE) { \
-		oauth_provider_set_param_member(provider_obj, m, *dest_entry TSRMLS_CC); \
-	}
+#define OAUTH_PROVIDER_SET_STD_PARAM(h, k, m) do { \
+	zval *dest_entry = zend_hash_str_find(h, k, strlen(k)); \
+	if (dest_entry) { \
+		oauth_provider_set_param_member(provider_obj, m, dest_entry TSRMLS_CC); \
+	} \
+} while (0);
 
 enum { OAUTH_PROVIDER_PATH_REQUEST, OAUTH_PROVIDER_PATH_ACCESS, OAUTH_PROVIDER_PATH_AUTH };
 

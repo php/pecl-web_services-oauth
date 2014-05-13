@@ -71,13 +71,8 @@
 
 #define PHP_OAUTH_VERSION 1.2.3
 
-#ifdef ZEND_ENGINE_2_4
-# define OAUTH_READ_PROPERTY(_obj, _mem, _type) zend_get_std_object_handlers()->read_property(_obj, _mem, _type, key TSRMLS_CC)
-# define OAUTH_WRITE_PROPERTY(_obj, _mem, _val) zend_get_std_object_handlers()->write_property(_obj, _mem, _val, key TSRMLS_CC)
-#else
-# define OAUTH_READ_PROPERTY(_obj, _mem, _type) zend_get_std_object_handlers()->read_property(_obj, _mem, _type TSRMLS_CC)
-# define OAUTH_WRITE_PROPERTY(_obj, _mem, _val) zend_get_std_object_handlers()->write_property(_obj, _mem, _val TSRMLS_CC)
-#endif
+#define OAUTH_READ_PROPERTY(_obj, _mem, _type) zend_get_std_object_handlers()->read_property(_obj, _mem, _type, cache_slot, rv TSRMLS_CC)
+#define OAUTH_WRITE_PROPERTY(_obj, _mem, _val) zend_get_std_object_handlers()->write_property(_obj, _mem, _val, cache_slot TSRMLS_CC)
 
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 2) || PHP_MAJOR_VERSION > 5
 # define OAUTH_ARGINFO
@@ -186,19 +181,24 @@ PHP_MINFO_FUNCTION(oauth);
 #define OAUTH(v) (oauth_globals.v)
 #endif
 
-typedef enum { OAUTH_SIGCTX_TYPE_NONE, OAUTH_SIGCTX_TYPE_HMAC, OAUTH_SIGCTX_TYPE_RSA, OAUTH_SIGCTX_TYPE_PLAIN } oauth_sigctx_type;
+typedef enum {
+	OAUTH_SIGCTX_TYPE_NONE, 
+	OAUTH_SIGCTX_TYPE_HMAC, 
+	OAUTH_SIGCTX_TYPE_RSA, 
+	OAUTH_SIGCTX_TYPE_PLAIN 
+} oauth_sigctx_type;
 
 typedef struct {
 	oauth_sigctx_type	type;
 	char				*hash_algo;
-	zval				*privatekey;
+	zval				privatekey;
 } oauth_sig_context;
 
 #define OAUTH_SIGCTX_INIT(ctx) { \
 		(ctx) = emalloc(sizeof(*(ctx))); \
 		(ctx)->type = OAUTH_SIGCTX_TYPE_NONE; \
 		(ctx)->hash_algo = NULL; \
-		(ctx)->privatekey = NULL; \
+		ZVAL_UNDEF(&(ctx)->privatekey); \
 	}
 
 #define OAUTH_SIGCTX_HMAC(ctx, algo) { \
@@ -211,9 +211,9 @@ typedef struct {
 	}
 
 #define OAUTH_SIGCTX_FREE_PRIVATEKEY(ctx) { \
-		if ((ctx)->privatekey) { \
-			oauth_free_privatekey((ctx)->privatekey TSRMLS_CC); \
-			(ctx)->privatekey = NULL; \
+		if (Z_TYPE((ctx)->privatekey) != IS_UNDEF) { \
+			oauth_free_privatekey(&(ctx)->privatekey TSRMLS_CC); \
+			ZVAL_UNDEF(&(ctx)->privatekey); \
 		} \
 	}
 
@@ -244,7 +244,6 @@ typedef struct {
 } php_so_debug;
 
 typedef struct {
-	zend_object zo;
 	HashTable *properties;
 	smart_str lastresponse;
 	smart_str headers_in;
@@ -259,24 +258,24 @@ typedef struct {
 	long timeout; /* timeout in milliseconds */
 	char *nonce;
 	char *timestamp;
-	char *signature;
 	zval *this_ptr;
-	zval *debugArr;
+	zval debugArr;
 	oauth_sig_context *sig_ctx;
 	php_so_debug *debug_info;
 	char **multipart_files;
 	char **multipart_params;
 	uint is_multipart;
 	void ***thread_ctx;
+	zend_string *signature;
+	zend_object zo;
 } php_so_object;
 
-#if (PHP_MAJOR_VERSION >= 6)
-#define ZEND_HASH_KEY_STRVAL(key) key.s
-typedef zstr zend_hash_key_type;
-#else
-#define ZEND_HASH_KEY_STRVAL(key) key
-typedef char * zend_hash_key_type;
-#endif
+static inline php_so_object *php_oauth_obj_from_obj(zend_object *obj)
+{
+	return (php_so_object *)((char *)(obj) - XtOffsetOf(php_so_object, zo));
+}
+
+#define Z_OAUTHOBJ_P(zv) php_oauth_obj_from_obj(Z_OBJ_P((zv)))
 
 #ifndef Z_ADDREF_P
 #define Z_ADDREF_P(x) ZVAL_ADDREF(x)
@@ -305,39 +304,40 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 		FREE_HASHTABLE(a); \
 	}
 
-#define INIT_SMART_STR(a) \
-	(a).len = 0; \
-	(a).c = NULL;
-
 #define HTTP_IS_REDIRECT(http_response_code) \
 	(http_response_code > 300 && http_response_code < 304)
 
-#define INIT_DEBUG_INFO(a) \
-	INIT_SMART_STR((a)->headers_out); \
-	INIT_SMART_STR((a)->body_in); \
-	INIT_SMART_STR((a)->body_out); \
-	INIT_SMART_STR((a)->curl_info);
-
 #define FREE_DEBUG_INFO(a) \
+	if ((a)->sbs) { \
+		efree((a)->sbs); \
+	} \
 	smart_str_free(&(a)->headers_out); \
 	smart_str_free(&(a)->body_in); \
 	smart_str_free(&(a)->body_out); \
 	smart_str_free(&(a)->curl_info); 
 
-/* this and code that uses it is from ext/curl/interface.c */
-#define CAAL(s, v) add_assoc_long_ex(info, s, sizeof(s), (long) v);
-#define CAAD(s, v) add_assoc_double_ex(info, s, sizeof(s), (double) v);
-#define CAAS(s, v) add_assoc_string_ex(info, s, sizeof(s), (char *) (v ? v : ""), 1);
+/* not sure why this was separate in the first place */
+#define INIT_DEBUG_INFO(a) \
+	(a)->sbs = NULL; \
+	(a)->headers_out.s = NULL; \
+	(a)->body_in.s = NULL; \
+	(a)->body_out.s = NULL; \
+	(a)->curl_info.s = NULL;
 
-#define ADD_DEBUG_INFO(a, k, s, t) \
-	if(s.len) { \
-		smart_str_0(&(s)); \
+/* this and code that uses it is from ext/curl/interface.c */
+#define CAAL(s, v) add_assoc_long_ex(&info, s, sizeof(s), (long) v);
+#define CAAD(s, v) add_assoc_double_ex(&info, s, sizeof(s), (double) v);
+#define CAAS(s, v) add_assoc_string_ex(&info, s, sizeof(s), (char *) (v ? v : ""));
+
+#define ADD_DEBUG_INFO(a, k, str, t) \
+	if((str).s->len) { \
+		smart_str_0(&(str)); \
 		if(t) { \
-			tmp = php_trim((s).c, (s).len, NULL, 0, NULL, 3 TSRMLS_CC); \
-			add_assoc_string((a), k, tmp, 1); \
+			tmp = php_trim((str).s->val, (str).s->len, NULL, 0, NULL, 3 TSRMLS_CC); \
+			add_assoc_string((a), k, tmp); \
 			efree(tmp); \
 		} else { \
-			add_assoc_string((a), k, (s).c, 1); \
+			add_assoc_string((a), k, (str).s->val); \
 		} \
 	}
 
@@ -357,9 +357,9 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_str *payload
 
 
 void oauth_free_privatekey(zval *privatekey TSRMLS_DC);
-char *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx TSRMLS_DC);
+zend_string *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx TSRMLS_DC);
 oauth_sig_context *oauth_create_sig_context(const char *sigmethod);
-char *oauth_url_encode(char *url, int url_len);
+zend_string *oauth_url_encode(char *url, int url_len);
 
 #endif
 

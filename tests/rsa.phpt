@@ -39,7 +39,7 @@ array(2) {
   ["oauth_token_secret"]=>
   string(4) "4567"
 }
-string(278) "GET /test?oauth_consumer_key=1234&oauth_signature_method=RSA-SHA1&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_signature=h3r2qm%2BZknAH1xMJThj5t5wy941IsGZQK%2F%2FuhRzAsea83MBQKlbySrxGVHdKH%2BU5zKFuDftIscqWuHqily3gWg%3D%3D HTTP/1.0
+string(%d) "POST /test?oauth_consumer_key=1234&oauth_signature_method=RSA-SHA1&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_signature=AxTdf9nwR0Z54JCKIKAne%2BXKmNtuKerXchcK8axD792sk7cphqMBvNqbPVoJmKYcm0vAkq2ICto0NVz4%2F6WxqA%3D%3D HTTP/1.0
 Host: 127.0.0.1:12342
 
 "

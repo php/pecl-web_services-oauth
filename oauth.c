@@ -2188,14 +2188,14 @@ SO_METHOD(getCAPath)
 }
 /* }}} */
 
-/* {{{ proto array OAuth::getRequestToken(string request_token_url [, string callback_url ])
+/* {{{ proto array OAuth::getRequestToken(string request_token_url [, string callback_url [, http_method ] ])
    Get request token */
 SO_METHOD(getRequestToken)
 {
 	php_so_object *soo;
 	zval *zret = NULL, *callback_url = NULL;
-	char *url, *http_method = NULL;
-	int url_len = 0, http_method_len = 0;
+	char *url, *http_method = OAUTH_HTTP_METHOD_POST;
+	int url_len = 0, http_method_len = sizeof(OAUTH_HTTP_METHOD_POST) - 1;
 	long retcode;
 	HashTable *args = NULL;
 

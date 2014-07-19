@@ -2640,7 +2640,7 @@ SO_METHOD(fetch)
 }
 /* }}} */
 
-/* {{{ proto array OAuth::getAccessToken(string access_token_url [, string auth_session_handle [, string auth_verifier ]])
+/* {{{ proto array OAuth::getAccessToken(string access_token_url [, string auth_session_handle [, string auth_verifier [, http_method ]]])
 	Get access token, 
 	If the server supports Scalable OAuth pass in the auth_session_handle to refresh the token (http://wiki.oauth.net/ScalableOAuth)
 	For 1.0a implementation, a verifier token must be passed; this token is not passed unless a value is explicitly assigned via the function arguments or $_GET/$_POST['oauth_verifier'] is set
@@ -2648,8 +2648,8 @@ SO_METHOD(fetch)
 SO_METHOD(getAccessToken)
 {
 	php_so_object *soo;
-	int aturi_len = 0, ash_len = 0, verifier_len = 0, http_method_len = 0;
-	char *aturi, *ash, *verifier, *http_method = NULL;
+	int aturi_len = 0, ash_len = 0, verifier_len = 0, http_method_len = sizeof(OAUTH_HTTP_METHOD_POST) - 1;
+	char *aturi, *ash, *verifier, *http_method = OAUTH_HTTP_METHOD_POST;
 	zval *zret = NULL;
 	HashTable *args = NULL;
 	long retcode;

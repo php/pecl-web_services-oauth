@@ -14,7 +14,7 @@ if test "$PHP_OAUTH" != "no"; then
   PHP_NEW_EXTENSION(oauth, oauth.c provider.c, $ext_shared)
   CFLAGS="$CFLAGS -Wall -g"
 
-  AC_CHECK_HEADERS(pcre.h)
+  AC_CHECK_HEADER(pcre.h, , [AC_MSG_ERROR([Couldn't find pcre.h, try installing the libpcre development/headers package])])
 
   AS_IF([test "x$with_curl" != "xno"],
       [

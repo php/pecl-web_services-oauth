@@ -14,6 +14,8 @@ if test "$PHP_OAUTH" != "no"; then
   PHP_NEW_EXTENSION(oauth, oauth.c provider.c, $ext_shared)
   CFLAGS="$CFLAGS -Wall -g"
 
+  AC_CHECK_HEADERS(pcre.h)
+
   AS_IF([test "x$with_curl" != "xno"],
       [
         AC_MSG_CHECKING(for cURL in default path)

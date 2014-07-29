@@ -1818,7 +1818,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 			}
 		} else if (http_response_code < 0) {
 			/* exception would have been thrown already */
-		} else if (http_response_code < 200 || http_response_code > 206) {
+		} else if (http_response_code < 200 || http_response_code > 209) {
 			spprintf(&bufz, 0, "Invalid auth/bad request (got a %ld, expected HTTP/1.1 20X or a redirect)", http_response_code);
 			MAKE_STD_ZVAL(zret);
 			if(soo->lastresponse.c) {

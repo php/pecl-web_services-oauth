@@ -37,7 +37,7 @@ Requirements: ext/hash (now a part of PHP core)
   </lead>
   <date>2012-10-01</date>
   <version>
-    <release>1.2.3</release>
+    <release>1.2.4</release>
     <api>1.2</api>
   </version>
   <stability>
@@ -46,7 +46,9 @@ Requirements: ext/hash (now a part of PHP core)
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-    - Fix reference counts not being incremented in OAuthProvider
+    - Bug 67658: configure does not detect missing pcre.h
+    - Bug 67665: update fetch to accept 20X HTTP ranges
+    - Bug 67883: check SERVER[REDIRECT_HTTP_AUTHORIZATION] for the Authorization header
   </notes>
   <contents>
     <dir name="/">
@@ -130,6 +132,22 @@ Requirements: ext/hash (now a part of PHP core)
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+  <release>
+    <date>2012-10-01</date>
+    <version>
+      <release>1.2.3</release>
+      <api>1.2</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+    <notes>
+      - Fix reference counts not being incremented in OAuthProvider
+    </notes>
+  </release>
 
   <release>
     <date>2011-07-22</date>

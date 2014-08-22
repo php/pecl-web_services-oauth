@@ -553,7 +553,8 @@ SOP_METHOD(__construct)
 
 			/* first look in _SERVER */
 			if (!PG(http_globals)[TRACK_VARS_SERVER]
-					|| zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_AUTHORIZATION", sizeof("HTTP_AUTHORIZATION"), (void **) &tmpzval)==FAILURE) {
+					|| zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_AUTHORIZATION", sizeof("HTTP_AUTHORIZATION"), (void **) &tmpzval)==FAILURE
+          || zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_SERVER]), "REDIRECT_HTTP_AUTHORIZATION", sizeof("REDIRECT_HTTP_AUTHORIZATION"), (void **) &tmpzval)==FAILURE) {
 				/* well that didn't work out, so let's check out _ENV */
 				if (!PG(http_globals)[TRACK_VARS_ENV]
 						|| zend_hash_find(Z_ARRVAL_P(PG(http_globals)[TRACK_VARS_ENV]), "HTTP_AUTHORIZATION", sizeof("HTTP_AUTHORIZATION"), (void **) &tmpzval)==FAILURE) {

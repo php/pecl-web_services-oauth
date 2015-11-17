@@ -4,7 +4,6 @@ OAuth getRequestToken
 <?php
 require 'skip.inc';
 skip_if_not_ext('openssl');
-skip_if_not_php_major(5);
 skip_with_bug(44603);
 require 'server.inc';
 http_server_skipif('tcp://127.0.0.1:12342');

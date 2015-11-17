@@ -1,9 +1,8 @@
 --TEST--
 OAuth getRequestToken
 --SKIPIF--
-<?php 
+<?php
 require 'skip.inc';
-skip_if_not_php_major(5);
 skip_without_bug('44603');
 require 'server.inc';
 http_server_skipif('tcp://127.0.0.1:12342');

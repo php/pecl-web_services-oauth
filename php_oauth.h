@@ -252,7 +252,7 @@ static inline php_so_object *so_object_from_obj(zend_object *obj) /* {{{ */ {
 #endif
 
 void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *response, char *additional_info TSRMLS_DC);
-char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC);
+zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC);
 
 #ifndef zend_hash_quick_del
 #define HASH_DEL_KEY_QUICK 2

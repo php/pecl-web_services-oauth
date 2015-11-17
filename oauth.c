@@ -308,9 +308,8 @@ static inline int soo_set_property(php_so_object *soo, zval *prop, char *prop_na
 
 zend_string *oauth_url_encode(char *url, int url_len) /* {{{ */
 {
-	zend_string *urlencoded;
-	zend_string *ret;
-	int out_len;
+	zend_string *urlencoded = NULL;
+	zend_string *ret = NULL;
 
 	if (url) {
 		if (url_len < 0) {
@@ -320,8 +319,7 @@ zend_string *oauth_url_encode(char *url, int url_len) /* {{{ */
 	}
 
 	if (urlencoded) {
-		//TODO Sean-Der
-		ret = php_str_to_str(ZSTR_VAL(urlencoded), out_len, "%7E", sizeof("%7E")-1, "~", sizeof("~")-1);
+		ret = php_str_to_str(ZSTR_VAL(urlencoded), ZSTR_LEN(urlencoded), "%7E", sizeof("%7E")-1, "~", sizeof("~")-1);
 		zend_string_free(urlencoded);
 		return ret;
 	}
@@ -371,25 +369,28 @@ static int oauth_compare_value(const void *a, const void *b)
 
 static int oauth_compare_key(const void *a, const void *b)
 {
-	Bucket *f, *s;
 	zval first, second;
+	int result;
+    Bucket *f, *s;
+	f = (Bucket *) a;
+	s = (Bucket *) b;
 
-	f = *(Bucket **)a;
-	s = *(Bucket **)b;
-
-	if (f->key == 0) {
-		ZVAL_STRINGL(&first, ZSTR_VAL(f->key), ZSTR_LEN(f->key));
-	} else {
+	if (f->key == NULL) {
 		ZVAL_LONG(&first, f->h);
-	}
-
-	if (s->key == 0) {
-		ZVAL_STRINGL(&second, ZSTR_VAL(s->key), ZSTR_LEN(s->key));
 	} else {
-		ZVAL_LONG(&second, s->h);
+		ZVAL_STRINGL(&first, ZSTR_VAL(f->key), ZSTR_LEN(f->key));
 	}
 
-	return oauth_strcmp(&first, &second);
+	if (s->key == NULL) {
+		ZVAL_LONG(&second, s->h);
+	} else {
+		ZVAL_STRINGL(&second, ZSTR_VAL(s->key), ZSTR_LEN(s->key));
+	}
+
+	result = oauth_strcmp(&first, &second);
+	zval_ptr_dtor(&first);
+	zval_ptr_dtor(&second);
+	return result;
 }
 
 /* build url-encoded string from args, optionally starting with & */
@@ -397,7 +398,6 @@ int oauth_http_build_query(php_so_object *soo, smart_string *s, HashTable *args,
 {
 	zval *cur_val;
 	zend_string *cur_key, *arg_key, *param_value;
-	uint cur_key_len;
 	int numargs = 0, hash_key_type, skip_append = 0, i, found;
 	ulong num_index;
 	HashPosition pos;
@@ -451,7 +451,7 @@ int oauth_http_build_query(php_so_object *soo, smart_string *s, HashTable *args,
 						/* we don't add multipart files to the params */
 						skip_append = 1;
 					} else {
-						arg_key = oauth_url_encode(ZSTR_VAL(cur_key), cur_key_len-1);
+						arg_key = oauth_url_encode(ZSTR_VAL(cur_key), ZSTR_LEN(cur_key));
 					}
 					break;
 
@@ -546,11 +546,12 @@ void get_request_param(char *arg_name, char **return_val, int *return_len)
  * in POST/GET or Authorization header, the precendence is defined by: OAuth Core 1.0 section 9.1.1
  */
 
-char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args) /* {{{ */
+zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args) /* {{{ */
 {
 	zval params;
 	char *query;
-	char *s_port = NULL, *bufz = NULL;
+	char *s_port = NULL;
+	zend_string *bufz = NULL;
 	zend_string *sbs_query_part = NULL, *sbs_scheme_part = NULL;
 	php_url *urlparts;
 	smart_string sbuf = {0};
@@ -612,7 +613,7 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 			sbs_query_part = oauth_url_encode(squery.c, squery.len);
 			sbs_scheme_part = oauth_url_encode(sbuf.c, sbuf.len);
 
-			spprintf(&bufz, 0, "%s&%s&%s", http_method, sbs_scheme_part, sbs_query_part ? ZSTR_VAL(sbs_query_part) : "");
+			bufz = strpprintf(0, "%s&%s&%s", http_method, ZSTR_VAL(sbs_scheme_part), sbs_query_part ? ZSTR_VAL(sbs_query_part) : "");
 			/* TODO move this into oauth_get_http_method()
 			   soo_handle_error(OAUTH_ERR_INTERNAL_ERROR, "Invalid auth type", NULL);
 			   */
@@ -620,7 +621,7 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 				zend_string_release(sbs_query_part);
 			}
 			if(sbs_scheme_part) {
-				efree(sbs_scheme_part);
+				zend_string_release(sbs_scheme_part);
 			}
 			smart_string_free(&squery);
 		} else {
@@ -637,7 +638,8 @@ char *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const
 			if(soo->debug_info->sbs) {
 				efree(soo->debug_info->sbs);
 			}
-			soo->debug_info->sbs = bufz?estrdup(bufz):NULL;
+			//TODO Sean-Der
+			//soo->debug_info->sbs = bufz?estrdup(bufz):NULL;
 		}
 		return bufz;
 	}
@@ -697,7 +699,6 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 	zval *curval;
 	zend_string *param_name, *param_val;
 	zend_string *cur_key;
-	uint cur_key_len;
 	ulong num_key;
 
 	smart_string_appends(&sheader, "OAuth ");
@@ -710,7 +711,7 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 		if (prepend_comma) {
 			smart_string_appendc(&sheader, ',');
 		}
-		param_name = oauth_url_encode(ZSTR_VAL(cur_key), cur_key_len-1);
+		param_name = oauth_url_encode(ZSTR_VAL(cur_key), ZSTR_LEN(cur_key));
 		param_val = oauth_url_encode(Z_STRVAL_P(curval), Z_STRLEN_P(curval));
 
 		smart_string_appends(&sheader, ZSTR_VAL(param_name));
@@ -783,7 +784,6 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 	if (request_headers) {
 		zval *cur_val, zheaders;
 		zend_string *cur_key;
-		uint cur_key_len;
 		ulong num_key;
 		smart_string sheaders = {0};
 		int first = 1;
@@ -795,7 +795,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 			smart_string sheaderline = {0};
 			switch (zend_hash_get_current_key_ex(request_headers, &cur_key, &num_key, NULL)) {
 				case HASH_KEY_IS_STRING:
-					smart_string_appendl(&sheaderline, ZSTR_VAL(cur_key), cur_key_len-1);
+					smart_string_appendl(&sheaderline, ZSTR_VAL(cur_key), ZSTR_LEN(cur_key));
 					break;
 				default:
 					continue;
@@ -854,7 +854,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 	if ((s = php_stream_open_wrapper_ex((char*)url, "rb", REPORT_ERRORS, NULL, sc))) {
 		zval info;
 		zend_string *buf;
-		size_t rb;
+		size_t rb = 0;
 
 		array_init(&info);
 
@@ -887,7 +887,8 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 		}
 
 		if ((buf = php_stream_copy_to_mem(s, PHP_STREAM_COPY_ALL, 0)) != NULL) {
-			smart_string_appendl(&soo->lastresponse, buf, rb);
+			smart_string_appendl(&soo->lastresponse, ZSTR_VAL(buf), ZSTR_LEN(buf));
+			rb = ZSTR_LEN(buf);
 			zend_string_release(buf);
 		}
 		smart_string_0(&soo->lastresponse);
@@ -1017,7 +1018,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	double d_code;
 	zval info, *zca_info, *zca_path, *cur_val;
 	char *s_code, *content_type = NULL, *bufz = NULL;
-	uint cur_key_len, sslcheck;
+	uint sslcheck;
 	ulong num_key;
 	smart_string sheader = {0};
 	zend_string *cur_key;
@@ -1035,7 +1036,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 			/* check if a string based key is used */
 			switch (zend_hash_get_current_key_ex(request_headers, &cur_key, &num_key, NULL)) {
 				case HASH_KEY_IS_STRING:
-					smart_string_appendl(&sheader, ZSTR_VAL(cur_key), cur_key_len-1);
+					smart_string_appendl(&sheader, ZSTR_VAL(cur_key), ZSTR_LEN(cur_key));
 					break;
 				default:
 					continue;
@@ -1374,7 +1375,8 @@ Prepares the request elements to be used by make_req(); this should allow for su
 */
 static long oauth_fetch(php_so_object *soo, const char *url, const char *method, zval *request_params, zval *request_headers, HashTable *init_oauth_args, int fetch_flags) /* {{{ */
 {
-	char *sbs = NULL, *sig = NULL, *bufz = NULL;
+	char *sig = NULL, *bufz = NULL;
+	zend_string *sbs = NULL;
 	const char *final_http_method;
 	zval *token = NULL, *cs;
 	zval *ts = NULL, *token_secret = NULL;
@@ -1482,9 +1484,9 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 			efree(soo->signature);
 		}
 		/* sign the request */
-		sig = soo_sign(soo, sbs, cs, ts, soo->sig_ctx);
+		sig = soo_sign(soo, ZSTR_VAL(sbs), cs, ts, soo->sig_ctx);
 		soo->signature = sig;
-		efree(sbs);
+		zend_string_release(sbs);
 
 		if(fetch_flags & OAUTH_FETCH_SIGONLY) {
 			FREE_ARGS_HASH(oauth_args);
@@ -1640,7 +1642,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 SO_METHOD(setRSACertificate)
 {
 	char *key;
-	int key_len;
+	size_t key_len;
 	zval args[1], func, retval;
 
 	php_so_object *soo;
@@ -1675,7 +1677,7 @@ SO_METHOD(setRSACertificate)
    URI encoding according to RFC 3986, note: is not utf8 capable until the underlying phpapi is */
 PHP_FUNCTION(oauth_urlencode)
 {
-	int uri_len;
+	size_t uri_len;
 	char *uri;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &uri, &uri_len) == FAILURE) {
@@ -1686,7 +1688,7 @@ PHP_FUNCTION(oauth_urlencode)
 		php_error_docref(NULL, E_WARNING, "Invalid uri length (0)");
 		RETURN_FALSE;
 	}
-	RETURN_STRING(ZSTR_VAL(oauth_url_encode(uri, uri_len)));
+	RETURN_STR(oauth_url_encode(uri, uri_len));
 }
 /* }}} */
 
@@ -1694,8 +1696,9 @@ PHP_FUNCTION(oauth_urlencode)
    Get a signature base string */
 PHP_FUNCTION(oauth_get_sbs)
 {
-	char *uri, *http_method, *sbs;
-	int uri_len, http_method_len;
+	char *uri, *http_method;
+	zend_string *sbs;
+	size_t uri_len, http_method_len;
 	zval *req_params = NULL;
 	HashTable *rparams = NULL;
 
@@ -1718,7 +1721,7 @@ PHP_FUNCTION(oauth_get_sbs)
 	}
 
 	if ((sbs = oauth_generate_sig_base(NULL, http_method, uri, NULL, rparams))) {
-		RETURN_STRING(sbs);
+		RETURN_STR(sbs);
 	} else {
 		RETURN_FALSE;
 	}
@@ -1735,7 +1738,7 @@ SO_METHOD(__construct)
 	char *ck, *cs, *sig_method = NULL;
 	long auth_method = 0;
 	zval zck, zcs, zsm, zam, zver, *obj;
-	int ck_len, cs_len, sig_method_len = 0;
+	size_t ck_len, cs_len, sig_method_len = 0;
 	php_so_object *soo;
 
 	obj = getThis();
@@ -1909,7 +1912,7 @@ SO_METHOD(setCAPath)
 {
 	php_so_object *soo;
 	char *ca_path, *ca_info;
-	int ca_path_len = 0, ca_info_len = 0;
+	size_t ca_path_len = 0, ca_info_len = 0;
 	zval zca_path, zca_info;
 
 	soo = Z_SOO_P(getThis());
@@ -1973,7 +1976,7 @@ SO_METHOD(getRequestToken)
 	php_so_object *soo;
 	zval zret, *callback_url = NULL;
 	char *url, *http_method = OAUTH_HTTP_METHOD_POST;
-	int url_len = 0, http_method_len = sizeof(OAUTH_HTTP_METHOD_POST) - 1;
+	size_t url_len = 0, http_method_len = sizeof(OAUTH_HTTP_METHOD_POST) - 1;
 	long retcode;
 	HashTable *args = NULL;
 
@@ -2166,7 +2169,7 @@ SO_METHOD(setSSLChecks)
 SO_METHOD(setVersion)
 {
 	php_so_object *soo;
-	int ver_len = 0;
+	size_t ver_len = 0;
 	char *vers;
 	zval zver;
 
@@ -2251,7 +2254,7 @@ SO_METHOD(setTimeout)
 SO_METHOD(setNonce)
 {
 	php_so_object *soo;
-	int nonce_len;
+	size_t nonce_len;
 	char *nonce;
 
 	soo = Z_SOO_P(getThis());
@@ -2277,7 +2280,7 @@ SO_METHOD(setNonce)
 SO_METHOD(setTimestamp)
 {
 	php_so_object *soo;
-	int ts_len;
+	size_t ts_len;
 	char *ts;
 
 	soo = Z_SOO_P(getThis());
@@ -2304,7 +2307,7 @@ SO_METHOD(setTimestamp)
 SO_METHOD(setToken)
 {
 	php_so_object *soo;
-	int token_len, token_secret_len;
+	size_t token_len, token_secret_len;
 	char *token, *token_secret;
 	zval t,ts;
 
@@ -2354,7 +2357,7 @@ SO_METHOD(setRequestEngine)
 SO_METHOD(generateSignature)
 {
 	php_so_object *soo;
-	int url_len, http_method_len = 0;
+	size_t url_len, http_method_len = 0;
 	char *url;
 	zval *request_args = NULL;
 	char *http_method = NULL;
@@ -2382,7 +2385,7 @@ SO_METHOD(generateSignature)
 SO_METHOD(fetch)
 {
 	php_so_object *soo;
-	int fetchurl_len, http_method_len = 0;
+	size_t fetchurl_len, http_method_len = 0;
 	char *fetchurl;
 	zval zret, *request_args = NULL, *request_headers = NULL;
 	char *http_method = NULL;
@@ -2420,7 +2423,8 @@ SO_METHOD(fetch)
 SO_METHOD(getAccessToken)
 {
 	php_so_object *soo;
-	int aturi_len = 0, ash_len = 0, verifier_len = 0, http_method_len = sizeof(OAUTH_HTTP_METHOD_POST) - 1;
+	size_t aturi_len = 0, ash_len = 0, verifier_len_size_t = 0, http_method_len = sizeof(OAUTH_HTTP_METHOD_POST) - 1;
+	int verifier_len;
 	char *aturi, *ash, *verifier, *http_method = OAUTH_HTTP_METHOD_POST;
 	zval zret;
 	HashTable *args = NULL;
@@ -2428,9 +2432,10 @@ SO_METHOD(getAccessToken)
 
 	soo = Z_SOO_P(getThis());
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s|sss", &aturi, &aturi_len, &ash, &ash_len, &verifier, &verifier_len, &http_method, &http_method_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s|sss", &aturi, &aturi_len, &ash, &ash_len, &verifier, &verifier_len_size_t, &http_method, &http_method_len) == FAILURE) {
 		return;
 	}
+	verifier_len = verifier_len_size_t;
 
 	if (aturi_len < 1) {
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid access token url length", NULL, NULL);
@@ -2530,7 +2535,7 @@ SO_METHOD(getLastResponseHeaders)
 SO_METHOD(getRequestHeader)
 {
 	php_so_object *soo;
-	int url_len, http_method_len = 0;
+	size_t url_len, http_method_len = 0;
 	char *url;
 	zval *request_args = NULL;
 	char *http_method = NULL;

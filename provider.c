@@ -636,7 +636,7 @@ SOP_METHOD(setRequestTokenPath)
 	zval *pthis;
 	php_oauth_provider *sop;
 	char *path;
-	int path_len;
+	size_t path_len;
 
 	if (FAILURE==zend_parse_method_parameters(ZEND_NUM_ARGS(), getThis(), "Os", &pthis, oauthprovider, &path, &path_len)) {
 		return;
@@ -659,7 +659,8 @@ SOP_METHOD(checkOAuthRequest)
 	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *sbs = NULL, *signature = NULL, *current_uri = NULL;
 	HashPosition hpos;
 	HashTable *sbs_vars = NULL;
-	int http_verb_len = 0, uri_len = 0, is_token_required = 0;
+	size_t http_verb_len = 0, uri_len = 0;
+	int is_token_required = 0;
 
 	if(zend_parse_method_parameters(ZEND_NUM_ARGS(), getThis(), "O|ss", &pthis, oauthprovider, &uri, &uri_len, &http_verb, &http_verb_len)==FAILURE) {
 		return;
@@ -826,7 +827,7 @@ SOP_METHOD(addRequiredParameter)
 	zval *pthis;
 	char *required_param;
 	php_oauth_provider *sop;
-	ulong req_param_len;
+	size_t req_param_len;
 
 	if(zend_parse_method_parameters(ZEND_NUM_ARGS(), getThis(), "Os", &pthis, oauthprovider, &required_param, &req_param_len)==FAILURE) {
 		return;
@@ -847,7 +848,7 @@ SOP_METHOD(setParam)
 {
 	zval *pthis, *param_val = NULL;
 	char *param_key;
-	ulong param_key_len;
+	size_t param_key_len;
 	php_oauth_provider *sop;
 
 	if (FAILURE==zend_parse_method_parameters(ZEND_NUM_ARGS(), getThis(), "Os|z/", &pthis, oauthprovider, &param_key, &param_key_len, &param_val)) {
@@ -872,7 +873,7 @@ SOP_METHOD(removeRequiredParameter)
 	zval *pthis;
 	char *required_param;
 	php_oauth_provider *sop;
-	ulong req_param_len;
+	size_t req_param_len;
 
 	if(zend_parse_method_parameters(ZEND_NUM_ARGS(), getThis(), "Os", &pthis, oauthprovider, &required_param, &req_param_len)==FAILURE) {
 		return;

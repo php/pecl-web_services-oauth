@@ -20,22 +20,18 @@
 #define OAUTH_PROVIDER_COPY_ZVAL_FROM_PZVAL(dest, src) \
 	MAKE_STD_ZVAL(dest); \
 	*dest = *src; \
-	zval_copy_ctor(dest); 
+	zval_copy_ctor(dest);
 
 #define OAUTH_PROVIDER_COPY_HASH_FROM_PZVAL(dest, src) \
 	if(dest) { zval_ptr_dtor(&dest); } \
-	OAUTH_PROVIDER_COPY_ZVAL_FROM_PZVAL(dest, src, 0) 
+	OAUTH_PROVIDER_COPY_ZVAL_FROM_PZVAL(dest, src, 0)
 
 #define OAUTH_PROVIDER_CALL_CB(pt, m) \
-	zval *retval = NULL; \
-	retval = oauth_provider_call_cb(pt, m); \
-	COPY_PZVAL_TO_ZVAL(*return_value, retval); \
-	zval_ptr_dtor(&retval); 
-	
+	ZVAL_DUP(return_value, oauth_provider_call_cb(pt, m)); \
 
 #define OAUTH_PROVIDER_FREE_FCALL_INFO(o) \
 	if(o) { \
-		if(o->fcall_info->function_name) { zval_ptr_dtor(&o->fcall_info->function_name); } \
+		if(Z_TYPE(o->fcall_info->function_name) != IS_UNDEF) { zval_ptr_dtor(&o->fcall_info->function_name); } \
 		efree(o->fcall_info); \
 		efree(o); \
 	}
@@ -62,19 +58,19 @@
 	if(!strncasecmp(param, exp, strlen(exp))) { \
 		tgt_param = val;\
 		return SUCCESS;\
-	} 
+	}
 
 #define OAUTH_PROVIDER_REQ_PARAM(a,b) \
 	if(!a) { \
 		oauth_provider_add_missing_param(sop,a,b);\
-	} 
+	}
 
 #define OAUTH_PROVIDER_SET_PARAM_VALUE(ht,k,m,v) \
 	zend_hash_update(ht, k, strlen(k) + 1, (void**)v, Z_STRLEN_PP(v) + 1, NULL)
 
 #define OAUTH_PROVIDER_SET_STD_PARAM(h,k,m) \
-	if(zend_hash_find(h, k, sizeof(k), (void **) &dest_entry)!=FAILURE) { \
-		oauth_provider_set_param_member(provider_obj, m, *dest_entry TSRMLS_CC); \
+	if((dest_entry = zend_hash_str_find(h, k, sizeof(k)  - 1)) != NULL) { \
+		oauth_provider_set_param_member(provider_obj, m, dest_entry); \
 	}
 
 enum { OAUTH_PROVIDER_PATH_REQUEST, OAUTH_PROVIDER_PATH_ACCESS, OAUTH_PROVIDER_PATH_AUTH };
@@ -89,7 +85,6 @@ typedef struct {
 } php_oauth_provider_fcall;
 
 typedef struct {
-	zend_object zo;
 	HashTable *properties;
 	HashTable *missing_params;
 	/* oauth params which might be passed in requests */
@@ -105,7 +100,16 @@ typedef struct {
 	unsigned int params_via_method;
 	/* will ext/oauth set the proper header and error message? */
 	unsigned int handle_errors;
+	zend_object zo;
 } php_oauth_provider;
+
+static inline php_oauth_provider *sop_object_from_obj(zend_object *obj) /* {{{ */ {
+    return (php_oauth_provider*)((char*)(obj) - XtOffsetOf(php_oauth_provider, zo));
+}
+/* }}} */
+
+#define Z_SOP_P(zv)  sop_object_from_obj(Z_OBJ_P((zv)))
+
 
 extern int oauth_provider_register_class(TSRMLS_D);
 
@@ -130,6 +134,8 @@ extern int oauth_provider_register_class(TSRMLS_D);
 #define OAUTH_PROVIDER_VERSION "version"
 #define OAUTH_PROVIDER_CALLBACK "callback"
 #define OAUTH_PROVIDER_VERIFIER "verifier"
+/* the following regex is also used at http://oauth.googlecode.com/svn/code/php/OAuth.php to help ensure uniform behavior between libs, credit goes to the original author(s) */
+#define OAUTH_REGEX "/(oauth_[a-z_-]*)=(?:\"([^\"]*)\"|([^,]*))/"
 
 #define OAUTH_BAD_NONCE (1<<2)
 #define OAUTH_BAD_TIMESTAMP (1<<3)

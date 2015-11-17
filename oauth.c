@@ -14,9 +14,6 @@
 #include "php_oauth.h"
 #include "provider.h"
 
-#define OAUTH_USE_CURL 1
-
-
 static zend_class_entry *soo_class_entry;
 static zend_class_entry *soo_exception_ce;
 static zend_object_handlers so_object_handlers;

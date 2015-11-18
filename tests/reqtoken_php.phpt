@@ -58,15 +58,18 @@ array(2) {
 }
 string(%d) "POST /test HTTP/%f
 Host: 127.0.0.1:12342
+Connection: close
 Authorization: OAuth oauth_consumer_key="1234",oauth_signature_method="HMAC-SHA1",oauth_nonce="testing",oauth_timestamp="12345",oauth_version="1.0",oauth_signature="%s"
 
 POST /test HTTP/%f
 Host: 127.0.0.1:12342
+Connection: close
 Content-Length: %d
 Content-Type: application/x-www-form-urlencoded
 
 oauth_consumer_key=1234&oauth_signature_method=HMAC-SHA1&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_signature=pwOAI3vHnKHd%2FLUYcJOr36Ed5Vg%3D
 POST /test?oauth_consumer_key=1234&oauth_signature_method=HMAC-SHA1&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_signature=pwOAI3vHnKHd%2FLUYcJOr36Ed5Vg%3D HTTP/%f
 Host: 127.0.0.1:12342
+Connection: close
 
 "

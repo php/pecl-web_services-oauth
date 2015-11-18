@@ -37,5 +37,6 @@ array(2) {
 }
 string(%d) "POST /test?oauth_consumer_key=conskey&oauth_signature_method=PLAINTEXT&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_signature=conssecret%26 HTTP/1.0
 Host: 127.0.0.1:12342
+Connection: close
 
 "

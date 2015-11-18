@@ -18,14 +18,7 @@ static zend_class_entry *soo_class_entry;
 static zend_class_entry *soo_exception_ce;
 static zend_object_handlers so_object_handlers;
 
-zend_object* php_so_register_object(php_so_object *soo) /* {{{ */
-{
-	soo->zo.handlers = &so_object_handlers;
-	return &soo->zo;
-}
-/* }}} */
-
-static php_so_object* php_so_object_new(zend_class_entry *ce) /* {{{ */
+static zend_object* php_so_object_new(zend_class_entry *ce) /* {{{ */
 {
 	php_so_object *nos;
 
@@ -36,14 +29,16 @@ static php_so_object* php_so_object_new(zend_class_entry *ce) /* {{{ */
 	zend_object_std_init(&nos->zo, ce);
 	object_properties_init(&nos->zo, ce);
 
-	return nos;
+	nos->zo.handlers = &so_object_handlers;
+
+	return &nos->zo;
 }
 /* }}} */
 
 static zend_object *oauth_clone_obj(zval *this_ptr) /* {{{ */
 {
 	php_so_object *old_obj = Z_SOO_P(this_ptr);
-	php_so_object *new_obj = php_so_object_new(old_obj->zo.ce);
+	php_so_object *new_obj = so_object_from_obj(php_so_object_new(old_obj->zo.ce));
 
 	zend_objects_clone_members(&new_obj->zo, &old_obj->zo);
 
@@ -114,6 +109,16 @@ static zval *so_set_response_info(HashTable *hasht, zval *info) /* {{{ */
 }
 /* }}} */
 
+static void oauth_prop_hash_dtor(php_so_object *soo) /* {{{ */
+{
+	HashTable *ht;
+
+	ht = soo->properties;
+
+	FREE_ARGS_HASH(ht);
+}
+/* }}} */
+
 static void so_object_free_storage(zend_object *obj) /* {{{ */
 {
 	php_so_object *soo;
@@ -130,12 +135,37 @@ static void so_object_free_storage(zend_object *obj) /* {{{ */
 	if (soo->headers_out.c) {
 		smart_string_free(&soo->headers_out);
 	}
-}
-/* }}} */
+	if (soo->signature) {
+		zend_string_release(soo->signature);
+	}
 
-zend_object* new_so_object(zend_class_entry *ce) /* {{{ */
-{
-	return php_so_register_object(php_so_object_new(ce));
+	oauth_prop_hash_dtor(soo);
+
+	if (soo->debug_info) {
+		FREE_DEBUG_INFO(soo->debug_info);
+		if (soo->debug_info->sbs) {
+			efree(soo->debug_info->sbs);
+		}
+		efree(soo->debug_info);
+		soo->debug_info = NULL;
+	}
+
+	smart_string_free(&soo->headers_in);
+	if (soo->headers_out.c) {
+		smart_string_free(&soo->headers_out);
+	}
+	//TODO Sean-Der
+	//if(soo->debugArr) {
+	//	zval_ptr_dtor(&soo->debugArr);
+	//}
+	OAUTH_SIGCTX_FREE(soo->sig_ctx);
+	if (soo->nonce) {
+		efree(soo->nonce);
+	}
+	if (soo->timestamp) {
+		efree(soo->timestamp);
+	}
+
 }
 /* }}} */
 
@@ -167,15 +197,6 @@ void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *respo
 }
 /* }}} */
 
-static void oauth_prop_hash_dtor(php_so_object *soo) /* {{{ */
-{
-	HashTable *ht;
-
-	ht = soo->properties;
-
-	FREE_ARGS_HASH(ht);
-}
-/* }}} */
 
 zend_string *soo_sign_hmac(php_so_object *soo, char *message, const char *cs, const char *ts, const oauth_sig_context *ctx) /* {{{ */
 {
@@ -220,7 +241,7 @@ zend_string *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_con
 	zend_string *result;
 
 	/* check for empty private key */
-	if (!ctx->privatekey) {
+	if (Z_TYPE(ctx->privatekey) == IS_UNDEF) {
 		return NULL;
 	}
 
@@ -232,7 +253,7 @@ zend_string *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_con
 	/* Bug 17545 - segfault when zval_dtor is attempted on this argument */
 	ZVAL_EMPTY_STRING(&args[1]);
 	/* args[1] is filled by function */
-	ZVAL_DUP(&args[2], ctx->privatekey);
+	ZVAL_DUP(&args[2], &ctx->privatekey);
 
 	call_user_function(EG(function_table), NULL, &func, &retval, 3, args);
 
@@ -253,7 +274,7 @@ zend_string *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_con
 
 zend_string *soo_sign_plain(php_so_object *soo, const char *cs, const char *ts) /* {{{ */
 {
-	strpprintf(0, "%s&%s", cs, ts);
+	return strpprintf(0, "%s&%s", cs, ts);
 }
 /* }}} */
 
@@ -770,6 +791,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 		smart_string_0(payload);
 		ZVAL_STRINGL(&zpayload, payload->c, payload->len);
 		php_stream_context_set_option(sc, "http", "content", &zpayload);
+		zval_ptr_dtor(&zpayload);
 		/**
 		 * remember to set application/x-www-form-urlencoded content-type later on
 		 * lest the php streams guys come and beat you up
@@ -828,6 +850,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 			smart_string_0(&sheaders);
 			ZVAL_STRINGL(&zheaders, sheaders.c, sheaders.len);
 			php_stream_context_set_option(sc, "http", "header", &zheaders);
+			zval_ptr_dtor(&zheaders);
 			if (soo->debug) {
 				smart_string_append(&soo->debug_info->headers_out, &sheaders);
 			}
@@ -1661,7 +1684,7 @@ SO_METHOD(setRSACertificate)
 	zval_ptr_dtor(&func);
 
 	if (Z_TYPE(retval) == IS_RESOURCE) {
-		OAUTH_SIGCTX_SET_PRIVATEKEY(soo->sig_ctx, &retval);
+		OAUTH_SIGCTX_SET_PRIVATEKEY(soo->sig_ctx, retval);
 		RETURN_TRUE;
 	} else {
 		zval_ptr_dtor(&retval);
@@ -1740,8 +1763,7 @@ SO_METHOD(__construct)
 
 	obj = getThis();
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ss|sl", &ck, &ck_len, &cs, &cs_len, &sig_method, &sig_method_len, &auth_method) == FAILURE) {
-		ZVAL_NULL(obj);
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "ss|sl", &ck, &ck_len, &cs, &cs_len, &sig_method, &sig_method_len, &auth_method) == FAILURE) {
 		return;
 	}
 
@@ -1768,6 +1790,7 @@ SO_METHOD(__construct)
 	soo->nonce = NULL;
 	soo->timestamp = NULL;
 	soo->sig_ctx = NULL;
+	soo->signature = NULL;
 
 	INIT_DEBUG_INFO(soo->debug_info);
 
@@ -1858,50 +1881,6 @@ void oauth_free_privatekey(zval *privatekey)
 
 	zval_ptr_dtor(privatekey);
 }
-
-/* {{{ proto void OAuth::__destruct(void)
-   clean up of OAuth object */
-SO_METHOD(__destruct)
-{
-	php_so_object *soo;
-
-	soo = Z_SOO_P(getThis());
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "") == FAILURE) {
-		return;
-	}
-
-	oauth_prop_hash_dtor(soo);
-
-	if (soo->debug_info) {
-		FREE_DEBUG_INFO(soo->debug_info);
-		if (soo->debug_info->sbs) {
-			efree(soo->debug_info->sbs);
-		}
-		efree(soo->debug_info);
-		soo->debug_info = NULL;
-	}
-
-	smart_string_free(&soo->headers_in);
-	if (soo->headers_out.c) {
-		smart_string_free(&soo->headers_out);
-	}
-	//TODO Sean-Der
-	//if(soo->debugArr) {
-	//	zval_ptr_dtor(&soo->debugArr);
-	//}
-	OAUTH_SIGCTX_FREE(soo->sig_ctx);
-	if (soo->nonce) {
-		efree(soo->nonce);
-	}
-	if (soo->timestamp) {
-		efree(soo->timestamp);
-	}
-	if(soo->signature) {
-		zend_string_release(soo->signature);
-	}
-}
-/* }}} */
 
 /* {{{ proto array OAuth::setCAPath(string ca_path, string ca_info)
    Set the Certificate Authority information */
@@ -2318,7 +2297,7 @@ SO_METHOD(setToken)
 	soo_set_property(soo, &t, OAUTH_ATTR_TOKEN);
 
 	if (token_secret_len > 1) {
-		ZVAL_STRING(&ts, ZSTR_VAL(oauth_url_encode(token_secret, token_secret_len)));
+		ZVAL_STR(&ts, oauth_url_encode(token_secret, token_secret_len));
 		soo_set_property(soo, &ts, OAUTH_ATTR_TOKEN_SECRET);
 	}
 	RETURN_TRUE;
@@ -2681,7 +2660,6 @@ static zend_function_entry so_functions[] = { /* {{{ */
 	SO_ME(setTimeout,			arginfo_oauth_settimeout,		ZEND_ACC_PUBLIC)
 	SO_ME(setSSLChecks,			arginfo_oauth_setsslchecks,		ZEND_ACC_PUBLIC)
 	SO_ME(getRequestHeader,		arginfo_oauth_getrequestheader,	ZEND_ACC_PUBLIC)
-	SO_ME(__destruct,			arginfo_oauth_noparams,			ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
 /* }}} */
@@ -2734,7 +2712,7 @@ PHP_MINIT_FUNCTION(oauth)
 #endif
 
 	INIT_CLASS_ENTRY(soce, "OAuth", so_functions);
-	soce.create_object = new_so_object;
+	soce.create_object = php_so_object_new;
 
 	soo_class_entry = zend_register_internal_class(&soce);
 	memcpy(&so_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));

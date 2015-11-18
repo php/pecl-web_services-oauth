@@ -160,14 +160,14 @@ typedef enum { OAUTH_SIGCTX_TYPE_NONE, OAUTH_SIGCTX_TYPE_HMAC, OAUTH_SIGCTX_TYPE
 typedef struct {
 	oauth_sigctx_type	type;
 	char				*hash_algo;
-	zval				*privatekey;
+	zval				privatekey;
 } oauth_sig_context;
 
 #define OAUTH_SIGCTX_INIT(ctx) { \
 		(ctx) = emalloc(sizeof(*(ctx))); \
 		(ctx)->type = OAUTH_SIGCTX_TYPE_NONE; \
 		(ctx)->hash_algo = NULL; \
-		(ctx)->privatekey = NULL; \
+		ZVAL_UNDEF(&ctx->privatekey); \
 	}
 
 #define OAUTH_SIGCTX_HMAC(ctx, algo) { \
@@ -180,15 +180,15 @@ typedef struct {
 	}
 
 #define OAUTH_SIGCTX_FREE_PRIVATEKEY(ctx) { \
-		if ((ctx)->privatekey) { \
-			oauth_free_privatekey((ctx)->privatekey TSRMLS_CC); \
-			(ctx)->privatekey = NULL; \
+		if (Z_TYPE(ctx->privatekey) != IS_UNDEF) { \
+			oauth_free_privatekey(&ctx->privatekey); \
+			ZVAL_UNDEF(&ctx->privatekey); \
 		} \
 	}
 
 #define OAUTH_SIGCTX_SET_PRIVATEKEY(ctx, privkey) { \
 		OAUTH_SIGCTX_FREE_PRIVATEKEY(ctx) \
-		(ctx)->privatekey = privkey; \
+		ZVAL_DUP(&ctx->privatekey, &privkey); \
 	}
 
 #define OAUTH_SIGCTX_RSA(ctx, algo) { \

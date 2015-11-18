@@ -656,7 +656,8 @@ SOP_METHOD(checkOAuthRequest)
 	oauth_sig_context *sig_ctx = NULL;
 	php_oauth_provider *sop;
 	ulong missing_param_count = 0, mp_count = 1;
-	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *sbs = NULL, *signature = NULL, *current_uri = NULL;
+	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *current_uri = NULL;
+	zend_string *sbs, *signature;
 	HashPosition hpos;
 	HashTable *sbs_vars = NULL;
 	size_t http_verb_len = 0, uri_len = 0;
@@ -803,16 +804,16 @@ SOP_METHOD(checkOAuthRequest)
 				token_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET) - 1, 1, &rv);
 				convert_to_string_ex(token_secret);
 			}
-			signature = soo_sign(NULL, sbs, consumer_secret, token_secret, sig_ctx);
+			signature = soo_sign(NULL, ZSTR_VAL(sbs), consumer_secret, token_secret, sig_ctx);
 		}
 
 		req_signature = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE, sizeof(OAUTH_PROVIDER_SIGNATURE) - 1, 1, &rv);
-		if (!signature || !Z_STRLEN_P(req_signature) || strcmp(signature, Z_STRVAL_P(req_signature))) {
-			soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, sbs);
+		if (!signature || !Z_STRLEN_P(req_signature) || strcmp(ZSTR_VAL(signature), Z_STRVAL_P(req_signature))) {
+			soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, ZSTR_VAL(sbs));
 		}
 
-		OAUTH_PROVIDER_FREE_STRING(sbs);
-		OAUTH_PROVIDER_FREE_STRING(signature);
+		zend_string_release(sbs);
+		zend_string_release(signature);
 	} while (0);
 
 	OAUTH_SIGCTX_FREE(sig_ctx);

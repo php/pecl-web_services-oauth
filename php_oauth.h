@@ -204,7 +204,7 @@ typedef struct {
 	}
 
 typedef struct {
-	char		*sbs;
+	zend_string		*sbs;
 	smart_string	headers_in;
 	smart_string	headers_out;
 	smart_string	body_in;
@@ -227,9 +227,9 @@ typedef struct {
 	long timeout; /* timeout in milliseconds */
 	char *nonce;
 	char *timestamp;
-	char *signature;
+	zend_string *signature;
 	zval *this_ptr;
-	zval *debugArr;
+	zval debugArr;
 	oauth_sig_context *sig_ctx;
 	php_so_debug *debug_info;
 	char **multipart_files;
@@ -321,7 +321,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 
 
 void oauth_free_privatekey(zval *privatekey TSRMLS_DC);
-char *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx TSRMLS_DC);
+zend_string *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx TSRMLS_DC);
 oauth_sig_context *oauth_create_sig_context(const char *sigmethod);
 zend_string *oauth_url_encode(char *url, int url_len);
 

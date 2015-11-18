@@ -1096,14 +1096,12 @@ zend_object *oauth_provider_register(php_oauth_provider *soo) /* {{{ */
 {
 	soo->zo.handlers = &oauth_provider_obj_hndlrs;
 	return &soo->zo;
-	//rv.handlers = (zend_object_handlers *)&;
-	//return rv;
 }
 
 static php_oauth_provider* oauth_provider_new(zend_class_entry *ce) /* {{{ */
 {
 	php_oauth_provider *nos;
-	nos = ecalloc(1, sizeof(php_oauth_provider));
+	nos = ecalloc(1, sizeof(php_oauth_provider) + zend_object_properties_size(ce));
 
 	zend_object_std_init(&nos->zo, ce);
 	object_properties_init(&nos->zo, ce);

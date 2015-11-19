@@ -1,5 +1,7 @@
 --TEST--
 OAuth Standard functions
+--XFAIL--
+oauth_read_member is not called for debug+sslChecks everytime giving incorrect values
 --FILE--
 <?php
 

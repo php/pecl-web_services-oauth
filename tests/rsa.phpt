@@ -40,5 +40,6 @@ array(2) {
 }
 string(%d) "POST /test?oauth_consumer_key=1234&oauth_signature_method=RSA-SHA1&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_signature=AxTdf9nwR0Z54JCKIKAne%2BXKmNtuKerXchcK8axD792sk7cphqMBvNqbPVoJmKYcm0vAkq2ICto0NVz4%2F6WxqA%3D%3D HTTP/1.0
 Host: 127.0.0.1:12342
+Connection: close
 
 "

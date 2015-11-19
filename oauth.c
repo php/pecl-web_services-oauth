@@ -250,15 +250,12 @@ zend_string *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_con
 	/* TODO: add support for other algorithms instead of OPENSSL_ALGO_SHA1 */
 
 	ZVAL_STRING(&args[0], message);
-	/* Bug 17545 - segfault when zval_dtor is attempted on this argument */
-	ZVAL_EMPTY_STRING(&args[1]);
-	/* args[1] is filled by function */
 	ZVAL_DUP(&args[2], &ctx->privatekey);
 
-	call_user_function(EG(function_table), NULL, &func, &retval, 3, args);
+	call_user_function_ex(EG(function_table), NULL, &func, &retval, 3, args, 0, NULL);
 
 	if (Z_TYPE(retval) == IS_TRUE || Z_TYPE(retval) == IS_FALSE) {
-		result = php_base64_encode((unsigned char *) Z_STRVAL(args[1]), Z_STRLEN(args[1]));
+		result = php_base64_encode((unsigned char *) Z_STRVAL_P(Z_REFVAL(args[1])), Z_STRLEN_P(Z_REFVAL(args[1])));
 		zval_ptr_dtor(&args[1]);
 	} else {
 		result = NULL;

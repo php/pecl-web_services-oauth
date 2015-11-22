@@ -302,11 +302,13 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 	if(s.len) { \
 		smart_string_0(&(s)); \
 		if(t) { \
-			tmp = php_trim((s).c, (s).len, NULL, 0, NULL, 3 TSRMLS_CC); \
-			add_assoc_string((a), k, tmp, 1); \
-			efree(tmp); \
+			zend_string *tmp, *s_zstr = zend_string_init((s).c, (s).len, 0); \
+			tmp = php_trim(s_zstr, NULL, 0, 3); \
+			add_assoc_string((a), k, ZSTR_VAL(tmp)); \
+			zend_string_free(tmp); \
+			zend_string_free(s_zstr); \
 		} else { \
-			add_assoc_string((a), k, (s).c, 1); \
+			add_assoc_string((a), k, (s).c); \
 		} \
 	}
 

@@ -154,10 +154,9 @@ static void so_object_free_storage(zend_object *obj) /* {{{ */
 	if (soo->headers_out.c) {
 		smart_string_free(&soo->headers_out);
 	}
-	//TODO Sean-Der
-	//if(soo->debugArr) {
-	//	zval_ptr_dtor(&soo->debugArr);
-	//}
+	if(Z_TYPE(soo->debugArr) != IS_UNDEF) {
+		zval_ptr_dtor(&soo->debugArr);
+	}
 	OAUTH_SIGCTX_FREE(soo->sig_ctx);
 	if (soo->nonce) {
 		efree(soo->nonce);
@@ -671,22 +670,21 @@ static void oauth_set_debug_info(php_so_object *soo) {
 	if (soo->debug_info) {
 		debugInfo = &soo->debugArr;
 
-		if(!debugInfo) {
+		if (Z_TYPE_P(debugInfo) == IS_UNDEF) {
 			array_init(debugInfo);
 		} else {
 			FREE_ARGS_HASH(HASH_OF(debugInfo));
-			array_init(debugInfo);
 		}
 
 		if(soo->debug_info->sbs) {
 			add_assoc_string(debugInfo, "sbs", ZSTR_VAL(soo->debug_info->sbs));
 		}
 
-		//ADD_DEBUG_INFO(debugInfo, "headers_sent", soo->debug_info->headers_out, 1);
-		//ADD_DEBUG_INFO(debugInfo, "headers_recv", soo->headers_in, 1);
-		//ADD_DEBUG_INFO(debugInfo, "body_sent", soo->debug_info->body_out, 0);
-		//ADD_DEBUG_INFO(debugInfo, "body_recv", soo->debug_info->body_in, 0);
-		//ADD_DEBUG_INFO(debugInfo, "info", soo->debug_info->curl_info, 0);
+		ADD_DEBUG_INFO(debugInfo, "headers_sent", soo->debug_info->headers_out, 1);
+		ADD_DEBUG_INFO(debugInfo, "headers_recv", soo->headers_in, 1);
+		ADD_DEBUG_INFO(debugInfo, "body_sent", soo->debug_info->body_out, 0);
+		ADD_DEBUG_INFO(debugInfo, "body_recv", soo->debug_info->body_in, 0);
+		ADD_DEBUG_INFO(debugInfo, "info", soo->debug_info->curl_info, 0);
 
 		zend_update_property(soo_class_entry, soo->this_ptr, "debugInfo", sizeof("debugInfo") - 1, debugInfo);
 	} else {

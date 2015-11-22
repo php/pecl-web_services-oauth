@@ -244,7 +244,12 @@ static inline php_so_object *so_object_from_obj(zend_object *obj) /* {{{ */ {
 }
 /* }}} */
 
-#define Z_SOO_P(zv)  so_object_from_obj(Z_OBJ_P((zv)))
+static inline php_so_object *Z_SOO_P(zval *zv) /* {{{ */ {
+	php_so_object *soo = so_object_from_obj(Z_OBJ_P((zv)));
+	soo->this_ptr = zv;
+	return soo;
+}
+/* }}} */
 
 #ifndef zend_parse_parameters_none
 #define zend_parse_parameters_none()    \

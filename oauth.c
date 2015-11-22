@@ -2689,7 +2689,7 @@ static void oauth_write_member(zval *obj, zval *mem, zval *value, void **cache_s
 	soo = Z_SOO_P(obj);
 
 	if(!strcmp(property,"debug")) {
-		soo->debug = Z_LVAL_P(value);
+		soo->debug = Z_TYPE_P(value) == IS_TRUE ? 1 : 0;
 	} else if(!strcmp(property,"sslChecks")) {
 		soo->sslcheck = Z_LVAL_P(value);
 	}

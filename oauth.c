@@ -1328,7 +1328,7 @@ static const char *oauth_get_http_method(php_so_object *soo, const char *http_me
 		return http_method;
 	}
 	/* http method not explicitly given, choose default one */
-	if (OAUTH_AUTH_TYPE_FORM==auth_type) {
+	if (OAUTH_AUTH_TYPE_FORM == auth_type) {
 		return OAUTH_HTTP_METHOD_POST;
 	} else {
 		return OAUTH_HTTP_METHOD_GET;
@@ -1751,30 +1751,29 @@ SO_METHOD(__construct)
 {
 	HashTable *hasht;
 	char *ck, *cs, *sig_method = NULL;
-	long auth_method = 0;
+	zend_long auth_method = 0;
 	zval zck, zcs, zsm, zam, zver, *obj;
-	size_t ck_len, cs_len, sig_method_len = 0;
+	size_t ck_len = 0, cs_len = 0, sig_method_len = 0;
 	php_so_object *soo;
 
 	obj = getThis();
 
-	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "ss|sl", &ck, &ck_len, &cs, &cs_len, &sig_method, &sig_method_len, &auth_method) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|sssl", &ck, &ck_len, &cs, &cs_len, &sig_method, &sig_method_len, &auth_method) == FAILURE) {
 		return;
 	}
 
 	soo = Z_SOO_P(obj);
 
-	if(!ck_len) {
+	if(ck_len == 0) {
 		soo_handle_error(soo, -1, "The consumer key cannot be empty", NULL, NULL);
 		return;
 	}
-/*
-	if(!cs_len) {
+
+	if(cs_len == 0) {
 		soo_handle_error(soo, -1, "The consumer secret cannot be empty", NULL, NULL);
-		php_error(E_ERROR, "the consumer secret cannot be empty");
 		return;
 	}
-*/
+
 	memset(soo->last_location_header, 0, OAUTH_MAX_HEADER_LEN);
 	soo->redirects = 0;
 	soo->debug = 0;
@@ -2116,7 +2115,7 @@ SO_METHOD(setSSLChecks)
 {
 	php_so_object *soo;
 	zval *obj;
-	long sslcheck = OAUTH_SSLCHECK_BOTH;
+	zend_long sslcheck = OAUTH_SSLCHECK_BOTH;
 
 	obj = getThis();
 	soo = Z_SOO_P(obj);
@@ -2169,7 +2168,7 @@ SO_METHOD(setVersion)
 SO_METHOD(setAuthType)
 {
 	php_so_object *soo;
-	long auth;
+	zend_long auth;
 	zval zauth;
 
 	soo = Z_SOO_P(getThis());
@@ -2201,7 +2200,7 @@ SO_METHOD(setAuthType)
 SO_METHOD(setTimeout)
 {
 	php_so_object *soo;
-	long timeout;
+	zend_long timeout;
 
 	soo = Z_SOO_P(getThis());
 
@@ -2303,7 +2302,7 @@ SO_METHOD(setToken)
 SO_METHOD(setRequestEngine)
 {
 	php_so_object *soo;
-	long reqengine;
+	zend_long reqengine;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &reqengine) == FAILURE) {
 		return;
@@ -2346,6 +2345,7 @@ SO_METHOD(generateSignature)
 	if (oauth_fetch(soo, url, http_method, request_args, NULL, NULL, (OAUTH_FETCH_USETOKEN | OAUTH_FETCH_SIGONLY)) < 0) {
 		RETURN_BOOL(FALSE);
 	} else {
+		zend_string_addref(soo->signature);
 		RETURN_STR(soo->signature);
 	}
 }

@@ -12,7 +12,7 @@ http_server_skipif('tcp://127.0.0.1:12342');
 <?php
 require 'server.inc';
 
-$x = new OAuth('1234', '', OAUTH_SIG_METHOD_RSASHA1);
+$x = new OAuth('1234', '5678', OAUTH_SIG_METHOD_RSASHA1);
 $x->setRequestEngine(OAUTH_REQENGINE_STREAMS);
 $x->setTimestamp(12345);
 $x->setNonce('testing');

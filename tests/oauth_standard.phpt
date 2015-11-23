@@ -1,7 +1,5 @@
 --TEST--
 OAuth Standard functions
---XFAIL--
-oauth_read_member is not called for debug+sslChecks everytime giving incorrect values
 --FILE--
 <?php
 
@@ -17,13 +15,34 @@ function oauth_dump($v)
 	}
 	echo "NOT_OAUTH\n";
 }
+
+echo "-- empty params --\n";
+try {
+	$x = new OAuth;
+} catch (Exception $e) {
+	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
+}
+
+echo "-- one param --\n";
+try {
+	$x = new OAuth('');
+} catch (Exception $e) {
+	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
+}
+
+echo "-- empty consumer key and secret --\n";
+try {
+	$x = new OAuth('', '');
+} catch (Exception $e) {
+	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
+}
+
 echo "-- empty consumer secret --\n";
 try {
 	$x = new OAuth('1234', '');
 } catch (Exception $e) {
 	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
 }
-oauth_dump($x);
 
 echo "-- normal constructor --\n";
 $x = new OAuth('1234', '5678');
@@ -81,11 +100,14 @@ echo "EXCEPTION {$E->getCode()}: {$E->getMessage()}\n";
 }
 ?>
 --EXPECTF--
+-- empty params --
+EXCEPTION -1: The consumer key cannot be empty
+-- one param --
+EXCEPTION -1: The consumer key cannot be empty
 -- empty consumer key and secret --
 EXCEPTION -1: The consumer key cannot be empty
-NULL
 -- empty consumer secret --
-OAuth[debug=0,sslChecks=3,debugInfo=]
+EXCEPTION -1: The consumer secret cannot be empty
 -- normal constructor --
 OAuth[debug=0,sslChecks=3,debugInfo=]
 -- enable debug --

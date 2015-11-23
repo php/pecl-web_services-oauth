@@ -3,7 +3,6 @@ OAuth getRequestToken
 --SKIPIF--
 <?php
 require 'skip.inc';
-skip_without_bug('44603');
 require 'server.inc';
 http_server_skipif('tcp://127.0.0.1:12342');
 ?>
@@ -54,17 +53,20 @@ array(2) {
   ["oauth_token_secret"]=>
   string(4) "4567"
 }
-string(%d) "GET /test HTTP/%f
-Authorization: OAuth oauth_consumer_key="1234",oauth_signature_method="HMAC-SHA1",oauth_nonce="%s.%d",oauth_timestamp="%d",oauth_version="1.0",oauth_signature="%s"
+string(%d) "POST /test HTTP/%f
 Host: 127.0.0.1:12342
+Connection: close
+Authorization: OAuth oauth_consumer_key="1234",oauth_signature_method="HMAC-SHA1",oauth_nonce="%s.%d",oauth_timestamp="%d",oauth_version="1.0",oauth_signature="%s"
 
 POST /test HTTP/%f
-Content-Type: application/x-www-form-urlencoded
 Host: 127.0.0.1:12342
+Connection: close
 Content-Length: %d
+Content-Type: application/x-www-form-urlencoded
 
 oauth_consumer_key=1234&oauth_signature_method=HMAC-SHA1&oauth_nonce=%s.%d&oauth_timestamp=%d&oauth_version=1.0&oauth_signature=%s
-GET /test?oauth_consumer_key=1234&oauth_signature_method=HMAC-SHA1&oauth_nonce=%s.%d&oauth_timestamp=%d&oauth_version=1.0&oauth_signature=%s HTTP/%f
+POST /test?oauth_consumer_key=1234&oauth_signature_method=HMAC-SHA1&oauth_nonce=%s.%d&oauth_timestamp=%d&oauth_version=1.0&oauth_signature=%s HTTP/%f
 Host: 127.0.0.1:12342
+Connection: close
 
 "

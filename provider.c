@@ -1073,7 +1073,7 @@ static void oauth_provider_free_storage(zend_object *obj) /* {{{ */
 {
 	php_oauth_provider *sop;
 
-	sop = (php_oauth_provider *)obj;
+	sop = sop_object_from_obj(obj);
 
 	zend_object_std_dtor(&sop->zo);
 
@@ -1088,18 +1088,10 @@ static void oauth_provider_free_storage(zend_object *obj) /* {{{ */
 	OAUTH_PROVIDER_FREE_STRING(sop->endpoint_paths[OAUTH_PROVIDER_PATH_REQUEST]);
 	OAUTH_PROVIDER_FREE_STRING(sop->endpoint_paths[OAUTH_PROVIDER_PATH_ACCESS]);
 	OAUTH_PROVIDER_FREE_STRING(sop->endpoint_paths[OAUTH_PROVIDER_PATH_AUTH]);
-
-	efree(sop);
 }
 /* }}} */
 
-zend_object *oauth_provider_register(php_oauth_provider *soo) /* {{{ */
-{
-	soo->zo.handlers = &oauth_provider_obj_hndlrs;
-	return &soo->zo;
-}
-
-static php_oauth_provider* oauth_provider_new(zend_class_entry *ce) /* {{{ */
+static zend_object* oauth_provider_new(zend_class_entry *ce) /* {{{ */
 {
 	php_oauth_provider *nos;
 	nos = ecalloc(1, sizeof(php_oauth_provider) + zend_object_properties_size(ce));
@@ -1107,8 +1099,11 @@ static php_oauth_provider* oauth_provider_new(zend_class_entry *ce) /* {{{ */
 	zend_object_std_init(&nos->zo, ce);
 	object_properties_init(&nos->zo, ce);
 
-	return nos;
+	nos->zo.handlers = &oauth_provider_obj_hndlrs;
+
+	return &nos->zo;
 }
+/* }}} */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_provider__construct, 0, 0, 0)
 ZEND_ARG_INFO(0, params_array)
@@ -1172,23 +1167,17 @@ static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		{NULL, NULL, NULL}
 };
 
-zend_object *oauth_provider_create_object(zend_class_entry *ce) /* {{{ */
-{
-	return oauth_provider_register(oauth_provider_new(ce));
-}
-/* }}} */
-
 extern int oauth_provider_register_class() /* {{{ */
 {
 	zend_class_entry osce;
 
 	INIT_CLASS_ENTRY(osce, "OAuthProvider", oauth_provider_methods);
-	osce.create_object = oauth_provider_create_object;
+	osce.create_object = oauth_provider_new;
 	oauthprovider = zend_register_internal_class(&osce);
 
 	memcpy(&oauth_provider_obj_hndlrs, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 	oauth_provider_obj_hndlrs.offset = XtOffsetOf(php_oauth_provider, zo);
-	oauth_provider_obj_hndlrs.dtor_obj = oauth_provider_free_storage;
+	oauth_provider_obj_hndlrs.free_obj = oauth_provider_free_storage;
 
 	return SUCCESS;
 }

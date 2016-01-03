@@ -35,10 +35,16 @@ Requirements: ext/hash (now a part of PHP core)
     <email>rasmus@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2012-10-01</date>
+  <lead>
+    <name>Sean DuBois</name>
+    <user>SeanDer</user>
+    <email>SeanDer@php.net</email>
+    <active>yes</active>
+  </lead>
+  <date>2016-01-02</date>
   <version>
-    <release>1.2.4</release>
-    <api>1.2</api>
+    <release>2.0.0</release>
+    <api>2.0</api>
   </version>
   <stability>
     <release>stable</release>
@@ -46,6 +52,7 @@ Requirements: ext/hash (now a part of PHP core)
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
+    - PHP 7 Support
     - Bug 67658: configure does not detect missing pcre.h
     - Bug 67665: update fetch to accept 20X HTTP ranges
     - Bug 67883: check SERVER[REDIRECT_HTTP_AUTHORIZATION] for the Authorization header
@@ -113,12 +120,33 @@ Requirements: ext/hash (now a part of PHP core)
         <file name="config.inc.php" role="doc" />
         <file name="digg_a_story.php" role="doc" />
       </dir>
+      <dir name="tests">
+        <file name="bug16946.phpt" role="test" />
+        <file name="bug21426.phpt" role="test" />
+        <file name="bug_64308.phpt" role="test" />
+        <file name="oauthprovider_001.phpt" role="test" />
+        <file name="oauth_reqtoken.phpt" role="test" />
+        <file name="oauth_sbs.phpt" role="test" />
+        <file name="oauth_standard.phpt" role="test" />
+        <file name="oauth_urlencode.phpt" role="test" />
+        <file name="overflow_redir.phpt" role="test" />
+        <file name="plaintext.phpt" role="test" />
+        <file name="plaintext2.phpt" role="test" />
+        <file name="reqtoken_bug44603.phpt" role="test" />
+        <file name="reqtoken_php.phpt" role="test" />
+        <file name="rsa.phpt" role="test" />
+        <file name="sbs.phpt" role="test" />
+        <file name="server.inc" role="test" />
+        <file name="skip.inc" role="test" />
+        <file name="test.pem" role="test" />
+        <file name="urlencode.phpt" role="test" />
+      </dir>
     </dir>
   </contents>
   <dependencies>
     <required>
       <php>
-        <min>5.1.0</min>
+        <min>7.0.0</min>
       </php>
       <pearinstaller>
         <min>1.4.0b1</min>
@@ -213,7 +241,7 @@ Requirements: ext/hash (now a part of PHP core)
       - Added OAuth::getRequestHeader and OAuth::setSSLChecks (hirokawa@)
     </notes>
   </release>
-  
+
   <release>
     <date>2011-06-02</date>
     <version>

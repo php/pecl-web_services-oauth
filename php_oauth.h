@@ -54,7 +54,7 @@
 	curl_formfree(f);
 #endif
 
-#define PHP_OAUTH_VERSION 1.2.3
+#define PHP_OAUTH_VERSION 2.0.0
 
 #define __stringify_1(x)    #x
 #define __stringify(x)      __stringify_1(x)

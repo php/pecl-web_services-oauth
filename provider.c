@@ -318,9 +318,9 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 {
 	php_oauth_provider *sop;
 	php_oauth_provider_fcall *cb = NULL;
-	zval *retval = NULL, args, *pthis;
-	char *errstr = "", *callable_name = NULL;
-	zend_bool is_callable;
+	zval args, *pthis;
+	char *errstr = "";
+	zend_string *callable = NULL;
 
 	pthis = getThis();
 	sop = fetch_sop_object(pthis);
@@ -354,27 +354,25 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 	Z_ADDREF(args);
 
 	errstr = NULL;
-	// TODO Sean-Der
-	//is_callable = zend_is_callable_ex(cb->fcall_info->function_name, cb->fcall_info->object_ptr, IS_CALLABLE_CHECK_SILENT, &callable_name, NULL, &cb->fcall_info_cache, &errstr);
-
-	if (!is_callable) {
+	if (!zend_is_callable(&cb->fcall_info->function_name, 0, &callable)) {
 		if (errstr) {
-			php_error_docref(NULL, E_WARNING, "Invalid callback %s, %s", callable_name, errstr);
+			php_error_docref(NULL, E_WARNING, "Invalid callback: %s, %s", Z_STRVAL(cb->fcall_info->function_name), errstr);
 			efree(errstr);
+		} else {
+			php_error_docref(NULL, E_WARNING, "Invalid callback: %s.", Z_STRVAL(cb->fcall_info->function_name));
 		}
 	} else if (errstr) {
 		php_error_docref(NULL, E_WARNING, "%s", errstr);
 		efree(errstr);
 	}
 
-	//TODO Sean-Der
-	//if (zend_fcall_info_call(cb->fcall_info, &cb->fcall_info_cache, &retval, args)!=SUCCESS) {
-	//	php_error_docref(NULL, E_ERROR, "Failed calling callback %s", callable_name);
-	//}
-	zval_ptr_dtor(&args);
-	efree(callable_name);
+	if (zend_fcall_info_call(cb->fcall_info, &cb->fcall_info_cache, return_value, &args)!=SUCCESS) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Failed calling callback %s", Z_STRVAL(cb->fcall_info->function_name));
+	}
 
-	return retval;
+	zval_ptr_dtor(&args);
+
+	return return_value;
 }
 /* }}} */
 

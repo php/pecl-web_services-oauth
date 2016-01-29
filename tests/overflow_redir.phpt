@@ -1,7 +1,7 @@
 --TEST--
 OAuth Overflow in header redirect
 --SKIPIF--
-<?php 
+<?php
 
 require 'skip.inc';
 skip_if_not_constant('OAUTH_REQENGINE_CURL');
@@ -41,14 +41,14 @@ array(2) {
   string(4) "4567"
 }
 string(%d) "GET /test HTTP/%f
-User-Agent: PECL-OAuth/%f%s
 Host: 127.0.0.1:12342
+User-Agent: PECL-OAuth/%f%s
 Accept: */*
 Authorization: OAuth oauth_consumer_key="1234",oauth_signature_method="HMAC-SHA1",oauth_nonce="%s.%d",oauth_timestamp="%d",oauth_version="1.0",oauth_signature="%s"
 
 GET /aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa HTTP/%f
-User-Agent: PECL-OAuth/%f%s
 Host: 127.0.0.1:12342
+User-Agent: PECL-OAuth/%f%s
 Accept: */*
 Authorization: OAuth oauth_consumer_key="1234",oauth_signature_method="HMAC-SHA1",oauth_nonce="%s.%d",oauth_timestamp="%d",oauth_version="1.0",oauth_signature="%s"
 

@@ -655,7 +655,7 @@ SOP_METHOD(checkOAuthRequest)
 	php_oauth_provider *sop;
 	ulong missing_param_count = 0, mp_count = 1;
 	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *current_uri = NULL;
-	zend_string *sbs, *signature;
+	zend_string *sbs, *signature = NULL;
 	HashPosition hpos;
 	HashTable *sbs_vars = NULL;
 	size_t http_verb_len = 0, uri_len = 0;

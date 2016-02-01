@@ -219,7 +219,9 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 	}
 	zend_string_release(regex);
 
-	array_init(&subpats);
+	ZVAL_NULL(&subpats);
+	ZVAL_NULL(&return_value);
+
 	php_pcre_match_impl(
 		pce,
 		auth_header,

@@ -45,7 +45,7 @@ static int oauth_provider_set_default_required_params(HashTable *ht) /* {{{ */
 	do {
 		zval tmp;
 		ZVAL_NULL(&tmp);
-		if(zend_hash_str_add(ht, required_params[idx], strlen(required_params[idx]) + 1, &tmp) == NULL) {
+		if(zend_hash_str_add(ht, required_params[idx], strlen(required_params[idx]), &tmp) == NULL) {
 			return FAILURE;
 		}
 		++idx;
@@ -106,6 +106,7 @@ static void oauth_provider_apply_custom_param(HashTable *ht, HashTable *custom) 
 			if (IS_NULL == Z_TYPE_P(entry)) {
 				zend_hash_del(ht, key);
 			} else {
+				Z_ADDREF_P(entry);
 				zend_hash_update(ht, key, entry);
 			}
 		}
@@ -652,7 +653,7 @@ SOP_METHOD(setRequestTokenPath)
 /* {{{ proto void OAuthProvider::checkOAuthRequest([string url [, string request_method]]) */
 SOP_METHOD(checkOAuthRequest)
 {
-	zval *retval = NULL, *param, *pthis, *token_secret = NULL, *consumer_secret, *req_signature, *sig_method, rv;
+	zval *retval = NULL, *param, *pthis, *token_secret = NULL, *consumer_secret, *req_signature, *sig_method = NULL, rv;
 	oauth_sig_context *sig_ctx = NULL;
 	php_oauth_provider *sop;
 	ulong missing_param_count = 0, mp_count = 1;
@@ -731,7 +732,7 @@ SOP_METHOD(checkOAuthRequest)
 
 	sig_method = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE_METHOD, sizeof(OAUTH_PROVIDER_SIGNATURE_METHOD) - 1, 1, &rv);
 	do {
-		if (sig_method && Z_STRLEN_P(sig_method)) {
+		if (sig_method && (Z_TYPE_P(sig_method) == IS_STRING) && Z_STRLEN_P(sig_method)) {
 			sig_ctx = oauth_create_sig_context(Z_STRVAL_P(sig_method));
 			if (OAUTH_SIGCTX_TYPE_NONE!=sig_ctx->type) {
 				break;

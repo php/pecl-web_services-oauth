@@ -164,7 +164,7 @@ static void oauth_provider_check_required_params(HashTable *required_params, Has
 	zend_hash_internal_pointer_reset_ex(missing_params, &paramhpos);
 	do {
 		if(zend_hash_get_current_key_ex(required_params, &key, &num_key, &hpos) == HASH_KEY_IS_STRING) {
-			if((dest_entry = zend_hash_find(params, key)) != NULL) {
+			if((dest_entry = zend_hash_find(params, key)) == NULL) {
 				ZVAL_STRING(&param, ZSTR_VAL(key));
 				zend_hash_next_index_insert(missing_params, &param);
 			}

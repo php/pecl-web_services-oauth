@@ -570,10 +570,10 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 	smart_string sbuf = {0};
 
 	urlparts = php_url_parse_ex(uri, strlen(uri));
-	php_strtolower(urlparts->scheme, strlen(urlparts->scheme));
-	php_strtolower(urlparts->host, strlen(urlparts->host));
 
 	if (urlparts) {
+		php_strtolower(urlparts->scheme, strlen(urlparts->scheme));
+		php_strtolower(urlparts->host, strlen(urlparts->host));
 		if (!urlparts->host || !urlparts->scheme) {
 			soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Invalid url when trying to build base signature string", NULL, NULL);
 			php_url_free(urlparts);

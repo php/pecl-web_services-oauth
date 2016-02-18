@@ -860,11 +860,11 @@ SOP_METHOD(setParam)
 	sop = fetch_sop_object(pthis);
 
 	if (!param_val) {
-		RETURN_BOOL(SUCCESS == zend_hash_str_del(sop->custom_params, param_key, param_key_len+1) ? IS_TRUE : IS_FALSE);
+		RETURN_BOOL(SUCCESS == zend_hash_str_del(sop->custom_params, param_key, param_key_len) ? IS_TRUE : IS_FALSE);
 	} else {
 		Z_ADDREF_P(param_val);
 
-		RETURN_BOOL(NULL != zend_hash_str_add(sop->custom_params, param_key, param_key_len+1, param_val) ? IS_TRUE : IS_FALSE);
+		RETURN_BOOL(NULL != zend_hash_str_add(sop->custom_params, param_key, param_key_len, param_val) ? IS_TRUE : IS_FALSE);
 	}
 }
 /* }}} */

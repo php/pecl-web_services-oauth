@@ -670,7 +670,7 @@ static void oauth_set_debug_info(php_so_object *soo) {
 	if (soo->debug_info) {
 		debugInfo = &soo->debugArr;
 
-		if (Z_TYPE_P(debugInfo) == IS_UNDEF) {
+		if (Z_TYPE_P(debugInfo) != IS_UNDEF) {
 			zval_ptr_dtor(debugInfo);
 		}
 		array_init(debugInfo);

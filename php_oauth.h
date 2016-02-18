@@ -304,7 +304,6 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 		if(t) { \
 			zend_string *tmp, *s_zstr = zend_string_init((s).c, (s).len, 0); \
 			tmp = php_trim(s_zstr, NULL, 0, 3); \
-			zend_string_addref(tmp); \
 			add_assoc_string((a), k, ZSTR_VAL(tmp)); \
 			zend_string_release(tmp); \
 			zend_string_release(s_zstr); \

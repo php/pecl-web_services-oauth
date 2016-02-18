@@ -671,8 +671,9 @@ static void oauth_set_debug_info(php_so_object *soo) {
 		debugInfo = &soo->debugArr;
 
 		if (Z_TYPE_P(debugInfo) == IS_UNDEF) {
-			array_init(debugInfo);
+			zval_ptr_dtor(debugInfo);
 		}
+		array_init(debugInfo);
 
 		if(soo->debug_info->sbs) {
 			add_assoc_string(debugInfo, "sbs", ZSTR_VAL(soo->debug_info->sbs));

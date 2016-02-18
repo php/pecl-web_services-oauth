@@ -672,8 +672,6 @@ static void oauth_set_debug_info(php_so_object *soo) {
 
 		if (Z_TYPE_P(debugInfo) == IS_UNDEF) {
 			array_init(debugInfo);
-		} else {
-			FREE_ARGS_HASH(HASH_OF(debugInfo));
 		}
 
 		if(soo->debug_info->sbs) {

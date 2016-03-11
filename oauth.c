@@ -579,6 +579,8 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 			php_url_free(urlparts);
 			return NULL;
 		}
+		php_strtolower(urlparts->scheme, strlen(urlparts->scheme));
+		php_strtolower(urlparts->host, strlen(urlparts->host));
 		smart_string_appends(&sbuf, urlparts->scheme);
 		smart_string_appends(&sbuf, "://");
 		smart_string_appends(&sbuf, urlparts->host);

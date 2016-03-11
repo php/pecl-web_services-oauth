@@ -41,10 +41,10 @@ Requirements: ext/hash (now a part of PHP core)
     <email>SeanDer@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2016-01-02</date>
+  <date>2016-03-11</date>
   <version>
-    <release>2.0.1-dev</release>
-    <api>2.0-dev</api>
+    <release>2.0.1</release>
+    <api>2.0</api>
   </version>
   <stability>
     <release>stable</release>
@@ -52,10 +52,7 @@ Requirements: ext/hash (now a part of PHP core)
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-    - PHP 7 Support
-    - Bug 67658: configure does not detect missing pcre.h
-    - Bug 67665: update fetch to accept 20X HTTP ranges
-    - Bug 67883: check SERVER[REDIRECT_HTTP_AUTHORIZATION] for the Authorization header
+    * Fix multiple segfaults (kgovande, rlerdorf)
   </notes>
   <contents>
     <dir name="/">
@@ -160,6 +157,25 @@ Requirements: ext/hash (now a part of PHP core)
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+  <release>
+    <date>2016-01-02</date>
+    <version>
+      <release>2.0.0</release>
+      <api>2.0</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+    <notes>
+      - PHP 7 Support
+      - Bug 67658: configure does not detect missing pcre.h
+      - Bug 67665: update fetch to accept 20X HTTP ranges
+      - Bug 67883: check SERVER[REDIRECT_HTTP_AUTHORIZATION] for the Authorization header
+    </notes>
+  </release>
 
   <release>
     <date>2012-10-01</date>

@@ -43,8 +43,8 @@ Requirements: ext/hash (now a part of PHP core)
   </lead>
   <date>2016-03-11</date>
   <version>
-    <release>2.0.1</release>
-    <api>2.0</api>
+    <release>2.0.2-dev</release>
+    <api>2.0-dev</api>
   </version>
   <stability>
     <release>stable</release>

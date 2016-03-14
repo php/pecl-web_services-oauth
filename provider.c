@@ -106,7 +106,9 @@ static void oauth_provider_apply_custom_param(HashTable *ht, HashTable *custom) 
 			if (IS_NULL == Z_TYPE_P(entry)) {
 				zend_hash_del(ht, key);
 			} else {
-				Z_ADDREF_P(entry);
+				if (Z_REFCOUNTED_P(entry)) {
+					Z_ADDREF_P(entry);
+				}
 				zend_hash_update(ht, key, entry);
 			}
 		}
@@ -195,7 +197,9 @@ static void oauth_provider_set_std_params(zval *provider_obj, HashTable *sbs_var
 
 static inline int oauth_provider_set_param_value(HashTable *ht, char *key, zval *val) /* {{{ */
 {
-	Z_ADDREF_P(val);
+	if (Z_REFCOUNTED_P(val)) {
+		Z_ADDREF_P(val);
+	}
 	return zend_hash_str_update(ht, key, strlen(key), val) != NULL;
 }
 /* }}} */
@@ -862,7 +866,9 @@ SOP_METHOD(setParam)
 	if (!param_val) {
 		RETURN_BOOL(SUCCESS == zend_hash_str_del(sop->custom_params, param_key, param_key_len) ? IS_TRUE : IS_FALSE);
 	} else {
-		Z_ADDREF_P(param_val);
+		if (Z_REFCOUNTED_P(param_val)) {
+			Z_ADDREF_P(param_val);
+		}
 
 		RETURN_BOOL(NULL != zend_hash_str_add(sop->custom_params, param_key, param_key_len, param_val) ? IS_TRUE : IS_FALSE);
 	}

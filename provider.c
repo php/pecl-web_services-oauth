@@ -810,7 +810,7 @@ SOP_METHOD(checkOAuthRequest)
 
 		req_signature = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE, sizeof(OAUTH_PROVIDER_SIGNATURE) - 1, 1, &rv);
 		if (!signature || !Z_STRLEN_P(req_signature) || strcmp(ZSTR_VAL(signature), Z_STRVAL_P(req_signature))) {
-			soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, NULL);
+			soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, sbs ? ZSTR_VAL(sbs) : NULL);
 		}
 
 		zend_string_release(sbs);

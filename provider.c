@@ -813,8 +813,12 @@ SOP_METHOD(checkOAuthRequest)
 			soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, sbs ? ZSTR_VAL(sbs) : NULL);
 		}
 
-		zend_string_release(sbs);
-		zend_string_release(signature);
+		if (sbs) {
+			zend_string_release(sbs);
+		}
+		if (signature) {
+			zend_string_release(signature);
+		}
 	} while (0);
 
 	OAUTH_SIGCTX_FREE(sig_ctx);

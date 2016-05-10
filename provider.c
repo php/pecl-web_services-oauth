@@ -533,9 +533,9 @@ SOP_METHOD(__construct)
 			}
 
 			/* first look in _SERVER */
-			if (Z_TYPE(PG(http_globals)[TRACK_VARS_SERVER]) == IS_UNDEF
-				|| (tmpzval = zend_hash_str_find(Z_ARRVAL(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_AUTHORIZATION", sizeof("HTTP_AUTHORIZATION") - 1)) == NULL
-                || (tmpzval = zend_hash_str_find(Z_ARRVAL(PG(http_globals)[TRACK_VARS_SERVER]), "REDIRECT_HTTP_AUTHORIZATION", sizeof("REDIRECT_HTTP_AUTHORIZATION") -1)) == NULL)
+			if (Z_TYPE(PG(http_globals)[TRACK_VARS_SERVER]) == IS_UNDEF ||
+					((tmpzval = zend_hash_str_find(Z_ARRVAL(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_AUTHORIZATION", sizeof("HTTP_AUTHORIZATION") - 1)) == NULL
+					 && (tmpzval = zend_hash_str_find(Z_ARRVAL(PG(http_globals)[TRACK_VARS_SERVER]), "REDIRECT_HTTP_AUTHORIZATION", sizeof("REDIRECT_HTTP_AUTHORIZATION") -1)) == NULL))
 			{
 				/* well that didn't work out, so let's check out _ENV */
 				if (Z_TYPE(PG(http_globals)[TRACK_VARS_ENV]) == IS_UNDEF

@@ -41,10 +41,10 @@ Requirements: ext/hash (now a part of PHP core)
     <email>SeanDer@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2016-03-11</date>
+  <date>2016-06-17</date>
   <version>
-    <release>2.0.2-dev</release>
-    <api>2.0-dev</api>
+    <release>2.0.2</release>
+    <api>2.0</api>
   </version>
   <stability>
     <release>stable</release>
@@ -52,7 +52,7 @@ Requirements: ext/hash (now a part of PHP core)
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-    * Fix multiple segfaults (kgovande, rlerdorf)
+    * Fix #72006
   </notes>
   <contents>
     <dir name="/">
@@ -157,6 +157,22 @@ Requirements: ext/hash (now a part of PHP core)
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+  <release>
+    <date>2016-03-11</date>
+    <version>
+      <release>2.0.1</release>
+      <api>2.0</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+    <notes>
+      * Fix multiple segfaults (kgovande, rlerdorf)
+    </notes>
+  </release>
 
   <release>
     <date>2016-01-02</date>

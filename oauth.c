@@ -374,8 +374,8 @@ static int oauth_strcmp(zval *first, zval *second)
 static int oauth_compare_value(const void *a, const void *b)
 {
 	Bucket *f, *s;
-	f = *(Bucket **)a;
-	s = *(Bucket **)b;
+	f = (Bucket *)a;
+	s = (Bucket *)b;
 
 	return oauth_strcmp(&f->val, &s->val);
 }

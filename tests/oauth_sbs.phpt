@@ -21,6 +21,8 @@ echo "-- putting oauth_signature inside by mistake --\n";
 echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/',array('oauth_signature'=>'hello world')),"\n";
 echo "-- merging url query and extra params --\n";
 echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/script?arg1=1',array('arg2' => '2')),"\n";
+echo "-- with array value --\n";
+echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/script',array('arg2' => [1, 2, 3])),"\n";
 
 ?>
 --EXPECTF--
@@ -44,3 +46,5 @@ GET&http%3A%2F%2F127.0.0.1%3A12342%2F&test%3D
 GET&http%3A%2F%2F127.0.0.1%3A12342%2F&
 -- merging url query and extra params --
 GET&http%3A%2F%2F127.0.0.1%3A12342%2Fscript&arg1%3D1%26arg2%3D2
+-- with array value --
+GET&http%3A%2F%2F127.0.0.1%3A12342%2Fscript&arg2%3D1%26arg2%3D2%26arg2%3D3

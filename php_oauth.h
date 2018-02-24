@@ -294,9 +294,9 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 	smart_string_free(&(a)->curl_info);
 
 /* this and code that uses it is from ext/curl/interface.c */
-#define CAAL(s, v) add_assoc_long_ex(&info, s, sizeof(s), (long) v);
-#define CAAD(s, v) add_assoc_double_ex(&info, s, sizeof(s), (double) v);
-#define CAAS(s, v) add_assoc_string_ex(&info, s, sizeof(s), (char *) (v ? v : ""));
+#define CAAL(s, v) add_assoc_long_ex(&info, s, sizeof(s) - 1, (long) v);
+#define CAAD(s, v) add_assoc_double_ex(&info, s, sizeof(s) - 1, (double) v);
+#define CAAS(s, v) add_assoc_string_ex(&info, s, sizeof(s) - 1, (char *) (v ? v : ""));
 
 #define ADD_DEBUG_INFO(a, k, s, t) \
 	if(s.len) { \

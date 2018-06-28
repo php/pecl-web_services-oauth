@@ -864,11 +864,11 @@ SOP_METHOD(setParam)
 	sop = fetch_sop_object(pthis);
 
 	if (!param_val) {
-		RETURN_BOOL(SUCCESS == zend_hash_str_del(sop->custom_params, param_key, param_key_len) ? IS_TRUE : IS_FALSE);
+		RETURN_BOOL(SUCCESS == zend_hash_str_del(sop->custom_params, param_key, param_key_len));
 	} else {
 		Z_TRY_ADDREF_P(param_val);
 
-		RETURN_BOOL(NULL != zend_hash_str_add(sop->custom_params, param_key, param_key_len, param_val) ? IS_TRUE : IS_FALSE);
+		RETURN_BOOL(NULL != zend_hash_str_add(sop->custom_params, param_key, param_key_len, param_val));
 	}
 }
 /* }}} */
@@ -1048,7 +1048,7 @@ SOP_METHOD(reportProblem)
 		default:
 			http_code = OAUTH_ERR_INTERNAL_ERROR;
 			out = emalloc(48);
-			snprintf(out, 48, "oauth_problem=unknown_problem&code=%d", lcode);
+			snprintf(out, 48, "oauth_problem=unknown_problem&code=%lu", lcode);
 			out_malloced = 1;
 	}
 

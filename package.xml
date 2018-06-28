@@ -43,8 +43,8 @@ Requirements: ext/hash (now a part of PHP core)
   </lead>
   <date>2016-06-17</date>
   <version>
-    <release>2.0.3-dev</release>
-    <api>2.0-dev</api>
+    <release>2.0.3dev</release>
+    <api>2.0</api>
   </version>
   <stability>
     <release>stable</release>
@@ -52,7 +52,8 @@ Requirements: ext/hash (now a part of PHP core)
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-    * Fix #72006
+    * Fix #73434: Null byte at end of array keys in getLastResponseInfo
+    * Fix compatibility with PHP 7.3
   </notes>
   <contents>
     <dir name="/">
@@ -157,6 +158,22 @@ Requirements: ext/hash (now a part of PHP core)
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+  <release>
+    <date>2016-06-17</date>
+    <version>
+      <release>2.0.2</release>
+      <api>2.0-dev</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+    <notes>
+      * Fix #72006
+    </notes>
+  </release>
 
   <release>
     <date>2016-03-11</date>

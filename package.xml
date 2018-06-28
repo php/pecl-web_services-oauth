@@ -52,7 +52,8 @@ Requirements: ext/hash (now a part of PHP core)
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-    * Fix #73434: Null byte at end of array keys in getLastResponseInfo
+    * Fix bug #74163: Segfault in oauth_compare_value
+    * Fix bug #73434: Null byte at end of array keys in getLastResponseInfo
     * Fix compatibility with PHP 7.3
   </notes>
   <contents>

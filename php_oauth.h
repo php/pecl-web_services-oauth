@@ -332,6 +332,16 @@ zend_string *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, con
 oauth_sig_context *oauth_create_sig_context(const char *sigmethod);
 zend_string *oauth_url_encode(char *url, int url_len);
 
+
+// Compatibility macros
+#if PHP_VERSION_ID < 70300
+#define OAUTH_URL_STR(a) (a)
+#define OAUTH_URL_LEN(a) strlen(a)
+#else
+#define OAUTH_URL_STR(a) ZSTR_VAL(a)
+#define OAUTH_URL_LEN(a) ZSTR_LEN(a)
+#endif
+
 #endif
 
 /**

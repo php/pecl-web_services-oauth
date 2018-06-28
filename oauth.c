@@ -577,14 +577,14 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 			php_url_free(urlparts);
 			return NULL;
 		}
-		php_strtolower(urlparts->scheme, strlen(urlparts->scheme));
-		php_strtolower(urlparts->host, strlen(urlparts->host));
-		smart_string_appends(&sbuf, urlparts->scheme);
+		php_strtolower(OAUTH_URL_STR(urlparts->scheme), OAUTH_URL_LEN(urlparts->scheme));
+		php_strtolower(OAUTH_URL_STR(urlparts->host), OAUTH_URL_LEN(urlparts->host));
+		smart_string_appends(&sbuf, OAUTH_URL_STR(urlparts->scheme));
 		smart_string_appends(&sbuf, "://");
-		smart_string_appends(&sbuf, urlparts->host);
+		smart_string_appends(&sbuf, OAUTH_URL_STR(urlparts->host));
 
-		if (urlparts->port && ((!strcmp("http", urlparts->scheme) && OAUTH_HTTP_PORT != urlparts->port)
-					|| (!strcmp("https", urlparts->scheme) && OAUTH_HTTPS_PORT != urlparts->port))) {
+		if (urlparts->port && ((!strcmp("http", OAUTH_URL_STR(urlparts->scheme)) && OAUTH_HTTP_PORT != urlparts->port)
+					|| (!strcmp("https", OAUTH_URL_STR(urlparts->scheme)) && OAUTH_HTTPS_PORT != urlparts->port))) {
 			spprintf(&s_port, 0, "%d", urlparts->port);
 			smart_string_appendc(&sbuf, ':');
 			smart_string_appends(&sbuf, s_port);
@@ -593,7 +593,7 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 
 		if (urlparts->path) {
 			smart_string squery = {0};
-			smart_string_appends(&sbuf, urlparts->path);
+			smart_string_appends(&sbuf, OAUTH_URL_STR(urlparts->path));
 			smart_string_0(&sbuf);
 
 			array_init(&params);
@@ -608,7 +608,7 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 			}
 
 			if (urlparts->query) {
-				query = estrdup(urlparts->query);
+				query = estrdup(OAUTH_URL_STR(urlparts->query));
 				oauth_parse_str(query, &params);
 				efree(query);
 			}
@@ -1364,11 +1364,11 @@ static void oauth_apply_url_redirect(smart_string *surl, const char *location) /
 		/* rebuild url from scratch */
 		smart_string_free(surl);
 		if (urlparts->scheme) {
-			smart_string_appends(surl, urlparts->scheme);
+			smart_string_appends(surl, OAUTH_URL_STR(urlparts->scheme));
 			smart_string_appends(surl, "://");
 		}
 		if (urlparts->host) {
-			smart_string_appends(surl, urlparts->host);
+			smart_string_appends(surl, OAUTH_URL_STR(urlparts->host));
 		}
 		if (urlparts->port) {
 			smart_string_appendc(surl, ':');

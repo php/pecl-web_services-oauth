@@ -132,7 +132,7 @@ static int oauth_provider_token_required(zval *provider_obj, char* uri)
 			if (reqtoken_path[0]=='/') {
 				/* match against relative url */
 				php_url *urlparts = php_url_parse_ex(uri, strlen(uri));
-				uri_matched = urlparts && 0==strncmp(urlparts->path, reqtoken_path, strlen(reqtoken_path));
+				uri_matched = urlparts && 0==strncmp(OAUTH_URL_STR(urlparts->path), reqtoken_path, strlen(reqtoken_path));
 				php_url_free(urlparts);
 			} else {
 				/* match against full uri */

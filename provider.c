@@ -8,7 +8,6 @@
 |          Tjerk Meesters <datibbaw@php.net>                           |
 +----------------------------------------------------------------------+
 */
-/* $Id: oauth.c,v 1.60 2009/05/16 15:46:09 jawed Exp $ */
 
 #include "php_oauth.h"
 #include "provider.h"

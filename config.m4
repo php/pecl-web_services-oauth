@@ -1,7 +1,3 @@
-dnl
-dnl $Id$
-dnl
-
 PHP_ARG_ENABLE(oauth, for oauth support,
 [  --enable-oauth          Include oauth support])
 

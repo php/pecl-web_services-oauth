@@ -9,8 +9,6 @@
 +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #include "php_oauth.h"
 #include "provider.h"
 
@@ -2801,7 +2799,6 @@ PHP_MINFO_FUNCTION(oauth)
 #else
 	php_info_print_table_row(2, "Request engine support", "php_streams");
 #endif
-	php_info_print_table_row(2, "source version", "$Id$");
 	php_info_print_table_row(2, "version", OAUTH_EXT_VER);
 	php_info_print_table_end();
 }

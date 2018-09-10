@@ -17,7 +17,7 @@ if test "$PHP_OAUTH" != "no"; then
         AC_MSG_CHECKING(for cURL in default path)
         have_curl=no
         for i in /usr/local /usr; do
-          if test -r $i/include/curl/easy.h; then
+          if test -r $i/include/curl/easy.h -o -r $i/include/x86_64-linux-gnu/curl/easy.h; then
             have_curl=yes
             CURL_DIR=$i
             AC_MSG_RESULT(found in $i)

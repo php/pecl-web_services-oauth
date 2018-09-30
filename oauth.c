@@ -794,18 +794,19 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 	}
 
 	if (request_headers) {
+		HashPosition pos;
 		zval *cur_val, zheaders;
 		zend_string *cur_key;
 		ulong num_key;
 		smart_string sheaders = {0};
 		int first = 1;
 
-		for (zend_hash_internal_pointer_reset(request_headers);
-				(cur_val = zend_hash_get_current_data(request_headers)) != NULL;
-				zend_hash_move_forward(request_headers)) {
+		for (zend_hash_internal_pointer_reset_ex(request_headers, &pos);
+				(cur_val = zend_hash_get_current_data_ex(request_headers, &pos)) != NULL;
+				zend_hash_move_forward_ex(request_headers, &pos)) {
 			/* check if a string based key is used */
 			smart_string sheaderline = {0};
-			switch (zend_hash_get_current_key(request_headers, &cur_key, &num_key)) {
+			switch (zend_hash_get_current_key_ex(request_headers, &cur_key, &num_key, &pos)) {
 				case HASH_KEY_IS_STRING:
 					smart_string_appendl(&sheaderline, ZSTR_VAL(cur_key), ZSTR_LEN(cur_key));
 					break;
@@ -876,16 +877,17 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 
 		if (Z_TYPE(s->wrapperdata) != IS_UNDEF) {
 			zval *tmp;
+			HashPosition pos;
 
-			zend_hash_internal_pointer_reset(Z_ARRVAL(s->wrapperdata));
-			while ((tmp = zend_hash_get_current_data(Z_ARRVAL(s->wrapperdata))) != NULL) {
+			zend_hash_internal_pointer_reset_ex(Z_ARRVAL(s->wrapperdata), &pos);
+			while ((tmp = zend_hash_get_current_data_ex(Z_ARRVAL(s->wrapperdata), &pos)) != NULL) {
 				smart_string_appendl(&soo->headers_in, Z_STRVAL_P(tmp), Z_STRLEN_P(tmp));
 				smart_string_appends(&soo->headers_in, "\r\n");
 				HTTP_RESPONSE_CODE(tmp);
 				HTTP_RESPONSE_LOCATION(tmp);
 				HTTP_RESPONSE_CAAS(tmp, "Content-Type: ", "content_type");
 				HTTP_RESPONSE_CAAD(tmp, "Content-Length: ", "download_content_length");
-				zend_hash_move_forward(Z_ARRVAL(s->wrapperdata));
+				zend_hash_move_forward_ex(Z_ARRVAL(s->wrapperdata), &pos);
 			}
 			if (HTTP_IS_REDIRECT(response_code) && soo->last_location_header) {
 				CAAS("redirect_url", soo->last_location_header);

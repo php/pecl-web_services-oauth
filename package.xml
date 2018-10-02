@@ -159,6 +159,7 @@ Requirements: ext/hash (now a part of PHP core)
   <changelog>
 
   <release>
+<<<<<<< HEAD
     <date>2019-12-02</date>
     <version>
       <release>2.0.4</release>
@@ -192,8 +193,11 @@ Requirements: ext/hash (now a part of PHP core)
 
   <release>
     <date>2018-06-28</date>
+=======
+    <date>2018-09-30</date>
+>>>>>>> Fix package.xml and update version for 2.0.4
     <version>
-      <release>2.0.2</release>
+      <release>2.0.3</release>
       <api>2.0</api>
     </version>
     <stability>
@@ -202,9 +206,7 @@ Requirements: ext/hash (now a part of PHP core)
     </stability>
     <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
     <notes>
-      * Fix bug #74163: Segfault in oauth_compare_value
-      * Fix bug #73434: Null byte at end of array keys in getLastResponseInfo
-      * Fix compatibility with PHP 7.3
+      * Use _ex versions to avoid SIGABRT of during use of hash functions in 7.2+ (Derick Rethans)
     </notes>
   </release>
 
@@ -220,6 +222,9 @@ Requirements: ext/hash (now a part of PHP core)
     </stability>
     <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
     <notes>
+      * Fix bug #74163: Segfault in oauth_compare_value
+      * Fix bug #73434: Null byte at end of array keys in getLastResponseInfo
+      * Fix compatibility with PHP 7.3
       * Fix #72006
     </notes>
   </release>

@@ -171,6 +171,9 @@ Requirements: ext/hash (now a part of PHP core)
     <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
     <notes>
       * Use _ex versions to avoid SIGABRT of during use of hash functions in 7.2+ (Derick Rethans)
+      * Fix bug #74163: Segfault in oauth_compare_value
+      * Fix bug #73434: Null byte at end of array keys in getLastResponseInfo
+      * Fix compatibility with PHP 7.3
     </notes>
   </release>
 
@@ -186,9 +189,6 @@ Requirements: ext/hash (now a part of PHP core)
     </stability>
     <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
     <notes>
-      * Fix bug #74163: Segfault in oauth_compare_value
-      * Fix bug #73434: Null byte at end of array keys in getLastResponseInfo
-      * Fix compatibility with PHP 7.3
       * Fix #72006
     </notes>
   </release>

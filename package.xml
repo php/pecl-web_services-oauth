@@ -43,7 +43,7 @@ Requirements: ext/hash (now a part of PHP core)
   </lead>
   <date>2018-09-30</date>
   <version>
-    <release>2.0.3</release>
+    <release>2.0.4dev</release>
     <api>2.0</api>
   </version>
   <stability>
@@ -52,7 +52,7 @@ Requirements: ext/hash (now a part of PHP core)
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-    * Use _ex versions to avoid SIGABRT of during use of hash functions in 7.2+ (Derick Rethans)
+    * fix php_pcre_match_impl call in 7.4+ (Remi)
   </notes>
   <contents>
     <dir name="/">
@@ -157,6 +157,22 @@ Requirements: ext/hash (now a part of PHP core)
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+  <release>
+    <date>2018-09-30</date>
+    <version>
+      <release>2.0.3</release>
+      <api>2.0</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+    <notes>
+      * Use _ex versions to avoid SIGABRT of during use of hash functions in 7.2+ (Derick Rethans)
+    </notes>
+  </release>
 
   <release>
     <date>2018-06-28</date>

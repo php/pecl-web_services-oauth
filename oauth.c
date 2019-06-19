@@ -410,7 +410,7 @@ int oauth_http_build_query(php_so_object *soo, smart_string *s, HashTable *args,
 	zval *cur_val;
 	zend_string *cur_key, *arg_key, *param_value;
 	int numargs = 0, hash_key_type, skip_append = 0, i, found;
-	ulong num_index;
+	zend_ulong num_index;
 	HashPosition pos;
 	smart_string keyname;
 
@@ -708,7 +708,7 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 	zval *curval;
 	zend_string *param_name, *param_val;
 	zend_string *cur_key;
-	ulong num_key;
+	zend_ulong num_key;
 
 	smart_string_appends(&sheader, "OAuth ");
 
@@ -795,7 +795,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 		HashPosition pos;
 		zval *cur_val, zheaders;
 		zend_string *cur_key;
-		ulong num_key;
+		zend_ulong num_key;
 		smart_string sheaders = {0};
 		int first = 1;
 
@@ -1033,7 +1033,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	zval info, *zca_info, *zca_path, *cur_val;
 	char *s_code, *content_type = NULL, *bufz = NULL;
 	uint32_t sslcheck;
-	ulong num_key;
+	zend_ulong num_key;
 	smart_string sheader = {0};
 	zend_string *cur_key;
 

@@ -709,13 +709,14 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 	zend_string *param_name, *param_val;
 	zend_string *cur_key;
 	ulong num_key;
+	HashPosition pos;
 
 	smart_string_appends(&sheader, "OAuth ");
 
-	for (zend_hash_internal_pointer_reset(oauth_args);
-			(curval = zend_hash_get_current_data(oauth_args)) != NULL;
-			zend_hash_move_forward(oauth_args)) {
-		zend_hash_get_current_key(oauth_args, &cur_key, &num_key);
+	for (zend_hash_internal_pointer_reset_ex(oauth_args, &pos);
+			(curval = zend_hash_get_current_data_ex(oauth_args, &pos)) != NULL;
+				zend_hash_move_forward_ex(oauth_args, &pos)) {
+		zend_hash_get_current_key_ex(oauth_args, &cur_key, &num_key, &pos);
 
 		if (prepend_comma) {
 			smart_string_appendc(&sheader, ',');
@@ -780,8 +781,8 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 	sc = php_stream_context_alloc();
 
 	if (payload->len) {
-		smart_string_0(payload);
 		ZVAL_STRINGL(&zpayload, payload->c, payload->len);
+		Z_STRVAL(zpayload)[Z_STRLEN(zpayload)] = '\0';
 		php_stream_context_set_option(sc, "http", "content", &zpayload);
 		zval_ptr_dtor(&zpayload);
 		/**
@@ -1036,6 +1037,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	ulong num_key;
 	smart_string sheader = {0};
 	zend_string *cur_key;
+	HashPosition pos;
 
 	zca_info = soo_get_property(soo, OAUTH_ATTR_CA_INFO);
 	zca_path = soo_get_property(soo, OAUTH_ATTR_CA_PATH);
@@ -1044,11 +1046,11 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	curl = curl_easy_init();
 
 	if (request_headers) {
-		for (zend_hash_internal_pointer_reset(request_headers);
-				(cur_val = zend_hash_get_current_data(request_headers)) != NULL;
-				zend_hash_move_forward(request_headers)) {
+		for (zend_hash_internal_pointer_reset_ex(request_headers, &pos);
+				(cur_val = zend_hash_get_current_data_ex(request_headers, &pos)) != NULL;
+				zend_hash_move_forward_ex(request_headers, &pos)) {
 			/* check if a string based key is used */
-			switch (zend_hash_get_current_key(request_headers, &cur_key, &num_key)) {
+			switch (zend_hash_get_current_key_ex(request_headers, &cur_key, &num_key, &pos)) {
 				case HASH_KEY_IS_STRING:
 					smart_string_appendl(&sheader, ZSTR_VAL(cur_key), ZSTR_LEN(cur_key));
 					break;

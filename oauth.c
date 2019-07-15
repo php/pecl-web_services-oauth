@@ -194,7 +194,6 @@ void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *respo
 }
 /* }}} */
 
-
 zend_string *soo_sign_hmac(php_so_object *soo, char *message, const char *cs, const char *ts, const oauth_sig_context *ctx) /* {{{ */
 {
 	zval args[4], retval, func;
@@ -232,7 +231,7 @@ zend_string *soo_sign_hmac(php_so_object *soo, char *message, const char *cs, co
 }
 /* }}} */
 
-zend_string *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_context *ctx)
+zend_string *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_context *ctx) /* {{{ */
 {
 	zval args[3], func, retval;
 	zend_string *result;
@@ -272,7 +271,7 @@ zend_string *soo_sign_plain(php_so_object *soo, const char *cs, const char *ts) 
 }
 /* }}} */
 
-oauth_sig_context *oauth_create_sig_context(const char *sigmethod)
+oauth_sig_context *oauth_create_sig_context(const char *sigmethod) /* {{{ */
 {
 	oauth_sig_context *ctx;
 
@@ -289,8 +288,9 @@ oauth_sig_context *oauth_create_sig_context(const char *sigmethod)
 
 	return ctx;
 }
+/* }}} */
 
-zend_string *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx)
+zend_string *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx) /* {{{ */
 {
 	const char *csec = cs?Z_STRVAL_P(cs):"", *tsec = ts?Z_STRVAL_P(ts):"";
 
@@ -303,6 +303,7 @@ zend_string *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, con
 	}
 	return NULL;
 }
+/* }}} */
 
 static inline zval *soo_get_property(php_so_object *soo, char *prop_name) /* {{{ */
 {
@@ -338,7 +339,7 @@ zend_string *oauth_url_encode(char *url, int url_len) /* {{{ */
 }
 /* }}} */
 
-zend_string *oauth_http_encode_value(zval *v)
+zend_string *oauth_http_encode_value(zval *v) /* {{{ */
 {
 	zend_string *param_value = NULL;
 
@@ -354,8 +355,9 @@ zend_string *oauth_http_encode_value(zval *v)
 
 	return param_value;
 }
+/* }}} */
 
-static int oauth_strcmp(zval *first, zval *second)
+static int oauth_strcmp(zval *first, zval *second) /* {{{ */
 {
 	int result;
 	result = string_compare_function(first, second);
@@ -368,8 +370,9 @@ static int oauth_strcmp(zval *first, zval *second)
 
 	return 0;
 }
+/* }}} */
 
-static int oauth_compare_value(const void *a, const void *b)
+static int oauth_compare_value(const void *a, const void *b) /* {{{ */
 {
 	Bucket *f, *s;
 	f = (Bucket *)a;
@@ -377,8 +380,9 @@ static int oauth_compare_value(const void *a, const void *b)
 
 	return oauth_strcmp(&f->val, &s->val);
 }
+/* }}} */
 
-static int oauth_compare_key(const void *a, const void *b)
+static int oauth_compare_key(const void *a, const void *b) /* {{{ */
 {
 	zval first, second;
 	int result;
@@ -403,9 +407,10 @@ static int oauth_compare_key(const void *a, const void *b)
 	zval_ptr_dtor(&second);
 	return result;
 }
+/* }}} */
 
 /* build url-encoded string from args, optionally starting with & */
-int oauth_http_build_query(php_so_object *soo, smart_string *s, HashTable *args, zend_bool prepend_amp)
+int oauth_http_build_query(php_so_object *soo, smart_string *s, HashTable *args, zend_bool prepend_amp) /* {{{ */
 {
 	zval *cur_val;
 	zend_string *cur_key, *arg_key, *param_value;
@@ -535,9 +540,10 @@ int oauth_http_build_query(php_so_object *soo, smart_string *s, HashTable *args,
 	}
 	return numargs;
 }
+/* }}} */
 
 /* retrieves parameter value from the _GET or _POST superglobal */
-void get_request_param(char *arg_name, char **return_val, int *return_len)
+void get_request_param(char *arg_name, char **return_val, int *return_len) /* {{{ */
 {
 	zval *ptr;
 	if (
@@ -551,12 +557,12 @@ void get_request_param(char *arg_name, char **return_val, int *return_len)
 	*return_val = NULL;
 	*return_len = 0;
 }
+/* }}} */
 
 /*
  * This function does not currently care to respect parameter precedence, in the sense that if a common param is defined
  * in POST/GET or Authorization header, the precendence is defined by: OAuth Core 1.0 section 9.1.1
  */
-
 zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args) /* {{{ */
 {
 	zval params;
@@ -663,7 +669,8 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 }
 /* }}} */
 
-static void oauth_set_debug_info(php_so_object *soo) {
+static void oauth_set_debug_info(php_so_object *soo) /* {{{ */
+{
 	zval *debugInfo;
 	if (soo->debug_info) {
 		debugInfo = &soo->debugArr;
@@ -688,6 +695,7 @@ static void oauth_set_debug_info(php_so_object *soo) {
 		ZVAL_UNDEF(&soo->debugArr);
 	}
 }
+/* }}} */
 
 static int add_arg_for_req(HashTable *ht, const char *arg, const char *val) /* {{{ */
 {
@@ -700,7 +708,7 @@ static int add_arg_for_req(HashTable *ht, const char *arg, const char *val) /* {
 }
 /* }}} */
 
-void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_args, smart_string *header)
+void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_args, smart_string *header) /* {{{ */
 {
 	smart_string sheader = {0};
 	zend_bool prepend_comma = FALSE;
@@ -743,6 +751,7 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 	}
 	smart_string_free(&sheader);
 }
+/* }}} */
 
 #define HTTP_RESPONSE_CAAS(zvalp, header, storkey) { \
 	if (0==strncasecmp(Z_STRVAL_P(zvalp),header,sizeof(header)-1)) { \
@@ -987,7 +996,7 @@ int oauth_debug_handler(CURL *ch, curl_infotype type, char *data, size_t data_le
 }
 /* }}} */
 
-static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
+static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx) /* {{{ */
 {
 	char *header;
 	size_t hlen, vpos = sizeof("Location:") - 1;
@@ -1023,6 +1032,7 @@ static size_t soo_read_header(void *ptr, size_t size, size_t nmemb, void *ctx)
 	}
 	return hlen;
 }
+/* }}} */
 
 long make_req_curl(php_so_object *soo, const char *url, const smart_string *payload, const char *http_method, HashTable *request_headers) /* {{{ */
 {
@@ -1655,6 +1665,8 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 }
 /* }}} */
 
+/* {{{ proto bool setRSACertificate(string $cert)
+       Sets the RSA certificate */
 SO_METHOD(setRSACertificate)
 {
 	char *key;
@@ -1688,6 +1700,7 @@ SO_METHOD(setRSACertificate)
 		return;
 	}
 }
+/* }}} */
 
 /* {{{ proto string oauth_urlencode(string uri)
    URI encoding according to RFC 3986, note: is not utf8 capable until the underlying phpapi is */
@@ -1859,7 +1872,7 @@ SO_METHOD(__construct)
 }
 /* }}} */
 
-void oauth_free_privatekey(zval *privatekey)
+void oauth_free_privatekey(zval *privatekey) /* {{{ */
 {
 	zval func, retval;
 	zval args[1];
@@ -1876,6 +1889,7 @@ void oauth_free_privatekey(zval *privatekey)
 
 	zval_ptr_dtor(privatekey);
 }
+/* }}} */
 
 /* {{{ proto array OAuth::setCAPath(string ca_path, string ca_info)
    Set the Certificate Authority information */
@@ -2109,7 +2123,6 @@ SO_METHOD(disableSSLChecks)
 }
 /* }}} */
 
-
 /* {{{ proto bool OAuth::setSSLChecks(long sslcheck)
    Tweak specific SSL checks for requests (be careful using this for production) */
 SO_METHOD(setSSLChecks)
@@ -2133,7 +2146,6 @@ SO_METHOD(setSSLChecks)
 	RETURN_TRUE;
 }
 /* }}} */
-
 
 /* {{{ proto bool OAuth::setVersion(string version)
    Set oauth_version for requests (default 1.0) */
@@ -2248,6 +2260,8 @@ SO_METHOD(setNonce)
 }
 /* }}} */
 
+/* {{{ proto bool setTimestamp(string $timestamp)
+Sets the OAuth timestamp for subsequent requests */
 SO_METHOD(setTimestamp)
 {
 	php_so_object *soo;
@@ -2272,6 +2286,7 @@ SO_METHOD(setTimestamp)
 
 	RETURN_TRUE;
 }
+/* }}} */
 
 /* {{{ proto bool OAuth::setToken(string token, string token_secret)
    Set a request or access token and token secret to be used in subsequent requests */
@@ -2487,6 +2502,8 @@ SO_METHOD(getLastResponse)
 }
 /* }}} */
 
+/* {{{ proto string getLastResponseHeaders(void)
+Get headers for last response */
 SO_METHOD(getLastResponseHeaders)
 {
 	php_so_object *soo;
@@ -2501,6 +2518,7 @@ SO_METHOD(getLastResponseHeaders)
 	}
 	RETURN_FALSE;
 }
+/* }}} */
 
 /* {{{ proto string OAuth::getRequestHeader(string http_method, string url [, string|array extra_parameters ])
    Generate OAuth header string signature based on the final HTTP method, URL and a string/array of parameters */

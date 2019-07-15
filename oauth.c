@@ -246,6 +246,7 @@ zend_string *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_con
 	/* TODO: add support for other algorithms instead of OPENSSL_ALGO_SHA1 */
 
 	ZVAL_STRING(&args[0], message);
+	ZVAL_NULL(&args[1]);
 	ZVAL_DUP(&args[2], &ctx->privatekey);
 
 	call_user_function_ex(EG(function_table), NULL, &func, &retval, 3, args, 0, NULL);

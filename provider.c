@@ -58,7 +58,7 @@ static int oauth_provider_remove_required_param(HashTable *ht, char *required_pa
 {
 	zval *dest_entry;
 	zend_string *key;
-	ulong num_key;
+	zend_ulong num_key;
 	HashPosition hpos;
 
 	if((dest_entry = zend_hash_str_find(ht, required_param, strlen(required_param))) == NULL) {
@@ -97,7 +97,7 @@ static void oauth_provider_apply_custom_param(HashTable *ht, HashTable *custom) 
 	HashPosition custompos;
 	zval *entry;
 	zend_string *key;
-	ulong num_key;
+	zend_ulong num_key;
 
 	zend_hash_internal_pointer_reset_ex(custom, &custompos);
 	do {
@@ -156,7 +156,7 @@ static void oauth_provider_check_required_params(HashTable *required_params, Has
 	HashPosition hpos, reqhpos, paramhpos;
 	zval *dest_entry, param;
 	zend_string *key;
-	ulong num_key;
+	zend_ulong num_key;
 
 	zend_hash_internal_pointer_reset_ex(required_params, &hpos);
 	zend_hash_internal_pointer_reset_ex(params, &reqhpos);
@@ -451,7 +451,7 @@ SOP_METHOD(__construct)
 	zval *params = NULL, *pthis = NULL, apache_get_headers, retval, *tmpzval, *item_param;
 	char *authorization_header = NULL;
 	zend_string *key;
-	ulong num_key = 0, param_count = 0;
+	zend_ulong num_key = 0, param_count = 0;
 	HashPosition hpos;
 
 	pthis = getThis();
@@ -662,7 +662,7 @@ SOP_METHOD(checkOAuthRequest)
 	zval *retval = NULL, *param, *pthis, *token_secret = NULL, *consumer_secret, *req_signature, *sig_method = NULL, rv;
 	oauth_sig_context *sig_ctx = NULL;
 	php_oauth_provider *sop;
-	ulong missing_param_count = 0, mp_count = 1;
+	zend_ulong missing_param_count = 0, mp_count = 1;
 	char additional_info[512] = "", *http_verb = NULL, *uri = NULL, *current_uri = NULL;
 	zend_string *sbs, *signature = NULL;
 	HashPosition hpos;
@@ -974,8 +974,8 @@ SOP_METHOD(reportProblem)
 	zend_bool out_malloced = 0;
 	char *out, *tmp_out, *http_header_line;
 	size_t pr_len;
-	ulong lcode;
-	uint http_code;
+	zend_ulong lcode;
+	uit32_t http_code;
 	sapi_header_line ctr = {0};
 	zend_bool send_headers = 1;
 

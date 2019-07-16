@@ -416,7 +416,7 @@ int oauth_http_build_query(php_so_object *soo, smart_string *s, HashTable *args,
 	zval *cur_val;
 	zend_string *cur_key, *arg_key, *param_value;
 	int numargs = 0, hash_key_type, skip_append = 0, i, found;
-	ulong num_index;
+	zend_ulong num_index;
 	HashPosition pos;
 	smart_string keyname;
 
@@ -717,7 +717,7 @@ void oauth_add_signature_header(HashTable *request_headers, HashTable *oauth_arg
 	zval *curval;
 	zend_string *param_name, *param_val;
 	zend_string *cur_key;
-	ulong num_key;
+	zend_ulong num_key;
 	HashPosition pos;
 
 	smart_string_appends(&sheader, "OAuth ");
@@ -806,7 +806,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 		HashPosition pos;
 		zval *cur_val, zheaders;
 		zend_string *cur_key;
-		ulong num_key;
+		zend_ulong num_key;
 		smart_string sheaders = {0};
 		int first = 1;
 
@@ -945,7 +945,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 #if OAUTH_USE_CURL
 static size_t soo_read_response(char *ptr, size_t size, size_t nmemb, void *ctx) /* {{{ */
 {
-	uint relsize;
+	size_t relsize;
 	php_so_object *soo = (php_so_object *)ctx;
 
 	relsize = size * nmemb;
@@ -1044,8 +1044,8 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	double d_code;
 	zval info, *zca_info, *zca_path, *cur_val;
 	char *s_code, *content_type = NULL, *bufz = NULL;
-	uint sslcheck;
-	ulong num_key;
+	uit32_t sslcheck;
+	zend_ulong num_key;
 	smart_string sheader = {0};
 	zend_string *cur_key;
 	HashPosition pos;
@@ -1412,7 +1412,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 	HashTable *rargs = NULL, *rheaders = NULL;
 	long http_response_code, auth_type;
 	smart_string surl = {0}, payload = {0}, postdata = {0};
-	uint is_redirect = FALSE, follow_redirects = 0, need_to_free_rheaders = 0;
+	uit32_t is_redirect = FALSE, follow_redirects = 0, need_to_free_rheaders = 0;
 
 	auth_type = Z_LVAL_P(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD));
 	if(fetch_flags & OAUTH_OVERRIDE_HTTP_METHOD) {

@@ -216,12 +216,12 @@ typedef struct {
 	smart_string headers_in;
 	smart_string headers_out;
 	char last_location_header[OAUTH_MAX_HEADER_LEN];
-	uint redirects;
-	uint multipart_files_num;
-	uint sslcheck; /* whether we check for SSL verification or not */
-	uint debug; /* verbose output */
-	uint follow_redirects; /* follow and sign redirects? */
-	uint reqengine; /* streams or curl */
+	uit32_t redirects;
+	uit32_t multipart_files_num;
+	uit32_t sslcheck; /* whether we check for SSL verification or not */
+	uit32_t debug; /* verbose output */
+	uit32_t follow_redirects; /* follow and sign redirects? */
+	uit32_t reqengine; /* streams or curl */
 	long timeout; /* timeout in milliseconds */
 	char *nonce;
 	char *timestamp;
@@ -232,7 +232,7 @@ typedef struct {
 	php_so_debug *debug_info;
 	char **multipart_files;
 	char **multipart_params;
-	uint is_multipart;
+	uit32_t is_multipart;
 	void ***thread_ctx;
 	zend_object zo;
 } php_so_object;

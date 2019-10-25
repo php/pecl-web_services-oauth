@@ -53,6 +53,7 @@ Requirements: ext/hash (now a part of PHP core)
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
     * Bump version in header
+    * fix php_pcre_match_impl call in 7.4+ (Remi)
   </notes>
   <contents>
     <dir name="/">

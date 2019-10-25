@@ -8,8 +8,6 @@
   +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #ifndef PHP_OAUTH_H
 #define PHP_OAUTH_H
 
@@ -55,7 +53,6 @@
 #endif
 
 #define PHP_OAUTH_VERSION 2.0.4
-
 #define __stringify_1(x)    #x
 #define __stringify(x)      __stringify_1(x)
 #define __OAUTH_EXT_VER PHP_OAUTH_VERSION

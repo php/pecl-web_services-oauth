@@ -8,7 +8,6 @@
 |          Tjerk Meesters <datibbaw@php.net>                           |
 +----------------------------------------------------------------------+
 */
-/* $Id: oauth.c,v 1.60 2009/05/16 15:46:09 jawed Exp $ */
 
 #include "php_oauth.h"
 #include "provider.h"
@@ -206,6 +205,9 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 	zval subpats, return_value, *item_param, *current_param, *current_val;
 	HashPosition hpos;
 	zend_string *regex = zend_string_init(OAUTH_REGEX, sizeof(OAUTH_REGEX) - 1, 0);
+#if PHP_VERSION_ID >= 70400
+	zend_string *s_auth_header = zend_string_init(auth_header, strlen(auth_header), 0);
+#endif
 	size_t decoded_len;
 
 	if(!auth_header || strncasecmp(auth_header, "oauth", 4) || !sop) {
@@ -225,8 +227,12 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 
 	php_pcre_match_impl(
 		pce,
+#if PHP_VERSION_ID >= 70400
+		s_auth_header,
+#else
 		auth_header,
 		strlen(auth_header),
+#endif
 		&return_value,
 		&subpats,
 		1, /* global */

@@ -1044,7 +1044,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	double d_code;
 	zval info, *zca_info, *zca_path, *cur_val;
 	char *s_code, *content_type = NULL, *bufz = NULL;
-	uit32_t sslcheck;
+	uint32_t sslcheck;
 	zend_ulong num_key;
 	smart_string sheader = {0};
 	zend_string *cur_key;
@@ -1412,7 +1412,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 	HashTable *rargs = NULL, *rheaders = NULL;
 	long http_response_code, auth_type;
 	smart_string surl = {0}, payload = {0}, postdata = {0};
-	uit32_t is_redirect = FALSE, follow_redirects = 0, need_to_free_rheaders = 0;
+	uint32_t is_redirect = FALSE, follow_redirects = 0, need_to_free_rheaders = 0;
 
 	auth_type = Z_LVAL_P(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD));
 	if(fetch_flags & OAUTH_OVERRIDE_HTTP_METHOD) {

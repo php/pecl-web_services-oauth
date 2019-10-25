@@ -975,7 +975,7 @@ SOP_METHOD(reportProblem)
 	char *out, *tmp_out, *http_header_line;
 	size_t pr_len;
 	zend_ulong lcode;
-	uit32_t http_code;
+	uint32_t http_code;
 	sapi_header_line ctr = {0};
 	zend_bool send_headers = 1;
 

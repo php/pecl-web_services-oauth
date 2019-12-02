@@ -41,9 +41,9 @@ Requirements: ext/hash (now a part of PHP core)
     <email>SeanDer@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2018-09-30</date>
+  <date>2019-12-02</date>
   <version>
-    <release>2.0.4dev</release>
+    <release>2.0.4</release>
     <api>2.0</api>
   </version>
   <stability>

@@ -43,7 +43,7 @@ Requirements: ext/hash (now a part of PHP core)
   </lead>
   <date>2020-02-06</date>
   <version>
-    <release>2.0.5</release>
+    <release>2.0.6dev</release>
     <api>2.0</api>
   </version>
   <stability>
@@ -52,12 +52,7 @@ Requirements: ext/hash (now a part of PHP core)
   </stability>
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
-    * fix config.w32 (cmb)
-    * fix 7.3 segfault (rlerdorf)
-    * replace uint-uint32_t, ulong-zend_ulong (Jan-E)
-    * handle cases where a passed in array might be a const (keyurdg)
-    * Fix configure for recent cURL versions  (cmb)
-    * Bug #76722 cURL library headers not recognized on Debian 9 (js361014)
+   * wip
   </notes>
   <contents>
     <dir name="/">
@@ -162,6 +157,27 @@ Requirements: ext/hash (now a part of PHP core)
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+  <release>
+    <date>2020-02-06</date>
+    <version>
+      <release>2.0.5</release>
+      <api>2.0</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+    <notes>
+      * fix config.w32 (cmb)
+      * fix 7.3 segfault (rlerdorf)
+      * replace uint-uint32_t, ulong-zend_ulong (Jan-E)
+      * handle cases where a passed in array might be a const (keyurdg)
+      * Fix configure for recent cURL versions  (cmb)
+      * Bug #76722 cURL library headers not recognized on Debian 9 (js361014)
+    </notes>
+  </release>
 
   <release>
     <date>2019-12-02</date>

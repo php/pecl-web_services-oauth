@@ -2698,7 +2698,13 @@ zval *oauth_read_member(zval *obj, zval *mem, int type, void **cache_slot, zval 
 	return return_value;
 } /* }}} */
 
-static void oauth_write_member(zval *obj, zval *mem, zval *value, void **cache_slot) /* {{{ */
+static
+#if PHP_VERSION_ID >= 70400
+zval *
+#else
+void
+#endif
+oauth_write_member(zval *obj, zval *mem, zval *value, void **cache_slot) /* {{{ */
 {
 	char *property;
 	php_so_object *soo;
@@ -2711,7 +2717,10 @@ static void oauth_write_member(zval *obj, zval *mem, zval *value, void **cache_s
 	} else if(!strcmp(property,"sslChecks")) {
 		soo->sslcheck = Z_LVAL_P(value);
 	}
-	std_object_handlers.write_property(obj, mem, value, cache_slot);
+#if PHP_VERSION_ID >= 70400
+	return
+#endif
+			std_object_handlers.write_property(obj, mem, value, cache_slot);
 } /* }}} */
 
 /* {{{ PHP_MINIT_FUNCTION

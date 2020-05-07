@@ -301,7 +301,7 @@ static void oauth_provider_register_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /
 	memcpy(cb->fcall_info, &fci, sizeof(zend_fcall_info));
 	cb->fcall_info_cache = fci_cache;
 
-	Z_ADDREF(cb->fcall_info->function_name);
+	Z_TRY_ADDREF(cb->fcall_info->function_name);
 
 	switch(type) {
 		case OAUTH_PROVIDER_CONSUMER_CB:

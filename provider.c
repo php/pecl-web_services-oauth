@@ -329,7 +329,6 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 	php_oauth_provider_fcall *cb = NULL;
 	zval args, *pthis;
 	char *errstr = "";
-	zend_string *callable = NULL;
 
 	pthis = getThis();
 	sop = fetch_sop_object(pthis);
@@ -360,10 +359,9 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 	array_init(&args);
 	add_next_index_zval(&args, pthis);
 	Z_ADDREF_P(pthis);
-	Z_ADDREF(args);
 
 	errstr = NULL;
-	if (!zend_is_callable(&cb->fcall_info->function_name, 0, &callable)) {
+	if (!zend_is_callable(&cb->fcall_info->function_name, 0, NULL)) {
 		if (errstr) {
 			php_error_docref(NULL, E_WARNING, "Invalid callback: %s, %s", Z_STRVAL(cb->fcall_info->function_name), errstr);
 			efree(errstr);

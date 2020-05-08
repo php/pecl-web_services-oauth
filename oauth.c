@@ -1453,7 +1453,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 	/* additional http headers can be passed */
 	zend_hash_init(&rheaders, 0, NULL, ZVAL_PTR_DTOR, 0);
 	if (request_headers && zend_hash_num_elements(Z_ARRVAL_P(request_headers))) {
-		zend_hash_copy(&rheaders, Z_ARRVAL_P(request_headers), zval_copy_ctor_func);
+		zend_hash_copy(&rheaders, Z_ARRVAL_P(request_headers), (copy_ctor_func_t) zval_add_ref);
 	}
 
 	/* initialize base url */

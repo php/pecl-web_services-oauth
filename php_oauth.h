@@ -139,6 +139,17 @@ extern zend_module_entry oauth_module_entry;
 #define OAUTH_PARAM_PREFIX "oauth_"
 #define OAUTH_PARAM_PREFIX_LEN 6
 
+/* Small change to let it build after a major internal change for php8.0
+ * More info:
+ * https://github.com/php/php-src/blob/php-8.0.0alpha3/UPGRADING.INTERNALS#L47
+ */
+#if PHP_MAJOR_VERSION >= 8
+# define TSRMLS_DC
+# define TSRMLS_D
+# define TSRMLS_CC
+# define TSRMLS_C
+#endif 
+
 #ifdef ZTS
 #include "TSRM.h"
 #endif

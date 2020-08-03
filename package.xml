@@ -62,7 +62,10 @@ Requirements: ext/hash (now a part of PHP core)
       <file name="provider.c" role="src" />
       <file name="php_oauth.h" role="src" />
       <file name="provider.h" role="src" />
+      <file name="INSTALL" role="doc" />
       <file name="LICENSE" role="doc" />
+      <file name="README.md" role="doc" />
+      <file name="TODO" role="doc" />
       <dir name="examples">
         <file name="config.inc.php" role="doc" />
         <file name="request_signing.php" role="doc" />
@@ -97,6 +100,8 @@ Requirements: ext/hash (now a part of PHP core)
         <file name="README" role="doc" />
         <file name="constants.php" role="doc" />
         <file name="fetchTimeline.php" role="doc" />
+        <file name="php.jpg" role="doc" />
+        <file name="updateBackgroundImage.php" role="doc" />
         <file name="updateStatus.php" role="doc" />
       </dir>
       <dir name="examples/google">
@@ -117,11 +122,27 @@ Requirements: ext/hash (now a part of PHP core)
         <file name="config.inc.php" role="doc" />
         <file name="digg_a_story.php" role="doc" />
       </dir>
+      <dir name="examples/provider">
+        <file name="2legged.php" role="doc" />
+        <file name="access_token.php" role="doc" />
+        <file name="a_private_api.php" role="doc" />
+        <file name="common.inc.php" role="doc" />
+        <file name="request_token.php" role="doc" />
+      </dir>
       <dir name="tests">
         <file name="bug16946.phpt" role="test" />
         <file name="bug21426.phpt" role="test" />
         <file name="bug_64308.phpt" role="test" />
+        <file name="oauth.inc" role="test" />
         <file name="oauthprovider_001.phpt" role="test" />
+        <file name="oauthprovider_002.phpt" role="test" />
+        <file name="oauthprovider_003.phpt" role="test" />
+        <file name="oauthprovider_004.phpt" role="test" />
+        <file name="oauthprovider_005.phpt" role="test" />
+        <file name="oauthprovider_006.phpt" role="test" />
+        <file name="oauthprovider_007.phpt" role="test" />
+        <file name="oauthprovider_008.phpt" role="test" />
+        <file name="oauth_curl_debug_handler.phpt" role="test" />
         <file name="oauth_reqtoken.phpt" role="test" />
         <file name="oauth_sbs.phpt" role="test" />
         <file name="oauth_standard.phpt" role="test" />

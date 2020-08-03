@@ -1409,10 +1409,10 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 	zval *ts = NULL, *token_secret = NULL;
 	zval zret;
 	HashTable *oauth_args = NULL;
-	HashTable *rargs = NULL, *rheaders = NULL;
+	HashTable *rargs = NULL, rheaders;
 	long http_response_code, auth_type;
 	smart_string surl = {0}, payload = {0}, postdata = {0};
-	uint32_t is_redirect = FALSE, follow_redirects = 0, need_to_free_rheaders = 0;
+	uint32_t is_redirect = FALSE, follow_redirects = 0;
 
 	auth_type = Z_LVAL_P(soo_get_property(soo, OAUTH_ATTR_AUTHMETHOD));
 	if(fetch_flags & OAUTH_OVERRIDE_HTTP_METHOD) {
@@ -1451,12 +1451,9 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 	}
 
 	/* additional http headers can be passed */
-	if (!request_headers || !zend_hash_num_elements(Z_ARRVAL_P(request_headers))) {
-		ALLOC_HASHTABLE(rheaders);
-		zend_hash_init(rheaders, 0, NULL, ZVAL_PTR_DTOR, 0);
-		need_to_free_rheaders = 1;
-	} else {
-		rheaders = HASH_OF(request_headers);
+	zend_hash_init(&rheaders, 0, NULL, ZVAL_PTR_DTOR, 0);
+	if (request_headers && zend_hash_num_elements(Z_ARRVAL_P(request_headers))) {
+		zend_hash_copy(&rheaders, Z_ARRVAL_P(request_headers), (copy_ctor_func_t) zval_add_ref);
 	}
 
 	/* initialize base url */
@@ -1519,9 +1516,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 			FREE_ARGS_HASH(oauth_args);
 			smart_string_free(&surl);
 			smart_string_free(&postdata);
-			if(need_to_free_rheaders) {
-				FREE_ARGS_HASH(rheaders);
-			}
+			zend_hash_destroy(&rheaders);
 			return SUCCESS;
 		}
 
@@ -1536,14 +1531,12 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 
 		if(fetch_flags & OAUTH_FETCH_HEADONLY) {
 			INIT_smart_string(soo->headers_out);
-			oauth_add_signature_header(rheaders, oauth_args, &soo->headers_out);
+			oauth_add_signature_header(&rheaders, oauth_args, &soo->headers_out);
 			smart_string_0(&payload);
 			FREE_ARGS_HASH(oauth_args);
 			smart_string_free(&surl);
 			smart_string_free(&postdata);
-			if(need_to_free_rheaders) {
-				FREE_ARGS_HASH(rheaders);
-			}
+			zend_hash_destroy(&rheaders);
 			return SUCCESS;
 		}
 
@@ -1572,7 +1565,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 				break;
 			case OAUTH_AUTH_TYPE_AUTHORIZATION:
 				/* add http header with oauth parameters */
-				oauth_add_signature_header(rheaders, oauth_args, NULL);
+				oauth_add_signature_header(&rheaders, oauth_args, NULL);
 				break;
 		}
 
@@ -1588,11 +1581,11 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 
 		switch (soo->reqengine) {
 			case OAUTH_REQENGINE_STREAMS:
-				http_response_code = make_req_streams(soo, surl.c, &payload, final_http_method, rheaders);
+				http_response_code = make_req_streams(soo, surl.c, &payload, final_http_method, &rheaders);
 				break;
 #if OAUTH_USE_CURL
 			case OAUTH_REQENGINE_CURL:
-				http_response_code = make_req_curl(soo, surl.c, &payload, final_http_method, rheaders);
+				http_response_code = make_req_curl(soo, surl.c, &payload, final_http_method, &rheaders);
 				if (soo->multipart_files_num) {
 					efree(soo->multipart_files);
 					efree(soo->multipart_params);
@@ -1658,9 +1651,7 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 
 	smart_string_free(&surl);
 	smart_string_free(&postdata);
-	if(need_to_free_rheaders) {
-		FREE_ARGS_HASH(rheaders);
-	}
+	zend_hash_destroy(&rheaders);
 
 	return http_response_code;
 }
@@ -2698,7 +2689,13 @@ zval *oauth_read_member(zval *obj, zval *mem, int type, void **cache_slot, zval 
 	return return_value;
 } /* }}} */
 
-static void oauth_write_member(zval *obj, zval *mem, zval *value, void **cache_slot) /* {{{ */
+static
+#if PHP_VERSION_ID >= 70400
+zval *
+#else
+void
+#endif
+oauth_write_member(zval *obj, zval *mem, zval *value, void **cache_slot) /* {{{ */
 {
 	char *property;
 	php_so_object *soo;
@@ -2711,7 +2708,10 @@ static void oauth_write_member(zval *obj, zval *mem, zval *value, void **cache_s
 	} else if(!strcmp(property,"sslChecks")) {
 		soo->sslcheck = Z_LVAL_P(value);
 	}
-	std_object_handlers.write_property(obj, mem, value, cache_slot);
+#if PHP_VERSION_ID >= 70400
+	return
+#endif
+			std_object_handlers.write_property(obj, mem, value, cache_slot);
 } /* }}} */
 
 /* {{{ PHP_MINIT_FUNCTION

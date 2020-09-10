@@ -8,7 +8,11 @@ echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/'),"\n";
 echo "-- using empty array --\n";
 echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/', array()),"\n";
 echo "-- using string instead of array --\n";
-echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/',''),"\n";
+try {
+	echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/',''),"\n";
+} catch (TypeError $e) {
+	echo $e->getMessage()."\n";
+}
 echo "-- using numeric keys masked as a string --\n";
 echo oauth_get_sbs('GET', 'http://127.0.0.1:12342/',array('1'=>'hello')),"\n";
 echo "-- using string keys --\n";
@@ -29,9 +33,7 @@ GET&http%3A%2F%2F127.0.0.1%3A12342%2F&
 -- using empty array --
 GET&http%3A%2F%2F127.0.0.1%3A12342%2F&
 -- using string instead of array --
-
-Warning: oauth_get_sbs() expects parameter 3 to be array,%sstring given in %s
-
+%Astring given%A
 -- using numeric keys masked as a string --
 GET&http%3A%2F%2F127.0.0.1%3A12342%2F&1%3Dhello
 -- using string keys --

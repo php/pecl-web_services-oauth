@@ -33,9 +33,15 @@ static zend_object* php_so_object_new(zend_class_entry *ce) /* {{{ */
 }
 /* }}} */
 
+#if PHP_VERSION_ID < 80000
 static zend_object *oauth_clone_obj(zval *this_ptr) /* {{{ */
 {
 	php_so_object *old_obj = Z_SOO_P(this_ptr);
+#else
+static zend_object *oauth_clone_obj(zend_object *this_ptr) /* {{{ */
+{
+	php_so_object *old_obj = so_object_from_obj(this_ptr);
+#endif
 	php_so_object *new_obj = so_object_from_obj(php_so_object_new(old_obj->zo.ce));
 
 	zend_objects_clone_members(&new_obj->zo, &old_obj->zo);
@@ -176,20 +182,20 @@ void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *respo
 	if (!errorCode) {
 		php_error(E_WARNING, "caller did not pass an errorcode!");
 	} else {
-		zend_update_property_long(dex, &ex, "code", sizeof("code")-1, errorCode);
+		zend_update_property_long(dex, OBJ_FOR_PROP(&ex), "code", sizeof("code")-1, errorCode);
 	}
 	if (response) {
-		zend_update_property_string(dex, &ex, "lastResponse", sizeof("lastResponse")-1, response);
+		zend_update_property_string(dex, OBJ_FOR_PROP(&ex), "lastResponse", sizeof("lastResponse")-1, response);
 	}
 	if(soo && soo->debug && Z_TYPE(soo->debugArr) != IS_UNDEF) {
-		zend_update_property(dex, &ex, "debugInfo", sizeof("debugInfo") - 1, &soo->debugArr);
+		zend_update_property(dex, OBJ_FOR_PROP(&ex), "debugInfo", sizeof("debugInfo") - 1, &soo->debugArr);
 	}
 
 	if(additional_info) {
-		zend_update_property_string(dex, &ex, "additionalInfo", sizeof("additionalInfo")-1, additional_info);
+		zend_update_property_string(dex, OBJ_FOR_PROP(&ex), "additionalInfo", sizeof("additionalInfo")-1, additional_info);
 	}
 
-	zend_update_property_string(dex, &ex, "message", sizeof("message")-1, msg);
+	zend_update_property_string(dex, OBJ_FOR_PROP(&ex), "message", sizeof("message")-1, msg);
 	zend_throw_exception_object(&ex);
 }
 /* }}} */
@@ -249,7 +255,7 @@ zend_string *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_con
 	ZVAL_NULL(&args[1]);
 	ZVAL_DUP(&args[2], &ctx->privatekey);
 
-	call_user_function_ex(EG(function_table), NULL, &func, &retval, 3, args, 0, NULL);
+	call_user_function(EG(function_table), NULL, &func, &retval, 3, args);
 
 	if (Z_TYPE(retval) == IS_TRUE || Z_TYPE(retval) == IS_FALSE) {
 		result = php_base64_encode((unsigned char *) Z_STRVAL_P(Z_REFVAL(args[1])), Z_STRLEN_P(Z_REFVAL(args[1])));
@@ -373,23 +379,31 @@ static int oauth_strcmp(zval *first, zval *second) /* {{{ */
 }
 /* }}} */
 
+#if PHP_VERSION_ID < 80000
 static int oauth_compare_value(const void *a, const void *b) /* {{{ */
 {
 	Bucket *f, *s;
 	f = (Bucket *)a;
 	s = (Bucket *)b;
 
+#else
+static int oauth_compare_value(Bucket *f, Bucket *s) /* {{{ */
+{
+#endif
 	return oauth_strcmp(&f->val, &s->val);
 }
 /* }}} */
 
+#if PHP_VERSION_ID < 80000
 static int oauth_compare_key(const void *a, const void *b) /* {{{ */
 {
+    Bucket *f = (Bucket *)a, *s = (Bucket *)b;
+#else
+static int oauth_compare_key(Bucket *f, Bucket *s) /* {{{ */
+{
+#endif
 	zval first, second;
 	int result;
-    Bucket *f, *s;
-	f = (Bucket *) a;
-	s = (Bucket *) b;
 
 	if (f->key == NULL) {
 		ZVAL_LONG(&first, f->h);
@@ -691,7 +705,7 @@ static void oauth_set_debug_info(php_so_object *soo) /* {{{ */
 		ADD_DEBUG_INFO(debugInfo, "body_recv", soo->debug_info->body_in, 0);
 		ADD_DEBUG_INFO(debugInfo, "info", soo->debug_info->curl_info, 0);
 
-		zend_update_property(soo_class_entry, soo->this_ptr, "debugInfo", sizeof("debugInfo") - 1, debugInfo);
+		zend_update_property(soo_class_entry, OBJ_FOR_PROP(soo->this_ptr), "debugInfo", sizeof("debugInfo") - 1, debugInfo);
 	} else {
 		ZVAL_UNDEF(&soo->debugArr);
 	}
@@ -815,7 +829,7 @@ static long make_req_streams(php_so_object *soo, const char *url, const smart_st
 				zend_hash_move_forward_ex(request_headers, &pos)) {
 			/* check if a string based key is used */
 			smart_string sheaderline = {0};
-			switch (zend_hash_get_current_key_ex(request_headers, &cur_key, &num_key, &pos)) {
+			switch ((int)zend_hash_get_current_key_ex(request_headers, &cur_key, &num_key, &pos)) {
 				case HASH_KEY_IS_STRING:
 					smart_string_appendl(&sheaderline, ZSTR_VAL(cur_key), ZSTR_LEN(cur_key));
 					break;
@@ -1061,7 +1075,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 				(cur_val = zend_hash_get_current_data_ex(request_headers, &pos)) != NULL;
 				zend_hash_move_forward_ex(request_headers, &pos)) {
 			/* check if a string based key is used */
-			switch (zend_hash_get_current_key_ex(request_headers, &cur_key, &num_key, &pos)) {
+			switch ((int)zend_hash_get_current_key_ex(request_headers, &cur_key, &num_key, &pos)) {
 				case HASH_KEY_IS_STRING:
 					smart_string_appendl(&sheader, ZSTR_VAL(cur_key), ZSTR_LEN(cur_key));
 					break;
@@ -1797,11 +1811,13 @@ SO_METHOD(__construct)
 	INIT_smart_string(soo->headers_in);
 
 	/* set default class members */
-	zend_update_property_null(soo_class_entry, obj, "debugInfo", sizeof("debugInfo") - 1);
-	zend_update_property_bool(soo_class_entry, obj, "debug", sizeof("debug") - 1, soo->debug);
-	zend_update_property_long(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, soo->sslcheck);
+	zend_update_property_null(soo_class_entry, OBJ_FOR_PROP(obj), "debugInfo", sizeof("debugInfo") - 1);
+	zend_update_property_bool(soo_class_entry, OBJ_FOR_PROP(obj), "debug", sizeof("debug") - 1, soo->debug);
+	zend_update_property_long(soo_class_entry, OBJ_FOR_PROP(obj), "sslChecks", sizeof("sslChecks") - 1, soo->sslcheck);
 
+#if PHP_VERSION_ID < 80000
 	TSRMLS_SET_CTX(soo->thread_ctx);
+#endif
 
 	if (!sig_method_len) {
 		sig_method = OAUTH_SIG_METHOD_HMACSHA1;
@@ -2046,7 +2062,7 @@ SO_METHOD(disableDebug)
 	}
 
 	soo->debug = 0;
-	zend_update_property_bool(soo_class_entry, obj, "debug", sizeof("debug") - 1, 0);
+	zend_update_property_bool(soo_class_entry, OBJ_FOR_PROP(obj), "debug", sizeof("debug") - 1, 0);
 
 	RETURN_TRUE;
 }
@@ -2067,7 +2083,7 @@ SO_METHOD(enableDebug)
 	}
 
 	soo->debug = 1;
-	zend_update_property_bool(soo_class_entry, obj, "debug", sizeof("debug") - 1, 1);
+	zend_update_property_bool(soo_class_entry, OBJ_FOR_PROP(obj), "debug", sizeof("debug") - 1, 1);
 
 	RETURN_TRUE;
 }
@@ -2088,7 +2104,7 @@ SO_METHOD(enableSSLChecks)
 	}
 
 	soo->sslcheck = OAUTH_SSLCHECK_BOTH;
-	zend_update_property_long(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, 1);
+	zend_update_property_long(soo_class_entry, OBJ_FOR_PROP(obj), "sslChecks", sizeof("sslChecks") - 1, 1);
 
 	RETURN_TRUE;
 }
@@ -2109,7 +2125,7 @@ SO_METHOD(disableSSLChecks)
 	}
 
 	soo->sslcheck = OAUTH_SSLCHECK_NONE;
-	zend_update_property_long(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1, 0);
+	zend_update_property_long(soo_class_entry, OBJ_FOR_PROP(obj), "sslChecks", sizeof("sslChecks") - 1, 0);
 
 	RETURN_TRUE;
 }
@@ -2132,7 +2148,7 @@ SO_METHOD(setSSLChecks)
 
 	soo->sslcheck = sslcheck & OAUTH_SSLCHECK_BOTH;
 
-	zend_update_property_long(soo_class_entry, obj, "sslChecks", sizeof("sslChecks") - 1,
+	zend_update_property_long(soo_class_entry, OBJ_FOR_PROP(obj), "sslChecks", sizeof("sslChecks") - 1,
 			soo->sslcheck);
 
 	RETURN_TRUE;
@@ -2671,24 +2687,32 @@ static zend_function_entry so_functions[] = { /* {{{ */
 /* }}} */
 
 
+#if PHP_VERSION_ID < 80000
 zval *oauth_read_member(zval *obj, zval *mem, int type, void **cache_slot, zval *rv) /* {{{ */
 {
+	php_so_object *soo = Z_SOO_P(obj);
+    char *name = Z_STRVAL_P(mem);
+#else
+zval *oauth_read_member(zend_object *obj, zend_string *mem, int type, void **cache_slot, zval *rv) /* {{{ */
+{
+	php_so_object *soo = so_object_from_obj(obj);
+    char *name = ZSTR_VAL(mem);
+#endif
 	zval *return_value = NULL;
-	php_so_object *soo;
-
-	soo = Z_SOO_P(obj);
 
 	return_value = std_object_handlers.read_property(obj, mem, type, cache_slot, rv);
 
-	if(!strcasecmp(Z_STRVAL_P(mem),"debug")) {
+	if(!strcasecmp(name, "debug")) {
 		convert_to_boolean(return_value);
 		ZVAL_BOOL(return_value, soo->debug);
-	} else if(!strcasecmp(Z_STRVAL_P(mem),"sslChecks")) {
+	} else if(!strcasecmp(name, "sslChecks")) {
 		ZVAL_LONG(return_value, soo->sslcheck);
 	}
 	return return_value;
 } /* }}} */
 
+
+#if PHP_VERSION_ID < 80000
 static
 #if PHP_VERSION_ID >= 70400
 zval *
@@ -2697,11 +2721,14 @@ void
 #endif
 oauth_write_member(zval *obj, zval *mem, zval *value, void **cache_slot) /* {{{ */
 {
-	char *property;
-	php_so_object *soo;
-
-	property = Z_STRVAL_P(mem);
-	soo = Z_SOO_P(obj);
+	php_so_object *soo = Z_SOO_P(obj);
+	char *property = Z_STRVAL_P(mem);
+#else
+static zval *oauth_write_member(zend_object *obj, zend_string *mem, zval *value, void **cache_slot) /* {{{ */
+{
+	php_so_object *soo = so_object_from_obj(obj);
+	char *property = ZSTR_VAL(mem);
+#endif
 
 	if(!strcmp(property,"debug")) {
 		soo->debug = Z_TYPE_P(value) == IS_TRUE ? 1 : 0;

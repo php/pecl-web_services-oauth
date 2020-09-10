@@ -24,7 +24,7 @@ static zend_class_entry *oauthprovider;
 
 static inline void oauth_provider_set_param_member(zval *provider_obj, char *prop_name, zval *prop) /* {{{ */
 {
-	zend_update_property(Z_OBJCE_P(provider_obj), provider_obj, prop_name, strlen(prop_name), prop);
+	zend_update_property(Z_OBJCE_P(provider_obj), OBJ_FOR_PROP(provider_obj), prop_name, strlen(prop_name), prop);
 }
 /* }}} */
 
@@ -117,7 +117,7 @@ static int oauth_provider_token_required(zval *provider_obj, char* uri)
 {
 	zval *is_req_token_api, rv;
 
-	is_req_token_api = zend_read_property(Z_OBJCE_P(provider_obj), provider_obj, "request_token_endpoint", sizeof("request_token_endpoint") - 1, 1, &rv);
+	is_req_token_api = zend_read_property(Z_OBJCE_P(provider_obj), OBJ_FOR_PROP(provider_obj), "request_token_endpoint", sizeof("request_token_endpoint") - 1, 1, &rv);
 
 	if (Z_TYPE_P(is_req_token_api) == IS_FALSE) {
 		php_oauth_provider *sop;
@@ -374,7 +374,7 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 	}
 
 	if (zend_fcall_info_call(cb->fcall_info, &cb->fcall_info_cache, return_value, &args)!=SUCCESS) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR, "Failed calling callback %s", Z_STRVAL(cb->fcall_info->function_name));
+		php_error_docref(NULL, E_ERROR, "Failed calling callback %s", Z_STRVAL(cb->fcall_info->function_name));
 	}
 
 	zval_ptr_dtor(&args);
@@ -490,17 +490,17 @@ SOP_METHOD(__construct)
 
 	oauth_provider_set_default_required_params(sop->required_params);
 
-	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_KEY, sizeof(OAUTH_PROVIDER_CONSUMER_KEY)-1);
-	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET)-1);
-	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_NONCE, sizeof(OAUTH_PROVIDER_NONCE)-1);
-	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN, sizeof(OAUTH_PROVIDER_TOKEN)-1);
-	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET)-1);
-	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TIMESTAMP, sizeof(OAUTH_PROVIDER_TIMESTAMP)-1);
-	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_VERSION, sizeof(OAUTH_PROVIDER_VERSION)-1);
-	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE_METHOD, sizeof(OAUTH_PROVIDER_SIGNATURE_METHOD)-1);
-	zend_update_property_null(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CALLBACK, sizeof(OAUTH_PROVIDER_CALLBACK)-1);
+	zend_update_property_null(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_CONSUMER_KEY, sizeof(OAUTH_PROVIDER_CONSUMER_KEY)-1);
+	zend_update_property_null(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET)-1);
+	zend_update_property_null(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_NONCE, sizeof(OAUTH_PROVIDER_NONCE)-1);
+	zend_update_property_null(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_TOKEN, sizeof(OAUTH_PROVIDER_TOKEN)-1);
+	zend_update_property_null(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET)-1);
+	zend_update_property_null(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_TIMESTAMP, sizeof(OAUTH_PROVIDER_TIMESTAMP)-1);
+	zend_update_property_null(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_VERSION, sizeof(OAUTH_PROVIDER_VERSION)-1);
+	zend_update_property_null(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_SIGNATURE_METHOD, sizeof(OAUTH_PROVIDER_SIGNATURE_METHOD)-1);
+	zend_update_property_null(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_CALLBACK, sizeof(OAUTH_PROVIDER_CALLBACK)-1);
 
-	zend_update_property_bool(Z_OBJCE_P(pthis), pthis, "request_token_endpoint", sizeof("request_token_endpoint")-1, 0);
+	zend_update_property_bool(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), "request_token_endpoint", sizeof("request_token_endpoint")-1, 0);
 
 	if(!param_count) {
 		/* TODO: support NSAPI */
@@ -632,7 +632,7 @@ SOP_METHOD(isRequestTokenEndpoint)
 		return;
 	}
 
-	zend_update_property_bool(Z_OBJCE_P(pthis), pthis, "request_token_endpoint", sizeof("request_token_endpoint") - 1, req_api);
+	zend_update_property_bool(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), "request_token_endpoint", sizeof("request_token_endpoint") - 1, req_api);
 }
 /* }}} */
 
@@ -734,7 +734,7 @@ SOP_METHOD(checkOAuthRequest)
 		return;
 	}
 
-	sig_method = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE_METHOD, sizeof(OAUTH_PROVIDER_SIGNATURE_METHOD) - 1, 1, &rv);
+	sig_method = zend_read_property(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_SIGNATURE_METHOD, sizeof(OAUTH_PROVIDER_SIGNATURE_METHOD) - 1, 1, &rv);
 	do {
 		if (sig_method && (Z_TYPE_P(sig_method) == IS_STRING) && Z_STRLEN_P(sig_method)) {
 			sig_ctx = oauth_create_sig_context(Z_STRVAL_P(sig_method));
@@ -803,16 +803,16 @@ SOP_METHOD(checkOAuthRequest)
 		sbs = oauth_generate_sig_base(NULL, http_verb, uri, sbs_vars, NULL);
 
 		if (sbs) {
-			consumer_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET) - 1, 1, &rv);
+			consumer_secret = zend_read_property(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET) - 1, 1, &rv);
 			convert_to_string_ex(consumer_secret);
 			if (is_token_required) {
-				token_secret = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET) - 1, 1, &rv);
+				token_secret = zend_read_property(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET) - 1, 1, &rv);
 				convert_to_string_ex(token_secret);
 			}
 			signature = soo_sign(NULL, ZSTR_VAL(sbs), consumer_secret, token_secret, sig_ctx);
 		}
 
-		req_signature = zend_read_property(Z_OBJCE_P(pthis), pthis, OAUTH_PROVIDER_SIGNATURE, sizeof(OAUTH_PROVIDER_SIGNATURE) - 1, 1, &rv);
+		req_signature = zend_read_property(Z_OBJCE_P(pthis), OBJ_FOR_PROP(pthis), OAUTH_PROVIDER_SIGNATURE, sizeof(OAUTH_PROVIDER_SIGNATURE) - 1, 1, &rv);
 		if (!signature || !Z_STRLEN_P(req_signature) || strcmp(ZSTR_VAL(signature), Z_STRVAL_P(req_signature))) {
 			soo_handle_error(NULL, OAUTH_INVALID_SIGNATURE, "Signatures do not match", NULL, sbs ? ZSTR_VAL(sbs) : NULL);
 		}
@@ -984,7 +984,7 @@ SOP_METHOD(reportProblem)
 	}
 
 	/* XXX good candidate for refactoring */
-	code = zend_read_property(Z_OBJCE_P(exception), exception, "code", sizeof("code") - 1, 1, &rv);
+	code = zend_read_property(Z_OBJCE_P(exception), OBJ_FOR_PROP(exception), "code", sizeof("code") - 1, 1, &rv);
 	lcode = Z_LVAL_P(code);
 
 	switch(lcode) {
@@ -1018,7 +1018,7 @@ SOP_METHOD(reportProblem)
 		case OAUTH_INVALID_SIGNATURE:
 			http_code = OAUTH_ERR_BAD_AUTH;
 			out = "oauth_problem=signature_invalid";
-			sbs = zend_read_property(Z_OBJCE_P(exception), exception, "additionalInfo", sizeof("additionalInfo") - 1, 1, &rv);
+			sbs = zend_read_property(Z_OBJCE_P(exception), OBJ_FOR_PROP(exception), "additionalInfo", sizeof("additionalInfo") - 1, 1, &rv);
 			if (sbs && IS_NULL!=Z_TYPE_P(sbs)) {
 				convert_to_string_ex(sbs);
 				if(Z_STRLEN_P(sbs)) {
@@ -1037,7 +1037,7 @@ SOP_METHOD(reportProblem)
 		case OAUTH_PARAMETER_ABSENT:
 			http_code = OAUTH_ERR_BAD_REQUEST;
 			out = "oauth_problem=parameter_absent";
-			missing_params = zend_read_property(Z_OBJCE_P(exception), exception, "additionalInfo", sizeof("additionalInfo") - 1, 1, &rv);
+			missing_params = zend_read_property(Z_OBJCE_P(exception), OBJ_FOR_PROP(exception), "additionalInfo", sizeof("additionalInfo") - 1, 1, &rv);
 			if(missing_params) {
 				convert_to_string_ex(missing_params);
 				if(Z_STRLEN_P(missing_params)) {
@@ -1176,7 +1176,7 @@ static zend_function_entry oauth_provider_methods[] = { /* {{{ */
 		{NULL, NULL, NULL}
 };
 
-extern int oauth_provider_register_class() /* {{{ */
+extern int oauth_provider_register_class(void) /* {{{ */
 {
 	zend_class_entry osce;
 

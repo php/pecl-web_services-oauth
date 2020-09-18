@@ -253,12 +253,15 @@ zend_string *soo_sign_rsa(php_so_object *soo, char *message, const oauth_sig_con
 
 	ZVAL_STRING(&args[0], message);
 	ZVAL_NULL(&args[1]);
+	ZVAL_MAKE_REF(&args[1]);
 	ZVAL_DUP(&args[2], &ctx->privatekey);
 
 	call_user_function(EG(function_table), NULL, &func, &retval, 3, args);
 
 	if (Z_TYPE(retval) == IS_TRUE || Z_TYPE(retval) == IS_FALSE) {
-		result = php_base64_encode((unsigned char *) Z_STRVAL_P(Z_REFVAL(args[1])), Z_STRLEN_P(Z_REFVAL(args[1])));
+		zend_string *sig_str = zval_get_string(&args[1]);
+		result = php_base64_encode((unsigned char *) sig_str->val, sig_str->len);
+		zend_string_release(sig_str);
 		zval_ptr_dtor(&args[1]);
 	} else {
 		result = NULL;
@@ -1697,10 +1700,13 @@ SO_METHOD(setRSACertificate)
 	zval_ptr_dtor(&args[0]);
 	zval_ptr_dtor(&func);
 
-	if (Z_TYPE(retval) == IS_RESOURCE) {
+	switch (Z_TYPE(retval)) {
+	case IS_RESOURCE:
+	case IS_OBJECT:
 		OAUTH_SIGCTX_SET_PRIVATEKEY(soo->sig_ctx, retval);
 		RETURN_TRUE;
-	} else {
+		break;
+	default:
 		zval_ptr_dtor(&retval);
 		soo_handle_error(soo, OAUTH_ERR_INTERNAL_ERROR, "Could not parse RSA certificate", NULL, NULL);
 		return;

@@ -61,6 +61,8 @@ try {
 	var_dump($x->setVersion());
 } catch (Exception $e) {
 	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
+} catch (ArgumentCountError $e) {
+	echo "EXCEPTION {$e->getCode()}: {$e->getMessage()}\n";
 }
 try {
 	echo "-- set version with boolean --\n";
@@ -115,9 +117,7 @@ OAuth[debug=1,sslChecks=3,debugInfo=]
 -- disable debug --
 OAuth[debug=0,sslChecks=3,debugInfo=]
 -- set version without parameters --
-
-Warning: OAuth::setVersion() expects exactly 1 parameter, 0 given %s
-NULL
+%A expects exactly 1 %A
 -- set version with boolean --
 bool(true)
 -- set version with empty string --

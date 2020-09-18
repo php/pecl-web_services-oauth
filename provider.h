@@ -47,7 +47,7 @@
 	} \
 
 #define OAUTH_PROVIDER_CHECK_PARAMS(s, r) \
-	if(oauth_provider_check_sapi(s, TRUE TSRMLS_CC)) { \
+	if(oauth_provider_check_sapi(s, TRUE)) { \
 		if(r) {\
 			RETURN_FALSE\
 		} \
@@ -110,7 +110,7 @@ static inline php_oauth_provider *sop_object_from_obj(zend_object *obj) /* {{{ *
 #define Z_SOP_P(zv)  sop_object_from_obj(Z_OBJ_P((zv)))
 
 
-extern int oauth_provider_register_class(TSRMLS_D);
+extern int oauth_provider_register_class(void);
 
 #define SOP_METHOD(func) PHP_METHOD(oauthprovider, func)
 #define SOP_ME(func, arg_info, flags) PHP_ME(oauthprovider, func, arg_info, flags)

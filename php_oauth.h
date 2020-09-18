@@ -251,11 +251,11 @@ static inline php_so_object *Z_SOO_P(zval *zv) /* {{{ */ {
 
 #ifndef zend_parse_parameters_none
 #define zend_parse_parameters_none()    \
-	zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "")
+	zend_parse_parameters(ZEND_NUM_ARGS(), "")
 #endif
 
-void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *response, char *additional_info TSRMLS_DC);
-zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args TSRMLS_DC);
+void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *response, char *additional_info);
+zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method, const char *uri, HashTable *post_args, HashTable *extra_args);
 
 #ifndef zend_hash_quick_del
 #define HASH_DEL_KEY_QUICK 2
@@ -318,15 +318,15 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 #define OAUTH_OK SUCCESS
 
 #if OAUTH_USE_CURL
-long make_req_curl(php_so_object *soo, const char *url, const smart_string *payload, const char *http_method, HashTable *request_headers TSRMLS_DC);
+long make_req_curl(php_so_object *soo, const char *url, const smart_string *payload, const char *http_method, HashTable *request_headers);
 #if LIBCURL_VERSION_NUM >= 0x071304
 #define OAUTH_PROTOCOLS_ALLOWED CURLPROTO_HTTP | CURLPROTO_HTTPS
 #endif
 #endif
 
 
-void oauth_free_privatekey(zval *privatekey TSRMLS_DC);
-zend_string *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx TSRMLS_DC);
+void oauth_free_privatekey(zval *privatekey);
+zend_string *soo_sign(php_so_object *soo, char *message, zval *cs, zval *ts, const oauth_sig_context *ctx);
 oauth_sig_context *oauth_create_sig_context(const char *sigmethod);
 zend_string *oauth_url_encode(char *url, int url_len);
 
@@ -338,6 +338,12 @@ zend_string *oauth_url_encode(char *url, int url_len);
 #else
 #define OAUTH_URL_STR(a) ZSTR_VAL(a)
 #define OAUTH_URL_LEN(a) ZSTR_LEN(a)
+#endif
+
+#if PHP_VERSION_ID < 80000
+#define OBJ_FOR_PROP(zv) (zv)
+#else
+#define OBJ_FOR_PROP(zv) Z_OBJ_P(zv)
 #endif
 
 #endif

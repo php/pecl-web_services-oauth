@@ -44,11 +44,11 @@ array(2) {
   ["oauth_token_secret"]=>
   string(4) "8901"
 }
-string(%d) "POST /test?oauth_consumer_key=conskey&oauth_signature_method=PLAINTEXT&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_token=key&oauth_signature=conssecret%26secret HTTP/1.0
+string(%d) "POST /test?oauth_consumer_key=conskey&oauth_signature_method=PLAINTEXT&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_token=key&oauth_signature=conssecret%26secret HTTP/1.%d
 Host: 127.0.0.1:12342
 Connection: close
 
-GET /test?oauth_consumer_key=conskey&oauth_signature_method=PLAINTEXT&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_token=key&oauth_signature=conssecret%26secret HTTP/1.0
+GET /test?oauth_consumer_key=conskey&oauth_signature_method=PLAINTEXT&oauth_nonce=testing&oauth_timestamp=12345&oauth_version=1.0&oauth_token=key&oauth_signature=conssecret%26secret HTTP/1.%d
 Host: 127.0.0.1:12342
 Connection: close
 

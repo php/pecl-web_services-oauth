@@ -47,7 +47,8 @@ function has_bug($bugid)
 	switch ($bugid) {
 		case '44603':
 			// >= 5.1.0 && < 5.2.6
-			return (PHP_MINOR_VERSION==1 || (PHP_MINOR_VERSION==2 && PHP_RELEASE_VERSION<6));
+			return (PHP_MAJOR_VERSION==5)
+				&& (PHP_MINOR_VERSION==1 || (PHP_MINOR_VERSION==2 && PHP_RELEASE_VERSION<6));
 	}
 	return false;
 }

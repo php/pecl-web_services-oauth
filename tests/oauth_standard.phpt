@@ -117,7 +117,7 @@ OAuth[debug=1,sslChecks=3,debugInfo=]
 -- disable debug --
 OAuth[debug=0,sslChecks=3,debugInfo=]
 -- set version without parameters --
-%A expects exactly 1 parameter, %A
+%A expects exactly 1 %A
 -- set version with boolean --
 bool(true)
 -- set version with empty string --

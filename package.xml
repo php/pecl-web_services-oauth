@@ -49,7 +49,7 @@ Requirements: ext/hash (now a part of PHP core)
   </lead>
   <date>2020-09-18</date>
   <version>
-    <release>2.0.7</release>
+    <release>2.0.8dev</release>
     <api>2.0</api>
   </version>
   <stability>
@@ -59,7 +59,7 @@ Requirements: ext/hash (now a part of PHP core)
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
 <![CDATA[
-* PHP 8 compatibility
+* WIP
 ]]>
   </notes>
   <contents>
@@ -186,6 +186,24 @@ Requirements: ext/hash (now a part of PHP core)
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+  <release>
+    <date>2020-09-18</date>
+    <version>
+      <release>2.0.7</release>
+      <api>2.0</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+    <notes>
+<![CDATA[
+* PHP 8 compatibility
+]]>
+    </notes>
+  </release>
 
   <release>
     <date>2020-09-09</date>

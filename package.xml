@@ -59,7 +59,7 @@ Requirements: ext/hash (now a part of PHP core)
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
 <![CDATA[
-* WIP
+* Fix gh issue #19: Segfault in checkOAuthRequest()
 ]]>
   </notes>
   <contents>

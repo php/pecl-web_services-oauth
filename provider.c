@@ -753,7 +753,10 @@ SOP_METHOD(checkOAuthRequest)
 		long cb_res;
 
 		retval = oauth_provider_call_cb(INTERNAL_FUNCTION_PARAM_PASSTHRU, OAUTH_PROVIDER_CONSUMER_CB);
-		if (retval) {
+		if (EG(exception)) {
+			/* pass exceptions */
+			break;
+		} else if (retval) {
 			convert_to_long(retval);
 			cb_res = Z_LVAL_P(retval);
 			zval_ptr_dtor(retval);
@@ -762,9 +765,6 @@ SOP_METHOD(checkOAuthRequest)
 				soo_handle_error(NULL, cb_res, "Invalid consumer key", NULL, additional_info);
 				break;
 			}
-		} else if (EG(exception)) {
-			/* pass exceptions */
-			break;
 		}
 
 		if (is_token_required) {

@@ -47,9 +47,9 @@ Requirements: ext/hash (now a part of PHP core)
     <email>mike@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2020-09-18</date>
+  <date>2022-04-21</date>
   <version>
-    <release>2.0.8dev</release>
+    <release>2.0.8</release>
     <api>2.0</api>
   </version>
   <stability>
@@ -59,7 +59,7 @@ Requirements: ext/hash (now a part of PHP core)
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
 <![CDATA[
-* Fix gh issue #19: Segfault in checkOAuthRequest()
+* Fix sporadic segfault in checkOAuthRequest
 ]]>
   </notes>
   <contents>
@@ -141,6 +141,7 @@ Requirements: ext/hash (now a part of PHP core)
         <file name="bug16946.phpt" role="test" />
         <file name="bug21426.phpt" role="test" />
         <file name="bug_64308.phpt" role="test" />
+        <file name="issue019.phpt" role="test" />
         <file name="oauth.inc" role="test" />
         <file name="oauthprovider_001.phpt" role="test" />
         <file name="oauthprovider_002.phpt" role="test" />
@@ -161,7 +162,6 @@ Requirements: ext/hash (now a part of PHP core)
         <file name="reqtoken_bug44603.phpt" role="test" />
         <file name="reqtoken_php.phpt" role="test" />
         <file name="rsa.phpt" role="test" />
-        <file name="sbs.phpt" role="test" />
         <file name="server.inc" role="test" />
         <file name="skip.inc" role="test" />
         <file name="test.pem" role="test" />

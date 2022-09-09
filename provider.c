@@ -1184,6 +1184,19 @@ extern int oauth_provider_register_class(void) /* {{{ */
 	osce.create_object = oauth_provider_new;
 	oauthprovider = zend_register_internal_class(&osce);
 
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_CONSUMER_KEY, sizeof(OAUTH_PROVIDER_CONSUMER_KEY)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_CONSUMER_SECRET, sizeof(OAUTH_PROVIDER_CONSUMER_SECRET)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_SIGNATURE, sizeof(OAUTH_PROVIDER_SIGNATURE)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_SIGNATURE_METHOD, sizeof(OAUTH_PROVIDER_SIGNATURE_METHOD)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_TOKEN, sizeof(OAUTH_PROVIDER_TOKEN)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_TOKEN_SECRET, sizeof(OAUTH_PROVIDER_TOKEN_SECRET)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_NONCE, sizeof(OAUTH_PROVIDER_NONCE)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_TIMESTAMP, sizeof(OAUTH_PROVIDER_TIMESTAMP)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_VERSION, sizeof(OAUTH_PROVIDER_VERSION)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_CALLBACK, sizeof(OAUTH_PROVIDER_CALLBACK)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, OAUTH_PROVIDER_VERIFIER, sizeof(OAUTH_PROVIDER_VERIFIER)-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(oauthprovider, "request_token_endpoint", sizeof("request_token_endpoint")-1, ZEND_ACC_PUBLIC);
+
 	memcpy(&oauth_provider_obj_hndlrs, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 	oauth_provider_obj_hndlrs.offset = XtOffsetOf(php_oauth_provider, zo);
 	oauth_provider_obj_hndlrs.free_obj = oauth_provider_free_storage;

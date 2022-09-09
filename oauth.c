@@ -2781,6 +2781,7 @@ PHP_MINIT_FUNCTION(oauth)
 	soo_exception_ce = zend_register_internal_class_ex(&soo_ex_ce, zend_exception_get_default());
 	zend_declare_property_null(soo_exception_ce, "lastResponse", sizeof("lastResponse")-1, ZEND_ACC_PUBLIC);
 	zend_declare_property_null(soo_exception_ce, "debugInfo", sizeof("debugInfo")-1, ZEND_ACC_PUBLIC);
+	zend_declare_property_null(soo_exception_ce, "additionalInfo", sizeof("additionalInfo")-1, ZEND_ACC_PUBLIC);
 
 	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_HMACSHA1", OAUTH_SIG_METHOD_HMACSHA1, CONST_CS | CONST_PERSISTENT);
 	REGISTER_STRING_CONSTANT("OAUTH_SIG_METHOD_HMACSHA256", OAUTH_SIG_METHOD_HMACSHA256, CONST_CS | CONST_PERSISTENT);

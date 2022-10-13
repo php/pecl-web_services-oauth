@@ -1184,6 +1184,13 @@ extern int oauth_provider_register_class(void) /* {{{ */
 	osce.create_object = oauth_provider_new;
 	oauthprovider = zend_register_internal_class(&osce);
 
+#if PHP_VERSION_ID >= 80200
+	oauthprovider->ce_flags |= ZEND_ACC_ALLOW_DYNAMIC_PROPERTIES;
+	zend_string *attribute_name_AllowDynamicProperties_class_OAuthProvider = zend_string_init_interned("AllowDynamicProperties", sizeof("AllowDynamicProperties") - 1, 1);
+	zend_add_class_attribute(oauthprovider, attribute_name_AllowDynamicProperties_class_OAuthProvider, 0);
+	zend_string_release(attribute_name_AllowDynamicProperties_class_OAuthProvider);
+#endif
+
 	memcpy(&oauth_provider_obj_hndlrs, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 	oauth_provider_obj_hndlrs.offset = XtOffsetOf(php_oauth_provider, zo);
 	oauth_provider_obj_hndlrs.free_obj = oauth_provider_free_storage;

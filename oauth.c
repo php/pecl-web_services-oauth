@@ -2763,6 +2763,12 @@ PHP_MINIT_FUNCTION(oauth)
 	soce.create_object = php_so_object_new;
 
 	soo_class_entry = zend_register_internal_class(&soce);
+#if PHP_VERSION_ID >= 80200
+	soo_class_entry->ce_flags |= ZEND_ACC_ALLOW_DYNAMIC_PROPERTIES;
+	zend_string *attribute_name_AllowDynamicProperties_class_OAuth = zend_string_init_interned("AllowDynamicProperties", sizeof("AllowDynamicProperties") - 1, 1);
+	zend_add_class_attribute(soo_class_entry, attribute_name_AllowDynamicProperties_class_OAuth, 0);
+	zend_string_release(attribute_name_AllowDynamicProperties_class_OAuth);
+#endif
 	memcpy(&so_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 	so_object_handlers.offset = XtOffsetOf(php_so_object, zo);
 
@@ -2779,6 +2785,12 @@ PHP_MINIT_FUNCTION(oauth)
 	INIT_CLASS_ENTRY(soo_ex_ce, "OAuthException", NULL);
 
 	soo_exception_ce = zend_register_internal_class_ex(&soo_ex_ce, zend_exception_get_default());
+#if PHP_VERSION_ID >= 80200
+	soo_exception_ce->ce_flags |= ZEND_ACC_ALLOW_DYNAMIC_PROPERTIES;
+	zend_string *attribute_name_AllowDynamicProperties_class_OAuthException = zend_string_init_interned("AllowDynamicProperties", sizeof("AllowDynamicProperties") - 1, 1);
+	zend_add_class_attribute(soo_exception_ce, attribute_name_AllowDynamicProperties_class_OAuthException, 0);
+	zend_string_release(attribute_name_AllowDynamicProperties_class_OAuthException);
+#endif
 	zend_declare_property_null(soo_exception_ce, "lastResponse", sizeof("lastResponse")-1, ZEND_ACC_PUBLIC);
 	zend_declare_property_null(soo_exception_ce, "debugInfo", sizeof("debugInfo")-1, ZEND_ACC_PUBLIC);
 

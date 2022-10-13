@@ -45,6 +45,9 @@
 #include "ext/pcre/php_pcre.h"
 #include "php_network.h"
 
+#if PHP_VERSION_ID >= 80200
+#include "zend_attributes.h"
+#endif
 #if OAUTH_USE_CURL
 #include <curl/curl.h>
 #define CLEANUP_CURL_AND_FORM(f,h)	 \

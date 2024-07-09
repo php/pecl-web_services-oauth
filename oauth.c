@@ -1330,7 +1330,7 @@ static void make_standard_query(HashTable *ht, php_so_object *soo) /* {{{ */
 		gettimeofday((struct timeval *) &tv, (struct timezone *) NULL);
 		sec = (int) tv.tv_sec;
 		usec = (int) (tv.tv_usec % 0x100000);
-		spprintf(&nonce, 0, "%ld%08x%05x%.8f", php_rand(), sec, usec, php_combined_lcg() * 10);
+		spprintf(&nonce, 0, "%d%08x%05x%.8f", php_mt_rand(), sec, usec, php_combined_lcg() * 10);
 	}
 
 	add_arg_for_req(ht, OAUTH_PARAM_CONSUMER_KEY, Z_STRVAL_P(soo_get_property(soo, OAUTH_ATTR_CONSUMER_KEY)));

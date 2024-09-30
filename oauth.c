@@ -599,8 +599,8 @@ zend_string *oauth_generate_sig_base(php_so_object *soo, const char *http_method
 			php_url_free(urlparts);
 			return NULL;
 		}
-		php_strtolower(OAUTH_URL_STR(urlparts->scheme), OAUTH_URL_LEN(urlparts->scheme));
-		php_strtolower(OAUTH_URL_STR(urlparts->host), OAUTH_URL_LEN(urlparts->host));
+		zend_str_tolower(OAUTH_URL_STR(urlparts->scheme), OAUTH_URL_LEN(urlparts->scheme));
+		zend_str_tolower(OAUTH_URL_STR(urlparts->host), OAUTH_URL_LEN(urlparts->host));
 		smart_string_appends(&sbuf, OAUTH_URL_STR(urlparts->scheme));
 		smart_string_appends(&sbuf, "://");
 		smart_string_appends(&sbuf, OAUTH_URL_STR(urlparts->host));

@@ -235,8 +235,12 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 #endif
 		&return_value,
 		&subpats,
+#if PHP_VERSION_ID < 80400
 		1, /* global */
 		1, /* use flags */
+#else
+		true, /* global */
+#endif
 		2, /* PREG_SET_ORDER */
 		0
 	);
@@ -956,7 +960,7 @@ SOP_METHOD(generateToken)
 			php_error_docref(NULL, E_WARNING, "Could not gather enough random data, falling back on rand()");
 		}
 		while (reaped < size) {
-			iv[reaped++] = (char) (255.0 * php_rand() / RAND_MAX);
+			iv[reaped++] = (char)php_mt_rand_range(0, 255);
 		}
 	}
 

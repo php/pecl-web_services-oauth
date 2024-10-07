@@ -38,6 +38,9 @@
 #include "ext/standard/php_smart_string.h"
 #include "ext/standard/info.h"
 #include "ext/standard/php_string.h"
+#if PHP_VERSION_ID > 80200
+#define php_strtolower(s, l) zend_str_tolower(s, l)
+#endif
 #include "ext/standard/php_versioning.h"
 #include "ext/standard/url.h"
 #include "php_variables.h"
@@ -48,6 +51,13 @@
 #include "ext/standard/base64.h"
 #include "ext/pcre/php_pcre.h"
 #include "php_network.h"
+#if PHP_VERSION_ID >= 80300
+#include "ext/random/php_random.h"
+#define php_rand() php_mt_rand()
+#else
+#include "ext/standard/php_lcg.h"
+#include "ext/standard/php_rand.h"
+#endif
 
 #if PHP_VERSION_ID >= 80200
 #include "zend_attributes.h"
@@ -59,7 +69,7 @@
 	curl_formfree(f);
 #endif
 
-#define PHP_OAUTH_VERSION 2.0.8
+#define PHP_OAUTH_VERSION 2.0.9
 
 #define __stringify_1(x)    #x
 #define __stringify(x)      __stringify_1(x)

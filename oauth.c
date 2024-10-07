@@ -2569,7 +2569,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_urlencode, 0, 0, 1)
 	ZEND_ARG_INFO(0, uri)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_sbs, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oauth_sbs, 0, 0, 2)
 	ZEND_ARG_INFO(0, http_method)
 	ZEND_ARG_INFO(0, uri)
 	ZEND_ARG_INFO(0, parameters)

@@ -47,7 +47,7 @@ Requirements: ext/hash (now a part of PHP core)
     <email>mike@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2022-10-07</date>
+  <date>2024-10-08</date>
   <version>
     <release>2.0.9</release>
     <api>2.0</api>
@@ -59,7 +59,8 @@ Requirements: ext/hash (now a part of PHP core)
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
 <![CDATA[
-* Fix sporadic segfault in checkOAuthRequest
+    * Fix PHP-8.3 deprecations
+    * Fix PHP-8.4 compatibility
 ]]>
   </notes>
   <contents>

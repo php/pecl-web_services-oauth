@@ -172,10 +172,10 @@ Requirements: ext/hash (now a part of PHP core)
   <dependencies>
     <required>
       <php>
-        <min>7.0.0</min>
+        <min>7.1.0</min>
       </php>
       <pearinstaller>
-        <min>1.4.0b1</min>
+        <min>1.10.0</min>
       </pearinstaller>
       <extension>
         <name>hash</name>

@@ -2856,11 +2856,11 @@ PHP_MINFO_FUNCTION(oauth)
 	php_info_print_table_start();
 	php_info_print_table_header(2, "OAuth support", "enabled");
 	php_info_print_table_row(2, "PLAINTEXT support", "enabled");
-#if HAVE_OPENSSL_EXT
+if (zend_hash_str_exists(&module_registry, "openssl", sizeof("openssl")-1)) {
 	php_info_print_table_row(2, "RSA-SHA1 support", "enabled");
-#else
+} else {
 	php_info_print_table_row(2, "RSA-SHA1 support", "not supported");
-#endif
+}
 	php_info_print_table_row(2, "HMAC-SHA1 support", "enabled");
 #if OAUTH_USE_CURL
 	php_info_print_table_row(2, "Request engine support", "php_streams, curl");

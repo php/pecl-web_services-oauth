@@ -960,7 +960,11 @@ SOP_METHOD(generateToken)
 			php_error_docref(NULL, E_WARNING, "Could not gather enough random data, falling back on rand()");
 		}
 		while (reaped < size) {
+#if PHP_VERSION_ID < 70100
+            iv[reaped++] = (char) (255.0 * php_rand() / RAND_MAX);
+#else
 			iv[reaped++] = (char)php_mt_rand_range(0, 255);
+#endif
 		}
 	}
 

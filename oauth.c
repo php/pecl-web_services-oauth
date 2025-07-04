@@ -60,7 +60,11 @@ static int oauth_parse_str(char *params, zval *dest_array) /* {{{ */
 	}
 
 	res = params;
+#if PHP_VERSION_ID < 80500
 	separator = (char *) estrdup(PG(arg_separator).input);
+#else
+	separator = (char *) estrdup(ZSTR_VAL(PG(arg_separator).input));
+#endif
 	var = php_strtok_r(res, separator, &strtok_buf);
 	while (var) {
 		val = strchr(var, '=');

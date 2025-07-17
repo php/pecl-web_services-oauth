@@ -981,7 +981,7 @@ SOP_METHOD(reportProblem)
 	sapi_header_line ctr = {0};
 	zend_bool send_headers = 1;
 
-	ex_ce = zend_exception_get_default();
+	ex_ce = zend_ce_exception;
 
 	if(zend_parse_parameters(ZEND_NUM_ARGS(), "O|b", &exception, ex_ce, &send_headers)==FAILURE) {
 		return;

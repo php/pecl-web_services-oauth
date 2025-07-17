@@ -179,7 +179,7 @@ static void so_object_free_storage(zend_object *obj) /* {{{ */
 void soo_handle_error(php_so_object *soo, long errorCode, char *msg, char *response, char *additional_info) /* {{{ */
 {
 	zval ex;
-	zend_class_entry *dex = zend_exception_get_default(), *soox = soo_exception_ce;
+	zend_class_entry *dex = zend_ce_exception, *soox = soo_exception_ce;
 
 	object_init_ex(&ex, soox);
 
@@ -2790,7 +2790,7 @@ PHP_MINIT_FUNCTION(oauth)
 
 	INIT_CLASS_ENTRY(soo_ex_ce, "OAuthException", NULL);
 
-	soo_exception_ce = zend_register_internal_class_ex(&soo_ex_ce, zend_exception_get_default());
+	soo_exception_ce = zend_register_internal_class_ex(&soo_ex_ce, zend_ce_exception);
 #if PHP_VERSION_ID >= 80200
 	soo_exception_ce->ce_flags |= ZEND_ACC_ALLOW_DYNAMIC_PROPERTIES;
 	zend_string *attribute_name_AllowDynamicProperties_class_OAuthException = zend_string_init_interned("AllowDynamicProperties", sizeof("AllowDynamicProperties") - 1, 1);

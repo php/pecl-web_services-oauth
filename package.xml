@@ -47,9 +47,9 @@ Requirements: ext/hash (now a part of PHP core)
     <email>mike@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2024-10-08</date>
+  <date>2025-10-09</date>
   <version>
-    <release>2.0.9</release>
+    <release>2.0.10</release>
     <api>2.0</api>
   </version>
   <stability>
@@ -59,8 +59,7 @@ Requirements: ext/hash (now a part of PHP core)
   <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
   <notes>
 <![CDATA[
-    * Fix PHP-8.3 deprecations
-    * Fix PHP-8.4 compatibility
+    * Fix PHP-8.5 compatibility
 ]]>
   </notes>
   <contents>
@@ -187,6 +186,25 @@ Requirements: ext/hash (now a part of PHP core)
   <extsrcrelease>
   </extsrcrelease>
   <changelog>
+
+  <release>
+    <date>2024-10-08</date>
+    <version>
+      <release>2.0.9</release>
+      <api>2.0</api>
+    </version>
+    <stability>
+      <release>stable</release>
+      <api>stable</api>
+    </stability>
+    <license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+    <notes>
+      <![CDATA[
+    * Fix PHP-8.3 deprecations
+    * Fix PHP-8.4 compatibility
+]]>
+    </notes>
+  </release>
 
   <release>
     <date>2022-04-21</date>

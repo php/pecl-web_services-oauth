@@ -1162,7 +1162,10 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 				if (mres == CURLE_OK) mres = curl_mime_filename(part, filename ? filename + sizeof(";filename=") - 1 : postval);
 				if (mres == CURLE_OK) mres = curl_mime_type(part, type ? type + sizeof(";type=") - 1 : "application/octet-stream");
 				if (mres != CURLE_OK) {
-					soo_handle_error(soo, -1, "failed to set curl mime part data", NULL, NULL);
+					char *em;
+					spprintf(&em, 0, "failed to set curl mime part data (%s)", curl_easy_strerror(mres));
+					soo_handle_error(soo, -1, em, NULL, NULL);
+					efree(em);
 					efree(postval_orig);
 					goto cleanup;
 				}
@@ -1176,7 +1179,10 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 				mres = curl_mime_name(part, soo->multipart_params[i]);
 				if (mres == CURLE_OK) mres = curl_mime_data(part, postval, CURL_ZERO_TERMINATED);
 				if (mres != CURLE_OK) {
-					soo_handle_error(soo, -1, "failed to set curl mime part data", NULL, NULL);
+					char *em;
+					spprintf(&em, 0, "failed to set curl mime part data (%s)", curl_easy_strerror(mres));
+					soo_handle_error(soo, -1, em, NULL, NULL);
+					efree(em);
 					efree(postval_orig);
 					goto cleanup;
 				}

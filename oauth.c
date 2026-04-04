@@ -1061,6 +1061,12 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	CURLcode cres, ctres, crres;
 	CURL *curl;
 	struct curl_slist *curl_headers = NULL;
+#if LIBCURL_VERSION_NUM >= 0x073800
+	curl_mime *mime = NULL;
+#else
+	struct curl_httppost *ff = NULL;
+	struct curl_httppost *lf = NULL;
+#endif
 	long l_code, response_code = -1;
 	double d_code;
 	zval info, *zca_info, *zca_path, *cur_val;
@@ -1076,6 +1082,10 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	sslcheck = soo->sslcheck;
 
 	curl = curl_easy_init();
+	if (!curl) {
+		soo_handle_error(soo, -1, "failed to initialize curl", NULL, NULL);
+		return -1;
+	}
 
 	if (request_headers) {
 		for (zend_hash_internal_pointer_reset_ex(request_headers, &pos);
@@ -1106,15 +1116,22 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	}
 
 	if(soo->is_multipart) {
-		struct curl_httppost *ff = NULL;
-		struct curl_httppost *lf = NULL;
+#if LIBCURL_VERSION_NUM >= 0x073800 /* 7.56.0 */
 		int i;
+		CURLcode mres;
+
+		mime = curl_mime_init(curl);
+		if (!mime) {
+			soo_handle_error(soo, -1, "failed to initialize curl mime", NULL, NULL);
+			goto cleanup;
+		}
 
 		for(i=0; i < soo->multipart_files_num; i++) {
-			char *type, *filename, *postval;
+			char *type = NULL, *filename = NULL, *postval, *postval_orig;
+			curl_mimepart *part;
 
 			/* swiped from ext/curl/interface.c to help with consistency */
-			postval = estrdup(soo->multipart_files[i]);
+			postval_orig = postval = estrdup(soo->multipart_files[i]);
 
 			if (postval[0] == '@' && soo->multipart_params[i][0] == '@') {
 				/* :< (chomp) @ */
@@ -1134,16 +1151,94 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 					spprintf(&em, 0, "failed to open file for multipart request: %s", postval);
 					soo_handle_error(soo, -1, em, NULL, NULL);
 					efree(em);
-					return 1;
+					efree(postval_orig);
+					goto cleanup;
 				}
 
-				curl_formadd(&ff, &lf,
-							 CURLFORM_COPYNAME, soo->multipart_params[i],
-							 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
-							 CURLFORM_FILENAME, filename ? filename + sizeof(";filename=") - 1 : soo->multipart_files[i],
-							 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
-							 CURLFORM_FILE, postval,
-							 CURLFORM_END);
+				part = curl_mime_addpart(mime);
+				if (!part) {
+					soo_handle_error(soo, -1, "failed to add curl mime part", NULL, NULL);
+					efree(postval_orig);
+					goto cleanup;
+				}
+				mres = curl_mime_name(part, soo->multipart_params[i]);
+				if (mres == CURLE_OK) mres = curl_mime_filedata(part, postval);
+				if (mres == CURLE_OK && filename) mres = curl_mime_filename(part, filename + sizeof(";filename=") - 1);
+				if (mres == CURLE_OK) mres = curl_mime_type(part, type ? type + sizeof(";type=") - 1 : "application/octet-stream");
+				if (mres != CURLE_OK) {
+					char *em;
+					spprintf(&em, 0, "failed to set curl mime part data (%s)", curl_easy_strerror(mres));
+					soo_handle_error(soo, -1, em, NULL, NULL);
+					efree(em);
+					efree(postval_orig);
+					goto cleanup;
+				}
+			} else {
+				part = curl_mime_addpart(mime);
+				if (!part) {
+					soo_handle_error(soo, -1, "failed to add curl mime part", NULL, NULL);
+					efree(postval_orig);
+					goto cleanup;
+				}
+				mres = curl_mime_name(part, soo->multipart_params[i]);
+				if (mres == CURLE_OK) mres = curl_mime_data(part, postval, CURL_ZERO_TERMINATED);
+				if (mres != CURLE_OK) {
+					char *em;
+					spprintf(&em, 0, "failed to set curl mime part data (%s)", curl_easy_strerror(mres));
+					soo_handle_error(soo, -1, em, NULL, NULL);
+					efree(em);
+					efree(postval_orig);
+					goto cleanup;
+				}
+			}
+			efree(postval_orig);
+		}
+
+		curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+#else
+		int i;
+
+		for(i=0; i < soo->multipart_files_num; i++) {
+			char *type = NULL, *filename = NULL, *postval, *postval_orig;
+
+			postval_orig = postval = estrdup(soo->multipart_files[i]);
+
+			if (postval[0] == '@' && soo->multipart_params[i][0] == '@') {
+				++soo->multipart_params[i];
+				++postval;
+
+				if((type = (char *) php_memnstr(postval, ";type=", sizeof(";type=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
+					*type = '\0';
+				}
+				if((filename = (char *) php_memnstr(postval, ";filename=", sizeof(";filename=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
+					*filename = '\0';
+				}
+
+				if(php_check_open_basedir(postval)) {
+					char *em;
+					spprintf(&em, 0, "failed to open file for multipart request: %s", postval);
+					soo_handle_error(soo, -1, em, NULL, NULL);
+					efree(em);
+					efree(postval_orig);
+					goto cleanup;
+				}
+
+				if (filename) {
+					curl_formadd(&ff, &lf,
+								 CURLFORM_COPYNAME, soo->multipart_params[i],
+								 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+								 CURLFORM_FILENAME, filename + sizeof(";filename=") - 1,
+								 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
+								 CURLFORM_FILE, postval,
+								 CURLFORM_END);
+				} else {
+					curl_formadd(&ff, &lf,
+								 CURLFORM_COPYNAME, soo->multipart_params[i],
+								 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+								 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
+								 CURLFORM_FILE, postval,
+								 CURLFORM_END);
+				}
 			} else {
 				curl_formadd(&ff, &lf,
 							 CURLFORM_COPYNAME, soo->multipart_params[i],
@@ -1152,9 +1247,11 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 							 CURLFORM_CONTENTSLENGTH, (long)strlen(postval),
 							 CURLFORM_END);
 			}
+			efree(postval_orig);
 		}
 
 		curl_easy_setopt(curl, CURLOPT_HTTPPOST, ff);
+#endif
 	} else if (payload->len) {
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload->c);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload->len);
@@ -1221,10 +1318,6 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 
 	smart_string_0(&soo->lastresponse);
 	smart_string_0(&soo->headers_in);
-
-	if (curl_headers) {
-		curl_slist_free_all(curl_headers);
-	}
 
 	if (CURLE_OK == cres) {
 		ctres = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &content_type);
@@ -1307,6 +1400,19 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 		soo_handle_error(soo, -1, bufz, soo->lastresponse.c, NULL);
 		efree(bufz);
 	}
+cleanup:
+	if (curl_headers) {
+		curl_slist_free_all(curl_headers);
+	}
+#if LIBCURL_VERSION_NUM >= 0x073800
+	if (mime) {
+		curl_mime_free(mime);
+	}
+#else
+	if (ff) {
+		curl_formfree(ff);
+	}
+#endif
 	curl_easy_cleanup(curl);
 	return response_code;
 }

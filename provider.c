@@ -383,6 +383,13 @@ static zval *oauth_provider_call_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /* {
 
 	zval_ptr_dtor(&args);
 
+	/* If the callback threw an exception, return_value may be in an
+	 * undefined state. Return NULL so callers don't try to use it.
+	 * See issue #27. */
+	if (EG(exception)) {
+		return NULL;
+	}
+
 	return return_value;
 }
 /* }}} */

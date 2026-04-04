@@ -1063,6 +1063,9 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	struct curl_slist *curl_headers = NULL;
 #if LIBCURL_VERSION_NUM >= 0x073800
 	curl_mime *mime = NULL;
+#else
+	struct curl_httppost *ff = NULL;
+	struct curl_httppost *lf = NULL;
 #endif
 	long l_code, response_code = -1;
 	double d_code;
@@ -1110,8 +1113,13 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 
 	if(soo->is_multipart) {
 #if LIBCURL_VERSION_NUM >= 0x073800 /* 7.56.0 */
-		mime = curl_mime_init(curl);
 		int i;
+
+		mime = curl_mime_init(curl);
+		if (!mime) {
+			soo_handle_error(soo, -1, "failed to initialize curl mime", NULL, NULL);
+			goto cleanup;
+		}
 
 		for(i=0; i < soo->multipart_files_num; i++) {
 			char *type, *filename, *postval;
@@ -1138,17 +1146,24 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 					spprintf(&em, 0, "failed to open file for multipart request: %s", postval);
 					soo_handle_error(soo, -1, em, NULL, NULL);
 					efree(em);
-					curl_mime_free(mime);
-					return 1;
+					goto cleanup;
 				}
 
 				part = curl_mime_addpart(mime);
+				if (!part) {
+					soo_handle_error(soo, -1, "failed to add curl mime part", NULL, NULL);
+					goto cleanup;
+				}
 				curl_mime_name(part, soo->multipart_params[i]);
 				curl_mime_filedata(part, postval);
-				curl_mime_filename(part, filename ? filename + sizeof(";filename=") - 1 : soo->multipart_files[i]);
+				curl_mime_filename(part, filename ? filename + sizeof(";filename=") - 1 : postval);
 				curl_mime_type(part, type ? type + sizeof(";type=") - 1 : "application/octet-stream");
 			} else {
 				part = curl_mime_addpart(mime);
+				if (!part) {
+					soo_handle_error(soo, -1, "failed to add curl mime part", NULL, NULL);
+					goto cleanup;
+				}
 				curl_mime_name(part, soo->multipart_params[i]);
 				curl_mime_data(part, postval, CURL_ZERO_TERMINATED);
 			}
@@ -1156,8 +1171,6 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 
 		curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
 #else
-		struct curl_httppost *ff = NULL;
-		struct curl_httppost *lf = NULL;
 		int i;
 
 		for(i=0; i < soo->multipart_files_num; i++) {
@@ -1181,13 +1194,13 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 					spprintf(&em, 0, "failed to open file for multipart request: %s", postval);
 					soo_handle_error(soo, -1, em, NULL, NULL);
 					efree(em);
-					return 1;
+					goto cleanup;
 				}
 
 				curl_formadd(&ff, &lf,
 							 CURLFORM_COPYNAME, soo->multipart_params[i],
 							 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
-							 CURLFORM_FILENAME, filename ? filename + sizeof(";filename=") - 1 : soo->multipart_files[i],
+							 CURLFORM_FILENAME, filename ? filename + sizeof(";filename=") - 1 : postval,
 							 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
 							 CURLFORM_FILE, postval,
 							 CURLFORM_END);
@@ -1355,9 +1368,14 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 		soo_handle_error(soo, -1, bufz, soo->lastresponse.c, NULL);
 		efree(bufz);
 	}
+cleanup:
 #if LIBCURL_VERSION_NUM >= 0x073800
 	if (mime) {
 		curl_mime_free(mime);
+	}
+#else
+	if (ff) {
+		curl_formfree(ff);
 	}
 #endif
 	curl_easy_cleanup(curl);

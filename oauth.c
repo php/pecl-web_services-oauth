@@ -1123,7 +1123,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 		}
 
 		for(i=0; i < soo->multipart_files_num; i++) {
-			char *type, *filename, *postval, *postval_orig;
+			char *type = NULL, *filename = NULL, *postval, *postval_orig;
 			curl_mimepart *part;
 
 			/* swiped from ext/curl/interface.c to help with consistency */
@@ -1195,7 +1195,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 		int i;
 
 		for(i=0; i < soo->multipart_files_num; i++) {
-			char *type, *filename, *postval, *postval_orig;
+			char *type = NULL, *filename = NULL, *postval, *postval_orig;
 
 			postval_orig = postval = estrdup(soo->multipart_files[i]);
 

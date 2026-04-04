@@ -1163,7 +1163,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 				}
 				mres = curl_mime_name(part, soo->multipart_params[i]);
 				if (mres == CURLE_OK) mres = curl_mime_filedata(part, postval);
-				if (mres == CURLE_OK) mres = curl_mime_filename(part, filename ? filename + sizeof(";filename=") - 1 : postval);
+				if (mres == CURLE_OK && filename) mres = curl_mime_filename(part, filename + sizeof(";filename=") - 1);
 				if (mres == CURLE_OK) mres = curl_mime_type(part, type ? type + sizeof(";type=") - 1 : "application/octet-stream");
 				if (mres != CURLE_OK) {
 					char *em;
@@ -1223,13 +1223,22 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 					goto cleanup;
 				}
 
-				curl_formadd(&ff, &lf,
-							 CURLFORM_COPYNAME, soo->multipart_params[i],
-							 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
-							 CURLFORM_FILENAME, filename ? filename + sizeof(";filename=") - 1 : postval,
-							 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
-							 CURLFORM_FILE, postval,
-							 CURLFORM_END);
+				if (filename) {
+					curl_formadd(&ff, &lf,
+								 CURLFORM_COPYNAME, soo->multipart_params[i],
+								 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+								 CURLFORM_FILENAME, filename + sizeof(";filename=") - 1,
+								 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
+								 CURLFORM_FILE, postval,
+								 CURLFORM_END);
+				} else {
+					curl_formadd(&ff, &lf,
+								 CURLFORM_COPYNAME, soo->multipart_params[i],
+								 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+								 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
+								 CURLFORM_FILE, postval,
+								 CURLFORM_END);
+				}
 			} else {
 				curl_formadd(&ff, &lf,
 							 CURLFORM_COPYNAME, soo->multipart_params[i],

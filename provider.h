@@ -26,12 +26,12 @@
 	OAUTH_PROVIDER_COPY_ZVAL_FROM_PZVAL(dest, src, 0)
 
 #define OAUTH_PROVIDER_CALL_CB(pt, m) \
-	{ \
+	do { \
 		zval *_cb_ret = oauth_provider_call_cb(pt, m); \
 		if (_cb_ret) { \
 			ZVAL_DUP(return_value, _cb_ret); \
 		} \
-	}
+	} while (0)
 
 #define OAUTH_PROVIDER_FREE_FCALL_INFO(o) \
 	if(o) { \

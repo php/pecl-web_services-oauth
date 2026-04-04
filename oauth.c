@@ -1082,6 +1082,10 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 	sslcheck = soo->sslcheck;
 
 	curl = curl_easy_init();
+	if (!curl) {
+		soo_handle_error(soo, -1, "failed to initialize curl", NULL, NULL);
+		return -1;
+	}
 
 	if (request_headers) {
 		for (zend_hash_internal_pointer_reset_ex(request_headers, &pos);

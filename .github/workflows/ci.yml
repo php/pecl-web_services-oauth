@@ -26,7 +26,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get install -y libcurl4-openssl-dev libpcre3-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
 
       - name: Run phpize
         run: phpize

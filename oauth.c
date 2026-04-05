@@ -1132,15 +1132,16 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 		}
 
 		for(i=0; i < soo->multipart_files_num; i++) {
-			char *type = NULL, *filename = NULL, *postval, *postval_orig;
+			char *type = NULL, *filename = NULL, *postval, *postval_orig, *param_name;
 			curl_mimepart *part;
 
 			/* swiped from ext/curl/interface.c to help with consistency */
 			postval_orig = postval = estrdup(soo->multipart_files[i]);
+			param_name = soo->multipart_params[i];
 
-			if (postval[0] == '@' && soo->multipart_params[i][0] == '@') {
+			if (postval[0] == '@' && param_name[0] == '@') {
 				/* :< (chomp) @ */
-				++soo->multipart_params[i];
+				++param_name;
 				++postval;
 
 				if((type = (char *) php_memnstr(postval, ";type=", sizeof(";type=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
@@ -1166,7 +1167,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 					efree(postval_orig);
 					goto cleanup;
 				}
-				mres = curl_mime_name(part, soo->multipart_params[i]);
+				mres = curl_mime_name(part, param_name);
 				if (mres == CURLE_OK) mres = curl_mime_filedata(part, postval);
 				if (mres == CURLE_OK && filename) mres = curl_mime_filename(part, filename + sizeof(";filename=") - 1);
 				if (mres == CURLE_OK) mres = curl_mime_type(part, type ? type + sizeof(";type=") - 1 : "application/octet-stream");
@@ -1185,7 +1186,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 					efree(postval_orig);
 					goto cleanup;
 				}
-				mres = curl_mime_name(part, soo->multipart_params[i]);
+				mres = curl_mime_name(part, param_name);
 				if (mres == CURLE_OK) mres = curl_mime_data(part, postval, CURL_ZERO_TERMINATED);
 				if (mres != CURLE_OK) {
 					char *em;
@@ -1204,12 +1205,13 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 		int i;
 
 		for(i=0; i < soo->multipart_files_num; i++) {
-			char *type = NULL, *filename = NULL, *postval, *postval_orig;
+			char *type = NULL, *filename = NULL, *postval, *postval_orig, *param_name;
 
 			postval_orig = postval = estrdup(soo->multipart_files[i]);
+			param_name = soo->multipart_params[i];
 
-			if (postval[0] == '@' && soo->multipart_params[i][0] == '@') {
-				++soo->multipart_params[i];
+			if (postval[0] == '@' && param_name[0] == '@') {
+				++param_name;
 				++postval;
 
 				if((type = (char *) php_memnstr(postval, ";type=", sizeof(";type=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
@@ -1230,24 +1232,24 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 
 				if (filename) {
 					curl_formadd(&ff, &lf,
-								 CURLFORM_COPYNAME, soo->multipart_params[i],
-								 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+								 CURLFORM_COPYNAME, param_name,
+								 CURLFORM_NAMELENGTH, (long)strlen(param_name),
 								 CURLFORM_FILENAME, filename + sizeof(";filename=") - 1,
 								 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
 								 CURLFORM_FILE, postval,
 								 CURLFORM_END);
 				} else {
 					curl_formadd(&ff, &lf,
-								 CURLFORM_COPYNAME, soo->multipart_params[i],
-								 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+								 CURLFORM_COPYNAME, param_name,
+								 CURLFORM_NAMELENGTH, (long)strlen(param_name),
 								 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
 								 CURLFORM_FILE, postval,
 								 CURLFORM_END);
 				}
 			} else {
 				curl_formadd(&ff, &lf,
-							 CURLFORM_COPYNAME, soo->multipart_params[i],
-							 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+							 CURLFORM_COPYNAME, param_name,
+							 CURLFORM_NAMELENGTH, (long)strlen(param_name),
 							 CURLFORM_COPYCONTENTS, postval,
 							 CURLFORM_CONTENTSLENGTH, (long)strlen(postval),
 							 CURLFORM_END);

@@ -211,12 +211,19 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 	size_t decoded_len;
 
 	if(!auth_header || strncasecmp(auth_header, "oauth", 4) || !sop) {
+#if PHP_VERSION_ID >= 70400
+		zend_string_release(s_auth_header);
+#endif
+		zend_string_release(regex);
 		return FAILURE;
 	}
 	/* pass "OAuth " */
 	auth_header += 5;
 
 	if ((pce = pcre_get_compiled_regex_cache(regex)) == NULL) {
+#if PHP_VERSION_ID >= 70400
+		zend_string_release(s_auth_header);
+#endif
 		zend_string_release(regex);
 		return FAILURE;
 	}
@@ -246,6 +253,9 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 	);
 
 	if (0 == Z_LVAL(return_value)) {
+#if PHP_VERSION_ID >= 70400
+		zend_string_release(s_auth_header);
+#endif
 		return FAILURE;
 	}
 
@@ -277,6 +287,9 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 				zval_ptr_dtor(&decoded_val);
 				zval_ptr_dtor(&return_value);
 				zval_ptr_dtor(&subpats);
+#if PHP_VERSION_ID >= 70400
+				zend_string_release(s_auth_header);
+#endif
 				return FAILURE;
 			}
 			zval_ptr_dtor(&decoded_val);
@@ -285,6 +298,9 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 
 	zval_ptr_dtor(&return_value);
 	zval_ptr_dtor(&subpats);
+#if PHP_VERSION_ID >= 70400
+	zend_string_release(s_auth_header);
+#endif
 
 	return SUCCESS;
 }

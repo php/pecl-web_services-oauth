@@ -195,7 +195,11 @@ static void oauth_provider_set_std_params(zval *provider_obj, HashTable *sbs_var
 static inline int oauth_provider_set_param_value(HashTable *ht, char *key, zval *val) /* {{{ */
 {
 	Z_TRY_ADDREF_P(val);
-	return zend_hash_str_update(ht, key, strlen(key), val) != NULL;
+	if (zend_hash_str_update(ht, key, strlen(key), val) == NULL) {
+		Z_TRY_DELREF_P(val);
+		return FAILURE;
+	}
+	return SUCCESS;
 }
 /* }}} */
 
@@ -206,17 +210,25 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 	HashPosition hpos;
 	zend_string *regex = zend_string_init(OAUTH_REGEX, sizeof(OAUTH_REGEX) - 1, 0);
 #if PHP_VERSION_ID >= 70400
-	zend_string *s_auth_header = zend_string_init(auth_header, strlen(auth_header), 0);
+	zend_string *s_auth_header;
 #endif
 	size_t decoded_len;
 
-	if(!auth_header || strncasecmp(auth_header, "oauth", 4) || !sop) {
+	if(!auth_header || strncasecmp(auth_header, "oauth ", 6) || !sop) {
+		zend_string_release(regex);
 		return FAILURE;
 	}
 	/* pass "OAuth " */
-	auth_header += 5;
+	auth_header += 6;
+
+#if PHP_VERSION_ID >= 70400
+	s_auth_header = zend_string_init(auth_header, strlen(auth_header), 0);
+#endif
 
 	if ((pce = pcre_get_compiled_regex_cache(regex)) == NULL) {
+#if PHP_VERSION_ID >= 70400
+		zend_string_release(s_auth_header);
+#endif
 		zend_string_release(regex);
 		return FAILURE;
 	}
@@ -246,6 +258,11 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 	);
 
 	if (0 == Z_LVAL(return_value)) {
+		zval_ptr_dtor(&return_value);
+		zval_ptr_dtor(&subpats);
+#if PHP_VERSION_ID >= 70400
+		zend_string_release(s_auth_header);
+#endif
 		return FAILURE;
 	}
 
@@ -271,16 +288,26 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 			tmp = estrndup(Z_STRVAL_P(current_val), Z_STRLEN_P(current_val));
 			decoded_len = php_url_decode(tmp, Z_STRLEN_P(current_val));
 			ZVAL_STRINGL(&decoded_val, tmp, decoded_len);
+			efree(tmp);
 
-			if (oauth_provider_set_param_value(sop->oauth_params, Z_STRVAL_P(current_param), &decoded_val)==FAILURE) {
+			if (oauth_provider_set_param_value(sop->oauth_params, Z_STRVAL_P(current_param), &decoded_val) == FAILURE) {
+				zval_ptr_dtor(&decoded_val);
+				zval_ptr_dtor(&return_value);
+				zval_ptr_dtor(&subpats);
+#if PHP_VERSION_ID >= 70400
+				zend_string_release(s_auth_header);
+#endif
 				return FAILURE;
 			}
-			Z_DELREF(decoded_val);
+			zval_ptr_dtor(&decoded_val);
 		}
 	} while (SUCCESS==zend_hash_move_forward_ex(Z_ARRVAL(subpats), &hpos));
 
 	zval_ptr_dtor(&return_value);
 	zval_ptr_dtor(&subpats);
+#if PHP_VERSION_ID >= 70400
+	zend_string_release(s_auth_header);
+#endif
 
 	return SUCCESS;
 }
@@ -318,6 +345,9 @@ static void oauth_provider_register_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /
 			tgt_cb = &sop->tsnonce_handler;
 			break;
 		default:
+			zval_ptr_dtor(&cb->fcall_info->function_name);
+			efree(cb->fcall_info);
+			efree(cb);
 			php_error_docref(NULL, E_ERROR, "Invalid callback type for OAuthProvider");
 			return;
 	}

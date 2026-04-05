@@ -158,10 +158,6 @@ static void so_object_free_storage(zend_object *obj) /* {{{ */
 		soo->debug_info = NULL;
 	}
 
-	smart_string_free(&soo->headers_in);
-	if (soo->headers_out.c) {
-		smart_string_free(&soo->headers_out);
-	}
 	if(Z_TYPE(soo->debugArr) != IS_UNDEF) {
 		zval_ptr_dtor(&soo->debugArr);
 	}
@@ -171,6 +167,23 @@ static void so_object_free_storage(zend_object *obj) /* {{{ */
 	}
 	if (soo->timestamp) {
 		efree(soo->timestamp);
+	}
+	if (soo->multipart_files || soo->multipart_params) {
+		int mi;
+		for (mi = 0; mi < soo->multipart_files_num; mi++) {
+			if (soo->multipart_files) {
+				efree(soo->multipart_files[mi]);
+			}
+			if (soo->multipart_params) {
+				efree(soo->multipart_params[mi]);
+			}
+		}
+		if (soo->multipart_files) {
+			efree(soo->multipart_files);
+		}
+		if (soo->multipart_params) {
+			efree(soo->multipart_params);
+		}
 	}
 
 }
@@ -482,8 +495,8 @@ int oauth_http_build_query(php_so_object *soo, smart_string *s, HashTable *args,
 						soo->multipart_params = erealloc(soo->multipart_params, sizeof(char *) * (soo->multipart_files_num + 1));
 
 						convert_to_string_ex(cur_val);
-						soo->multipart_files[soo->multipart_files_num] = Z_STRVAL_P(cur_val);
-						soo->multipart_params[soo->multipart_files_num] = ZSTR_VAL(cur_key);
+						soo->multipart_files[soo->multipart_files_num] = estrdup(Z_STRVAL_P(cur_val));
+						soo->multipart_params[soo->multipart_files_num] = estrdup(ZSTR_VAL(cur_key));
 
 						++soo->multipart_files_num;
 						/* we don't add multipart files to the params */
@@ -1127,15 +1140,16 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 		}
 
 		for(i=0; i < soo->multipart_files_num; i++) {
-			char *type = NULL, *filename = NULL, *postval, *postval_orig;
+			char *type = NULL, *filename = NULL, *postval, *postval_orig, *param_name;
 			curl_mimepart *part;
 
 			/* swiped from ext/curl/interface.c to help with consistency */
 			postval_orig = postval = estrdup(soo->multipart_files[i]);
+			param_name = soo->multipart_params[i];
 
-			if (postval[0] == '@' && soo->multipart_params[i][0] == '@') {
+			if (postval[0] == '@' && param_name[0] == '@') {
 				/* :< (chomp) @ */
-				++soo->multipart_params[i];
+				++param_name;
 				++postval;
 
 				if((type = (char *) php_memnstr(postval, ";type=", sizeof(";type=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
@@ -1161,7 +1175,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 					efree(postval_orig);
 					goto cleanup;
 				}
-				mres = curl_mime_name(part, soo->multipart_params[i]);
+				mres = curl_mime_name(part, param_name);
 				if (mres == CURLE_OK) mres = curl_mime_filedata(part, postval);
 				if (mres == CURLE_OK && filename) mres = curl_mime_filename(part, filename + sizeof(";filename=") - 1);
 				if (mres == CURLE_OK) mres = curl_mime_type(part, type ? type + sizeof(";type=") - 1 : "application/octet-stream");
@@ -1180,7 +1194,7 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 					efree(postval_orig);
 					goto cleanup;
 				}
-				mres = curl_mime_name(part, soo->multipart_params[i]);
+				mres = curl_mime_name(part, param_name);
 				if (mres == CURLE_OK) mres = curl_mime_data(part, postval, CURL_ZERO_TERMINATED);
 				if (mres != CURLE_OK) {
 					char *em;
@@ -1199,12 +1213,13 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 		int i;
 
 		for(i=0; i < soo->multipart_files_num; i++) {
-			char *type = NULL, *filename = NULL, *postval, *postval_orig;
+			char *type = NULL, *filename = NULL, *postval, *postval_orig, *param_name;
 
 			postval_orig = postval = estrdup(soo->multipart_files[i]);
+			param_name = soo->multipart_params[i];
 
-			if (postval[0] == '@' && soo->multipart_params[i][0] == '@') {
-				++soo->multipart_params[i];
+			if (postval[0] == '@' && param_name[0] == '@') {
+				++param_name;
 				++postval;
 
 				if((type = (char *) php_memnstr(postval, ";type=", sizeof(";type=") - 1, postval + strlen(soo->multipart_files[i]) - 1))) {
@@ -1225,24 +1240,24 @@ long make_req_curl(php_so_object *soo, const char *url, const smart_string *payl
 
 				if (filename) {
 					curl_formadd(&ff, &lf,
-								 CURLFORM_COPYNAME, soo->multipart_params[i],
-								 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+								 CURLFORM_COPYNAME, param_name,
+								 CURLFORM_NAMELENGTH, (long)strlen(param_name),
 								 CURLFORM_FILENAME, filename + sizeof(";filename=") - 1,
 								 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
 								 CURLFORM_FILE, postval,
 								 CURLFORM_END);
 				} else {
 					curl_formadd(&ff, &lf,
-								 CURLFORM_COPYNAME, soo->multipart_params[i],
-								 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+								 CURLFORM_COPYNAME, param_name,
+								 CURLFORM_NAMELENGTH, (long)strlen(param_name),
 								 CURLFORM_CONTENTTYPE, type ? type + sizeof(";type=") - 1 : "application/octet-stream",
 								 CURLFORM_FILE, postval,
 								 CURLFORM_END);
 				}
 			} else {
 				curl_formadd(&ff, &lf,
-							 CURLFORM_COPYNAME, soo->multipart_params[i],
-							 CURLFORM_NAMELENGTH, (long)strlen(soo->multipart_params[i]),
+							 CURLFORM_COPYNAME, param_name,
+							 CURLFORM_NAMELENGTH, (long)strlen(param_name),
 							 CURLFORM_COPYCONTENTS, postval,
 							 CURLFORM_CONTENTSLENGTH, (long)strlen(postval),
 							 CURLFORM_END);
@@ -1713,14 +1728,30 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 #if OAUTH_USE_CURL
 			case OAUTH_REQENGINE_CURL:
 				http_response_code = make_req_curl(soo, surl.c, &payload, final_http_method, &rheaders);
-				if (soo->multipart_files_num) {
-					efree(soo->multipart_files);
-					efree(soo->multipart_params);
-					soo->multipart_files_num = 0;
-					soo->is_multipart = 0;
-				}
 				break;
 #endif
+		}
+
+		if (soo->multipart_files || soo->multipart_params) {
+			int mi;
+			for (mi = 0; mi < soo->multipart_files_num; mi++) {
+				if (soo->multipart_files) {
+					efree(soo->multipart_files[mi]);
+				}
+				if (soo->multipart_params) {
+					efree(soo->multipart_params[mi]);
+				}
+			}
+			if (soo->multipart_files) {
+				efree(soo->multipart_files);
+				soo->multipart_files = NULL;
+			}
+			if (soo->multipart_params) {
+				efree(soo->multipart_params);
+				soo->multipart_params = NULL;
+			}
+			soo->multipart_files_num = 0;
+			soo->is_multipart = 0;
 		}
 
 		is_redirect = HTTP_IS_REDIRECT(http_response_code);

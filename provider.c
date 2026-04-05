@@ -206,19 +206,20 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 	HashPosition hpos;
 	zend_string *regex = zend_string_init(OAUTH_REGEX, sizeof(OAUTH_REGEX) - 1, 0);
 #if PHP_VERSION_ID >= 70400
-	zend_string *s_auth_header = zend_string_init(auth_header, strlen(auth_header), 0);
+	zend_string *s_auth_header;
 #endif
 	size_t decoded_len;
 
 	if(!auth_header || strncasecmp(auth_header, "oauth", 4) || !sop) {
-#if PHP_VERSION_ID >= 70400
-		zend_string_release(s_auth_header);
-#endif
 		zend_string_release(regex);
 		return FAILURE;
 	}
 	/* pass "OAuth " */
 	auth_header += 5;
+
+#if PHP_VERSION_ID >= 70400
+	s_auth_header = zend_string_init(auth_header, strlen(auth_header), 0);
+#endif
 
 	if ((pce = pcre_get_compiled_regex_cache(regex)) == NULL) {
 #if PHP_VERSION_ID >= 70400

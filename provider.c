@@ -197,9 +197,9 @@ static inline int oauth_provider_set_param_value(HashTable *ht, char *key, zval 
 	Z_TRY_ADDREF_P(val);
 	if (zend_hash_str_update(ht, key, strlen(key), val) == NULL) {
 		Z_TRY_DELREF_P(val);
-		return FAILURE;
+		return 0;
 	}
-	return SUCCESS;
+	return 1;
 }
 /* }}} */
 
@@ -214,7 +214,7 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 #endif
 	size_t decoded_len;
 
-	if(!auth_header || strlen(auth_header) < 6 || strncasecmp(auth_header, "oauth ", 6) || !sop) {
+	if(!auth_header || strncasecmp(auth_header, "oauth ", 6) || !sop) {
 		zend_string_release(regex);
 		return FAILURE;
 	}
@@ -290,7 +290,7 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 			ZVAL_STRINGL(&decoded_val, tmp, decoded_len);
 			efree(tmp);
 
-			if (oauth_provider_set_param_value(sop->oauth_params, Z_STRVAL_P(current_param), &decoded_val)==FAILURE) {
+			if (!oauth_provider_set_param_value(sop->oauth_params, Z_STRVAL_P(current_param), &decoded_val)) {
 				zval_ptr_dtor(&decoded_val);
 				zval_ptr_dtor(&return_value);
 				zval_ptr_dtor(&subpats);
@@ -609,7 +609,7 @@ SOP_METHOD(__construct)
 		do {
 			if(zend_hash_get_current_key_ex(Z_ARRVAL_P(params), &key, &num_key, &hpos) == HASH_KEY_IS_STRING) {
 				if((item_param = zend_hash_get_current_data_ex(Z_ARRVAL_P(params), &hpos)) != NULL) {
-					if(oauth_provider_set_param_value(sop->oauth_params, ZSTR_VAL(key), item_param) == FAILURE) {
+					if(!oauth_provider_set_param_value(sop->oauth_params, ZSTR_VAL(key), item_param)) {
 						return;
 					}
 				}

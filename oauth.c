@@ -1732,16 +1732,24 @@ static long oauth_fetch(php_so_object *soo, const char *url, const char *method,
 #endif
 		}
 
-		if (soo->multipart_files_num) {
+		if (soo->multipart_files || soo->multipart_params) {
 			int mi;
 			for (mi = 0; mi < soo->multipart_files_num; mi++) {
-				efree(soo->multipart_files[mi]);
-				efree(soo->multipart_params[mi]);
+				if (soo->multipart_files) {
+					efree(soo->multipart_files[mi]);
+				}
+				if (soo->multipart_params) {
+					efree(soo->multipart_params[mi]);
+				}
 			}
-			efree(soo->multipart_files);
-			efree(soo->multipart_params);
-			soo->multipart_files = NULL;
-			soo->multipart_params = NULL;
+			if (soo->multipart_files) {
+				efree(soo->multipart_files);
+				soo->multipart_files = NULL;
+			}
+			if (soo->multipart_params) {
+				efree(soo->multipart_params);
+				soo->multipart_params = NULL;
+			}
 			soo->multipart_files_num = 0;
 			soo->is_multipart = 0;
 		}

@@ -168,14 +168,22 @@ static void so_object_free_storage(zend_object *obj) /* {{{ */
 	if (soo->timestamp) {
 		efree(soo->timestamp);
 	}
-	if (soo->multipart_files_num) {
+	if (soo->multipart_files || soo->multipart_params) {
 		int mi;
 		for (mi = 0; mi < soo->multipart_files_num; mi++) {
-			efree(soo->multipart_files[mi]);
-			efree(soo->multipart_params[mi]);
+			if (soo->multipart_files) {
+				efree(soo->multipart_files[mi]);
+			}
+			if (soo->multipart_params) {
+				efree(soo->multipart_params[mi]);
+			}
 		}
-		efree(soo->multipart_files);
-		efree(soo->multipart_params);
+		if (soo->multipart_files) {
+			efree(soo->multipart_files);
+		}
+		if (soo->multipart_params) {
+			efree(soo->multipart_params);
+		}
 	}
 
 }

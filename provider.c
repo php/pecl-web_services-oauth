@@ -214,12 +214,12 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 #endif
 	size_t decoded_len;
 
-	if(!auth_header || strncasecmp(auth_header, "oauth", 4) || !sop) {
+	if(!auth_header || strlen(auth_header) < 6 || strncasecmp(auth_header, "oauth ", 6) || !sop) {
 		zend_string_release(regex);
 		return FAILURE;
 	}
 	/* pass "OAuth " */
-	auth_header += 5;
+	auth_header += 6;
 
 #if PHP_VERSION_ID >= 70400
 	s_auth_header = zend_string_init(auth_header, strlen(auth_header), 0);

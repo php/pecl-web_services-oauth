@@ -195,7 +195,11 @@ static void oauth_provider_set_std_params(zval *provider_obj, HashTable *sbs_var
 static inline int oauth_provider_set_param_value(HashTable *ht, char *key, zval *val) /* {{{ */
 {
 	Z_TRY_ADDREF_P(val);
-	return zend_hash_str_update(ht, key, strlen(key), val) != NULL ? SUCCESS : FAILURE;
+	if (zend_hash_str_update(ht, key, strlen(key), val) == NULL) {
+		Z_TRY_DELREF_P(val);
+		return FAILURE;
+	}
+	return SUCCESS;
 }
 /* }}} */
 

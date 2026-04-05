@@ -271,11 +271,15 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 			tmp = estrndup(Z_STRVAL_P(current_val), Z_STRLEN_P(current_val));
 			decoded_len = php_url_decode(tmp, Z_STRLEN_P(current_val));
 			ZVAL_STRINGL(&decoded_val, tmp, decoded_len);
+			efree(tmp);
 
 			if (oauth_provider_set_param_value(sop->oauth_params, Z_STRVAL_P(current_param), &decoded_val)==FAILURE) {
+				zval_ptr_dtor(&decoded_val);
+				zval_ptr_dtor(&return_value);
+				zval_ptr_dtor(&subpats);
 				return FAILURE;
 			}
-			Z_DELREF(decoded_val);
+			zval_ptr_dtor(&decoded_val);
 		}
 	} while (SUCCESS==zend_hash_move_forward_ex(Z_ARRVAL(subpats), &hpos));
 
@@ -318,6 +322,9 @@ static void oauth_provider_register_cb(INTERNAL_FUNCTION_PARAMETERS, int type) /
 			tgt_cb = &sop->tsnonce_handler;
 			break;
 		default:
+			zval_ptr_dtor(&cb->fcall_info->function_name);
+			efree(cb->fcall_info);
+			efree(cb);
 			php_error_docref(NULL, E_ERROR, "Invalid callback type for OAuthProvider");
 			return;
 	}

@@ -195,7 +195,7 @@ static void oauth_provider_set_std_params(zval *provider_obj, HashTable *sbs_var
 static inline int oauth_provider_set_param_value(HashTable *ht, char *key, zval *val) /* {{{ */
 {
 	Z_TRY_ADDREF_P(val);
-	return zend_hash_str_update(ht, key, strlen(key), val) != NULL;
+	return zend_hash_str_update(ht, key, strlen(key), val) != NULL ? SUCCESS : FAILURE;
 }
 /* }}} */
 
@@ -254,6 +254,8 @@ static int oauth_provider_parse_auth_header(php_oauth_provider *sop, char *auth_
 	);
 
 	if (0 == Z_LVAL(return_value)) {
+		zval_ptr_dtor(&return_value);
+		zval_ptr_dtor(&subpats);
 #if PHP_VERSION_ID >= 70400
 		zend_string_release(s_auth_header);
 #endif

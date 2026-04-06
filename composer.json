@@ -1,0 +1,23 @@
+{
+    "name": "php/pecl-oauth",
+    "type": "php-ext",
+    "description": "OAuth 1.0 consumer and provider extension",
+    "license": "BSD-3-Clause",
+    "require": {
+        "php": ">=7.1.0",
+        "ext-hash": "*"
+    },
+    "php-ext": {
+        "extension-name": "oauth",
+        "configure-options": [
+            {
+                "name": "enable-oauth",
+                "description": "Include oauth support"
+            },
+            {
+                "name": "without-curl",
+                "description": "Ignore presence of cURL and disable it"
+            }
+        ]
+    }
+}

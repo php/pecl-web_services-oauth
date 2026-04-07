@@ -47,9 +47,9 @@ Requirements: ext/hash (now a part of PHP core)
     <email>mike@php.net</email>
     <active>yes</active>
   </lead>
-  <date>2026-04-06</date>
+  <date>2026-04-07</date>
   <version>
-    <release>2.0.11</release>
+    <release>2.0.12</release>
     <api>2.0</api>
   </version>
   <stability>
@@ -67,7 +67,7 @@ Requirements: ext/hash (now a part of PHP core)
     * Fix memory leak in provider auth header parsing
     * Fix memory leak in provider callback registration
     * Add GitHub Actions CI
-    * Add PIE support (composer.json)
+    * Add PIE support (composer.json, package name pecl/oauth)
 ]]>
   </notes>
   <contents>

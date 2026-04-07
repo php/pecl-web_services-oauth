@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.11 - 2026-04-06
+## 2.0.12 - 2026-04-07
 
 * Fix segfault when OAuthProvider callback handler throws an exception (issue #27)
 * Replace deprecated cURL `curl_formadd()` API with MIME API for multipart form uploads (issue #37)
@@ -11,6 +11,7 @@
 * Fix memory leak in OAuthProvider callback registration on invalid callback type
 * Add multipart array cleanup in destructor for exception safety
 * Add GitHub Actions CI for PHP 8.1-8.5
+* Add PIE support (composer.json, package name pecl/oauth)
 
 ## 2.0.10 - 2025-10-09
 

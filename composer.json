@@ -1,5 +1,5 @@
 {
-    "name": "php/pecl-oauth",
+    "name": "pecl/oauth",
     "type": "php-ext",
     "description": "OAuth 1.0 consumer and provider extension",
     "license": "BSD-3-Clause",

@@ -108,7 +108,7 @@ typedef struct {
 } php_oauth_provider;
 
 static inline php_oauth_provider *sop_object_from_obj(zend_object *obj) /* {{{ */ {
-    return (php_oauth_provider*)((char*)(obj) - XtOffsetOf(php_oauth_provider, zo));
+    return (php_oauth_provider*)((char*)(obj) - offsetof(php_oauth_provider, zo));
 }
 /* }}} */
 

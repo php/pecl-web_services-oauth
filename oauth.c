@@ -2913,7 +2913,7 @@ PHP_MINIT_FUNCTION(oauth)
 	zend_string_release(attribute_name_AllowDynamicProperties_class_OAuth);
 #endif
 	memcpy(&so_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-	so_object_handlers.offset = XtOffsetOf(php_so_object, zo);
+	so_object_handlers.offset = offsetof(php_so_object, zo);
 
 	so_object_handlers.read_property = oauth_read_member;
 	so_object_handlers.write_property = oauth_write_member;

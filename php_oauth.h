@@ -259,7 +259,7 @@ typedef struct {
 } php_so_object;
 
 static inline php_so_object *so_object_from_obj(zend_object *obj) /* {{{ */ {
-    return (php_so_object*)((char*)(obj) - XtOffsetOf(php_so_object, zo));
+    return (php_so_object*)((char*)(obj) - offsetof(php_so_object, zo));
 }
 /* }}} */
 

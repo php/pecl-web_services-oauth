@@ -1238,7 +1238,7 @@ extern int oauth_provider_register_class(void) /* {{{ */
 #endif
 
 	memcpy(&oauth_provider_obj_hndlrs, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-	oauth_provider_obj_hndlrs.offset = XtOffsetOf(php_oauth_provider, zo);
+	oauth_provider_obj_hndlrs.offset = offsetof(php_oauth_provider, zo);
 	oauth_provider_obj_hndlrs.free_obj = oauth_provider_free_storage;
 
 	return SUCCESS;

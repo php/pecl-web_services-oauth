@@ -1,6 +1,16 @@
 # Changelog
 
+## 2.0.13 - 2026-06-17
+
+* Fix build on PHP 8.6+ — replace `XtOffsetOf` with `offsetof` (issue #42)
+* Add PHP 8.6 to CI matrix
+
 ## 2.0.12 - 2026-04-07
+
+* Add PIE support (composer.json, package name pecl/oauth)
+* Drop .gitattributes export-ignore rules (issue #41) — preserves full source tree in GitHub archives for distro packagers
+
+## 2.0.11 - 2026-04-06
 
 * Fix segfault when OAuthProvider callback handler throws an exception (issue #27)
 * Replace deprecated cURL `curl_formadd()` API with MIME API for multipart form uploads (issue #37)
@@ -11,7 +21,6 @@
 * Fix memory leak in OAuthProvider callback registration on invalid callback type
 * Add multipart array cleanup in destructor for exception safety
 * Add GitHub Actions CI for PHP 8.1-8.5
-* Add PIE support (composer.json, package name pecl/oauth)
 
 ## 2.0.10 - 2025-10-09
 
